@@ -1,0 +1,15 @@
+{
+  "presets": ["es2015", "es2016",
+    ["env", { 
+      "modules": false,
+      "targets": {
+        "node": "current",
+        "uglify": true
+      }
+    }]
+  ],
+  "plugins": [
+    "add-module-exports",
+    "syntax-dynamic-import"
+  ]
+}

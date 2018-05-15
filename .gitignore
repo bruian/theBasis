@@ -1,0 +1,12 @@
+npm-debug.log
+yarn-error.log
+package-lock.json
+_server.js
+_vueApp.js
+.DS_Store
+node_modules/
+dist/
+logs/
+server/config-private.js
+.idea
+*.iml
