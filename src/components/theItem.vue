@@ -1,47 +1,59 @@
 <template>
-  <li class='telegram-user-item'>
-    <b-card bg-variant='info' text-variant='white' :title="item.username + (item.phonenumber ? ' | ' : '') + item.phonenumber">
-      <b-btn v-b-toggle="'collapse'+item.id" variant='secondary'>{{ oneButtonCaption }}</b-btn>
+  <li class="telegram-user-item">
+    <b-card bg-variant="info" text-variant="white" :title="form.username + (form.phonenumber ? ' | ' : '') + form.phonenumber">
       <b-btn 
-        v-if="formCollapse"
-        @click="formCollapse =! formCollapse"
+        @click="oneButtonClick" 
         aria-controls="'collapse'+item.id" 
-        variant='secondary' 
+        variant="secondary" 
+        :aria-expanded="formCollapse ? 'true' : 'false'">{{ oneButtonCaption }}
+      </b-btn>
+      <b-btn 
+        v-if="formCollapse" 
+        @click="twoButtonClick" 
+        aria-controls="'collapse'+item.id" 
+        variant="secondary" 
         :aria-expanded="formCollapse ? 'true' : 'false'">{{ twoButtonCaption }}
       </b-btn>
       <b-btn 
-        v-if="formCollapse && item.id > 0"
-        @click="formCollapse =! formCollapse"
+        v-if="formCollapse && item.id > 0" 
+        @click="threeButtonClick" 
         aria-controls="'collapse'+item.id" 
-        variant='danger' 
+        variant="danger" 
         :aria-expanded="formCollapse ? 'true' : 'false'">{{ threeButtonCaption }}
       </b-btn>      
-      <b-collapse :id="'collapse' + item.id" v-model='formCollapse' class='mt-2'>
+      <b-collapse :id="'collapse' + item.id" v-model='formCollapse' class="mt-2">
         <br>
         <b-form>
+          <p>User</p>
+          <b-form-group horizontal id="usernameGroup" label="Username" label-for="usernameInput" :label-cols="2" label-size="sm">
+            <b-form-input id="usernameInput" required placeholder="Enter username" size="sm" v-model.trim="form.username"></b-form-input>
+          </b-form-group>
+          <b-form-group horizontal id="userphoneGroup" label="Phone number" label-for="userphoneInput" :label-cols="2" label-size="sm">
+            <b-form-input id="userphoneInput" required placeholder="Enter phone number" size="sm" v-model.trim="form.phonenumber"></b-form-input>
+          </b-form-group>
           <p>App configuration</p>
-          <b-form-group horizontal id='apiIdGroup' label='App api_id' label-for='apiIdInput' :label-cols="2" label-size="sm">
-            <b-form-input id='apiIdInput' required placeholder='Enter api_id' size="sm" v-model.trim="form.api_id"></b-form-input>
+          <b-form-group horizontal id="apiIdGroup" label="App api_id" label-for="apiIdInput" :label-cols="2" label-size="sm">
+            <b-form-input id="apiIdInput" required placeholder="Enter api_id" size="sm" v-model.trim="form.api_id"></b-form-input>
           </b-form-group>
-          <b-form-group horizontal id='apiHashGroup' label='App api_hash' label-for='apiHashInput' :label-cols="2" label-size="sm">
-            <b-form-input id='apiHashInput' required placeholder='Enter api_hash' size="sm" v-model.trim="form.api_hash"></b-form-input>
+          <b-form-group horizontal id="apiHashGroup" label="App api_hash" label-for="apiHashInput" :label-cols="2" label-size="sm">
+            <b-form-input id="apiHashInput" required placeholder="Enter api_hash" size="sm" v-model.trim="form.api_hash"></b-form-input>
           </b-form-group>
-          <b-form-group horizontal id='apiApptitleGroup' label='App title' label-for='apiApptitleInput' :label-cols="2" label-size="sm">
-            <b-form-input id='apiApptitleInput' required placeholder='Enter app title' size="sm" v-model.trim="form.app_title"></b-form-input>
+          <b-form-group horizontal id="apiApptitleGroup" label="App title" label-for="apiApptitleInput" :label-cols="2" label-size="sm">
+            <b-form-input id="apiApptitleInput" required placeholder="Enter app title" size="sm" v-model.trim="form.app_title"></b-form-input>
           </b-form-group>
           <p>Available MTProto servers</p>
-          <b-form-group horizontal id='testConfigurationGroup' label='Test configuration' label-for='testConfigurationInput' :label-cols="2" label-size="sm">
-            <b-form-input id='testConfigurationInput' required placeholder='Enter test configuration ip' size="sm" v-model.trim='form.testConfiguration'></b-form-input>
+          <b-form-group horizontal id="testConfigurationGroup" label="Test configuration" label-for="testConfigurationInput" :label-cols="2" label-size="sm">
+            <b-form-input id="testConfigurationInput" required placeholder="Enter test configuration ip" size="sm" v-model.trim="form.testConfiguration"></b-form-input>
           </b-form-group>
-          <b-form-group horizontal id='prodConfigurationGroup' label='Production configuration' label-for='prodConfigurationInput' :label-cols="2" label-size="sm">
-            <b-form-input id='prodConfigurationInput' required placeholder='Enter production configuration ip' size="sm" v-model.trim='form.prodConfiguration'></b-form-input>
+          <b-form-group horizontal id="prodConfigurationGroup" label="Production configuration" label-for="prodConfigurationInput" :label-cols="2" label-size="sm">
+            <b-form-input id="prodConfigurationInput" required placeholder="Enter production configuration ip" size="sm" v-model.trim="form.prodConfiguration"></b-form-input>
           </b-form-group>
           <p>Public keys</p>
-          <b-form-group id='rsaPublicKeyGroup' label='RSA Public key' label-for='rsaPublicKeyTextarea' :label-cols="2" label-size="sm">
-            <b-form-textarea id='rsaPublicKeyTextarea' v-model='form.rsaPublicKey'></b-form-textarea>
+          <b-form-group id="rsaPublicKeyGroup" label="RSA Public key" label-for="rsaPublicKeyTextarea" :label-cols="2" label-size="sm">
+            <b-form-textarea id="rsaPublicKeyTextarea" v-model="form.rsaPublicKey"></b-form-textarea>
           </b-form-group>
-          <b-form-group id='publicKeysGroup' label='Public keys' label-for='publicKeysTextarea' :label-cols="2" label-size="sm">
-            <b-form-textarea id='publicKeysTextarea' v-model='form.publicKeys'></b-form-textarea>
+          <b-form-group id="publicKeysGroup" label="Public keys" label-for="publicKeysTextarea" :label-cols="2" label-size="sm">
+            <b-form-textarea id="publicKeysTextarea" v-model="form.publicKeys"></b-form-textarea>
           </b-form-group>
         </b-form>
       </b-collapse>
@@ -62,6 +74,8 @@ export default {
         api_id: this.item.api_id,
         api_hash: this.item.api_hash,
         app_title: this.item.app_title,
+        username: this.item.username,
+        phonenumber: this.item.phonenumber,
         testConfiguration: this.item.testConfiguration,
         prodConfiguration: this.item.prodConfiguration,
         rsaPublicKey: this.item.rsaPublicKey,
@@ -82,6 +96,51 @@ export default {
     },
     threeButtonCaption: function () {
       return this.formCollapse ? 'Delete' : ''
+    }
+  },
+  methods: {
+    oneButtonClick: function () {
+      if (this.item.id == 0 && this.formCollapse) {
+        this.$store.dispatch('ADD_TGMUSER_ITEM', this.form)
+        this.resetAddItem()
+      } 
+      this.formCollapse = !this.formCollapse
+    },
+    twoButtonClick: function () {
+      if (this.item.id == 0 && this.formCollapse) {
+        this.resetAddItem()
+      } else {
+        this.resetOtherItem()
+      }
+      this.formCollapse = !this.formCollapse
+    },
+    threeButtonClick: function () {
+      this.$store.dispatch('DELETE_TGMUSER_ITEM', this.item)
+    },
+    resetAddItem: function () {
+      this.form = { 
+        id: '0',
+        username: 'Add telegram user',
+        phonenumber: '',
+        api_id: '',
+        api_hash: '',
+        app_title: '',
+        testConfiguration: '',
+        prodConfiguration: '',
+        rsaPublicKey: '',
+        publicKeys: ''
+      }
+    },
+    resetOtherItem: function () {
+      this.form.api_id = this.item.api_id
+      this.form.api_hash = this.item.api_hash
+      this.form.app_title = this.item.app_title
+      this.form.username = this.item.username
+      this.form.phonenumber = this.item.phonenumber
+      this.form.testConfiguration = this.item.testConfiguration
+      this.form.prodConfiguration = this.item.prodConfiguration
+      this.form.rsaPublicKey = this.item.rsaPublicKey
+      this.form.publicKeys = this.item.publicKeys
     }
   },
   // http://ssr.vuejs.org/en/caching.html#component-level-caching

@@ -22,7 +22,7 @@ const DBTgmUsers = [
     publicKeys: ''
   },
   { 
-    id: '001',
+    id: '1',
     username: '@Bruian',
     phonenumber: '+79059765151',
     api_id: '210118',
@@ -41,7 +41,7 @@ const DBTgmUsers = [
     publicKeys: ''
   },
   {
-    id: '002',
+    id: '2',
     username: '@Masya',
     phonenumber: '+79059765454',
     api_id: '210109',
@@ -53,6 +53,8 @@ const DBTgmUsers = [
     publicKeys: ''
   }
 ]
+
+const idss = ['0', '1', '2']
 
 function fetch(child) {
   logRequests && console.log(`fetching ${child}...`)
@@ -77,9 +79,7 @@ function fetchTgmItem(id) {
 
 function fetchTgmUserIds() {
   return new Promise((resolve, reject) => {
-    const val = ['0', '001', '002']
-
-    resolve(val)
+    resolve(idss)
   })
 }
 
@@ -119,6 +119,28 @@ export default {
     } else {
       return Promise.resolve()
     }
+  },
+
+  ADD_TGMUSER_ITEM: ({ commit, state }, obj) => {
+    debugger
+
+    idss.push(idss.length.toString())
+    obj.id = idss[idss.length - 1]
+
+    commit('SET_LIST', { type: state.activeType, ids: idss })
+    commit('SET_ITEM', obj)
+
+    return true
+  },
+
+  DELETE_TGMUSER_ITEM: ({ commit, state }, item) => {
+    debugger
+
+    const idx = idss.find((element) => { return element == item.id })
+    idss.splice(idx, 1)
+
+    commit('SET_LIST', { type: state.activeType, ids: idss })
+    commit('DELETE_ITEM', item)
   },
 
   // ensure data for rendering given list type

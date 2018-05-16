@@ -32,11 +32,14 @@ export default {
   data () {
     return {
       transition: 'slide-right',
-      displayedPage: Number(this.$route.params.page) || 1,
-      displayedItems: this.$store.getters.activeItems
+      displayedPage: Number(this.$route.params.page) || 1//,
+      //displayedItems: this.$store.getters.activeItems
     }
   },
   computed: {
+    displayedItems () {
+      return this.$store.getters.activeItems
+    },
     page () {
       return Number(this.$route.params.page) || 1
     },
@@ -84,7 +87,7 @@ export default {
           ? null
           : to > from ? 'slide-left' : 'slide-right'
         this.displayedPage = to
-        this.displayedItems = this.$store.getters.activeItems
+        //this.displayedItems = this.$store.getters.activeItems
         this.$bar.finish()
       })
     }

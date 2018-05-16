@@ -17,6 +17,16 @@ export default {
     })
   },
 
+  SET_ITEM: (state, item) => {
+    Vue.set(state.items, item.id, item)
+  },
+
+  DELETE_ITEM: (state, item) => {
+    debugger
+    var items = state.items
+    items.splice(items.indexOf(item), 1)
+  },
+
   SET_USER: (state, { id, user }) => {
     Vue.set(state.users, id, user || false) /* false means user not found */
   }

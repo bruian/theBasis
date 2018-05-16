@@ -88,8 +88,6 @@ export default {
 
         this.error = res.data;
       });
-
-      
     },
     onReset (evt) {
       evt.preventDefault()
