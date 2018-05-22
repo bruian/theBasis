@@ -44,13 +44,13 @@ const cbBearerStrategy = (req, cliToken, done) => {
   let TokenModel = undefined
 
   if (req.headers) {
-    req.body = { 
-      grant_type: req.headers.grant_type,
-      refresh_token: cliToken,
-      scope: ' '
-    }
+    if (req.headers.grant_type && req.headers.grant_type == 'refresh_token') {
+      req.body = { 
+        grant_type: req.headers.grant_type,
+        refresh_token: cliToken,
+        scope: ' '
+      }
 
-    if (req.headers.grant_type && req.headers.grant_type === 'refresh_token') {
       TokenModel = RefreshTokenModel
     } else {
       TokenModel = AccessTokenModel
@@ -69,7 +69,7 @@ const cbBearerStrategy = (req, cliToken, done) => {
         return done(null , false, { message: 'Token expired' })
       }
   
-      if (req.headers.grant_type && req.headers.grant_type === 'refresh_token') {
+      if (req.headers.grant_type && req.headers.grant_type == 'refresh_token') {
         ClientModel.findOne( { clientId: req.headers.client_id }, (err, client) => {
           if (err) return done(err)
           if (!client) return done(null, false,  { message: 'Unknow client' })

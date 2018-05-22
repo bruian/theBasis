@@ -13,7 +13,7 @@ export function createStore () {
       itemsPerPage: 20,
       items: {/* [id: number]: Item */},
       users: {/* [id: string]: User */},
-      theItems: {/* [id: number]: Item */},
+      theItems: [/* [id: number]: Item */],
       lists: {
         tgmUsers: [],
         top: [/* number */],

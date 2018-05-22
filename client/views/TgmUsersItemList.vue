@@ -18,8 +18,8 @@
 </template>
 
 <script>
-import { watchList } from '../api'
-import Item from '../components/theItem.vue'
+//import { watchList } from '../api'
+import Item from '../components/TgmUsersItem.vue'
 
 export default {
   name: 'item-list',
@@ -38,7 +38,7 @@ export default {
   },
   computed: {
     displayedItems () {
-      return this.$store.getters.activeItems
+      return this.$store.getters.activeTgmUserItems
     },
     page () {
       return Number(this.$route.params.page) || 1
@@ -76,7 +76,7 @@ export default {
   methods: {
     loadItems (to = this.page, from = -1) {
       this.$bar.start()
-      this.$store.dispatch('FETCH_TGMUSER_LIST_DATA', {
+      this.$store.dispatch('FETCH_LIST_DATA', {
         type: this.type
       }).then(() => {
         if (this.page < 0 || this.page > this.maxPage) {

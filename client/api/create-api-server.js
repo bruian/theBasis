@@ -4,7 +4,6 @@ import LRU from 'lru-cache'
 export function createAPI ({ config, version }) {
   let api
 
-  console.log('in CREATE API SERVER')
   // this piece of code may run multiple times in development mode,
   // so we attach the instantiated API to `process` to avoid duplications
   if (process.__API__) {

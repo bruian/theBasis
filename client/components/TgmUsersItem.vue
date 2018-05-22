@@ -15,7 +15,7 @@
         :aria-expanded="formCollapse ? 'true' : 'false'">{{ twoButtonCaption }}
       </b-btn>
       <b-btn 
-        v-if="formCollapse && item.id > 0" 
+        v-if="formCollapse && item.id != '0'" 
         @click="threeButtonClick" 
         aria-controls="'collapse'+item.id" 
         variant="danger" 
@@ -71,6 +71,7 @@ export default {
     return {
       formCollapse: false,
       form: {
+        id: this.item.id,
         api_id: this.item.api_id,
         api_hash: this.item.api_hash,
         app_title: this.item.app_title,
@@ -103,7 +104,10 @@ export default {
       if (this.item.id == 0 && this.formCollapse) {
         this.$store.dispatch('ADD_TGMUSER_ITEM', this.form)
         this.resetAddItem()
-      } 
+      } else if (this.item.id != 0 && this.formCollapse) {
+        this.$store.dispatch('SAVE_TGMUSER_ITEM', this.form)
+      }
+
       this.formCollapse = !this.formCollapse
     },
     twoButtonClick: function () {
@@ -115,7 +119,7 @@ export default {
       this.formCollapse = !this.formCollapse
     },
     threeButtonClick: function () {
-      this.$store.dispatch('DELETE_TGMUSER_ITEM', this.item)
+      this.$store.dispatch('DELETE_TGMUSER_ITEM', this.form)
     },
     resetAddItem: function () {
       this.form = { 
@@ -132,15 +136,18 @@ export default {
       }
     },
     resetOtherItem: function () {
-      this.form.api_id = this.item.api_id
-      this.form.api_hash = this.item.api_hash
-      this.form.app_title = this.item.app_title
-      this.form.username = this.item.username
-      this.form.phonenumber = this.item.phonenumber
-      this.form.testConfiguration = this.item.testConfiguration
-      this.form.prodConfiguration = this.item.prodConfiguration
-      this.form.rsaPublicKey = this.item.rsaPublicKey
-      this.form.publicKeys = this.item.publicKeys
+      const itemId = this.form.id
+      const cancelItem = this.$store.getters.activeTgmUserItems.find(el => el.id == itemId)
+
+      this.form.api_id = cancelItem.api_id
+      this.form.api_hash = cancelItem.api_hash
+      this.form.app_title = cancelItem.app_title
+      this.form.username = cancelItem.username
+      this.form.phonenumber = cancelItem.phonenumber
+      this.form.testConfiguration = cancelItem.testConfiguration
+      this.form.prodConfiguration = cancelItem.prodConfiguration
+      this.form.rsaPublicKey = cancelItem.rsaPublicKey
+      this.form.publicKeys = cancelItem.publicKeys
     }
   },
   // http://ssr.vuejs.org/en/caching.html#component-level-caching

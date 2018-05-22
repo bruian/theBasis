@@ -61,10 +61,12 @@ export function fetchItems (ids) {
 }
 
 export function fetchUser (id) {
+  debugger
   return fetch(`user/${id}`)
 }
 
 export function watchList (type, cb) {
+  debugger
   let first = true
   const ref = api.child(`${type}stories`)
   const handler = snapshot => {

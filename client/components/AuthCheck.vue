@@ -6,7 +6,8 @@ export default {
 			success: () => {
 				this.handleRedirect()
 			},
-			error: () => {
+			error: (error) => {
+        console.log(error.request)
 				this.handleRedirect()
 			}
 		})

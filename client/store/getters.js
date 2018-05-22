@@ -19,5 +19,10 @@ export default {
   // this Array may not be fully fetched.
   activeItems (state, getters) {
     return getters.activeIds.map(id => state.items[id]).filter(_ => _)
+  },
+
+  activeTgmUserItems (state, getters) {
+    //return getters.activeIds.map(id => state.theItems[id])
+    return getters.activeIds.map(id => state.theItems.find(el => el.id == id)).filter(_ => _)
   }
 }

@@ -12,7 +12,6 @@ const environment = {
 module.exports = Object.assign({
   host: process.env.HOST || 'localhost',
   port: process.env.PORT || 8080,
-  apiUrl: 'http://devise-token-auth.dev',
   DEBUG_API: true,
   debugTrace: true,
   expressLogging: false,

@@ -4,6 +4,9 @@ import { createApp } from './app'
 import ProgressBar from './components/ProgressBar.vue'
 import BootstrapVue from 'bootstrap-vue'
 
+import config from './config'
+const logRequests = !!config.DEBUG_API
+
 import axios from 'axios'
 import VueAxios from 'vue-axios'
 
@@ -103,6 +106,7 @@ router.onReady(() => {
   // async components are resolved.
   //debugger
   router.beforeResolve((to, from, next) => {
+    logRequests && console.log(`onReady ${from}...${to}`)
     const matched = router.getMatchedComponents(to)
     const prevMatched = router.getMatchedComponents(from)
     let diffed = false

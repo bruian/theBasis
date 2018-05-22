@@ -9,6 +9,7 @@ const isDev = process.env.NODE_ENV !== 'production'
 //Vue.prototype.$auth = null
 import VueAuth from '@websanova/vue-auth'
 
+/*
 const bearerAuth = {
   request: function (req, token) {
     this.options.http._setHeaders.call(this, req, { Authorization: 'Bearer ' + token })
@@ -20,6 +21,35 @@ const bearerAuth = {
       token = token.split('Bearer ');
       
       return token[token.length > 1 ? 1 : 0];
+    }
+  }
+}
+*/
+
+const bearerAuth = {
+  request: function (req, token) {
+    debugger
+    token = token.split(';')
+    var grant_type = ''
+    
+    if (req.url.indexOf('refresh') > -1) {
+      token =  token[1]
+      grant_type = 'refresh_token'
+    } else {
+      token =  token[0]
+      grant_type = 'access_token'
+    }
+
+    this.options.http._setHeaders.call(this, req, { 
+      Authorization: 'Bearer ' + token, 
+      grant_type: grant_type,
+      client_id: store.state.client_id
+    })
+  },
+  response: function (res) {
+    debugger
+    if (res.data.access_token && res.data.refresh_token && res.data.expires_in) {
+      return res.data.access_token + ';' + res.data.refresh_token+ ';' + res.data.expires_in
     }
   }
 }

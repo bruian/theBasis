@@ -1,0 +1,38 @@
+[
+  { 
+    "id": "0",
+    "username": "Add telegram user",
+    "phonenumber": "",
+    "api_id": "",
+    "api_hash": "",
+    "app_title": "",
+    "testConfiguration": "",
+    "prodConfiguration": "",
+    "rsaPublicKey": "",
+    "publicKeys": ""
+  },
+  { 
+    "id": "1",
+    "username": "@Bruian",
+    "phonenumber": "+79059765151",
+    "api_id": "210118",
+    "api_hash": "b3152203114a2c22224d6121b4fdca00",
+    "app_title": "Teleprox",
+    "testConfiguration": "140.154.167.40:443",
+    "prodConfiguration": "140.154.167.50:443",
+    "rsaPublicKey": "",
+    "publicKeys": ""
+  },
+  {
+    "id": "2",
+    "username": "@Masya",
+    "phonenumber": "+79059765152",
+    "api_id": "210109",
+    "api_hash": "b3659223121a2c22254d61e1b6fdca00",
+    "app_title": "TeleMasya",
+    "testConfiguration": "149.155.177.40:443",
+    "prodConfiguration": "149.155.157.50:443",
+    "rsaPublicKey": "",
+    "publicKeys": ""
+  }
+]

@@ -1,4 +1,4 @@
-import ItemList from './theItemList.vue'
+import ItemList from './TgmUsersItemList.vue'
 
 const camelize = str => str.charAt(0).toUpperCase() + str.slice(1)
 
@@ -7,7 +7,7 @@ const camelize = str => str.charAt(0).toUpperCase() + str.slice(1)
 // They are essentially higher order components wrapping ItemList.vue.
 export default function createListView (type) {
   return {
-    name: `${type}-stories-view`,
+    name: `${type}-list-view`,
 
     asyncData ({ store }) {
       return store.dispatch('FETCH_LIST_DATA', { type })

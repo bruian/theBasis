@@ -8,8 +8,8 @@
       </b-navbar-brand>
       <b-collapse is-nav id='nav_collapse' v-if='$auth.check()'>
         <b-navbar-nav>
-          <b-nav-item to='/top'>Top</b-nav-item>
-          <b-nav-item to='/new' disabled>New</b-nav-item>
+          <b-nav-item to='/'>Telegram users</b-nav-item>
+          <b-nav-item to='/logs' disabled>Logs</b-nav-item>
         </b-navbar-nav>
         
         <b-navbar-nav class='ml-auto'>

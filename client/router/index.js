@@ -10,7 +10,7 @@ const ItemView = () => import('../views/ItemView.vue')
 const UserView = () => import('../views/UserView.vue')
 const Private = () => import('../views/Private.vue')
 const Login = () => import('../views/Login.vue')
-const Home = () => import('../views/Home.vue')
+const TgmUsers = () => import('../views/TgmUsers.vue')
 
 export function createRouter () {
   return new Router({
@@ -19,8 +19,8 @@ export function createRouter () {
     scrollBehavior: () => ({ y: 0 }),
     routes: [
       { path: '/login', name: 'login', component: Login },
-      { path: '/', name: 'home', component: Home, meta: { auth: true } },
-      //{ path: '/tgmUsers/:page(\\d+)?', component: factoryListView('tgmUsers') },
+      { path: '/', name: 'TgmUsers', component: TgmUsers, meta: { auth: true } },
+      { path: '/tgmUsers/:id', component: TgmUsers, meta: { auth: true } },
       { path: '/top/:page(\\d+)?', component: createListView('top') },
       { path: '/new/:page(\\d+)?', component: createListView('new') },
       { path: '/show/:page(\\d+)?', component: createListView('show') },
@@ -29,7 +29,7 @@ export function createRouter () {
       { path: '/item/:id(\\d+)', component: ItemView },
       { path: '/user/:id', component: UserView },
       { path: '/private', component: Private, meta: { auth: true } },
-      { path: '/redirect', redirect: '/top' }
+      { path: '/redirect', redirect: '/' }
     ]
   })
 }

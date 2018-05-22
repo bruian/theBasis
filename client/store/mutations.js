@@ -17,13 +17,24 @@ export default {
     })
   },
 
-  SET_ITEM: (state, item) => {
-    Vue.set(state.items, item.id, item)
+  SET_TGMUSER_ITEMS: (state, { items }) => {
+    items.forEach(item => {
+      if (item) {
+        const idx = state.theItems.findIndex((element) => { item.id == element.id })
+
+        Vue.set(state.theItems, idx == -1 ? state.theItems.length : idx, item)
+      }
+    })
+  },
+
+  SET_TGMUSER_ITEM: (state, item) => {
+    const idx = state.theItems.findIndex((element) => { item.id == element.id })
+
+    Vue.set(state.theItems, idx == -1 ? state.theItems.length : idx, item)
   },
 
   DELETE_ITEM: (state, item) => {
-    debugger
-    var items = state.items
+    var items = state.theItems
     items.splice(items.indexOf(item), 1)
   },
 

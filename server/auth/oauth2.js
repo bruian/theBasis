@@ -12,6 +12,7 @@ const AccessTokenModel  = require(srvPath + 'model/accessToken')
 const RefreshTokenModel = require(srvPath + 'model/refreshToken')
 
 const server = oauth2orize.createServer()
+const TokenError = oauth2orize.TokenError
 
 async function generateTokens(data, done) {
   try {
@@ -67,7 +68,7 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
 
   UserModel.findOne({ username: username }, (err, user) => {
     if (err) return done(err)
-    if (!user || !user.checkPassword(password)) return done(null, false)
+    if (!user || !user.checkPassword(password)) return done(new TokenError('Wrong password', 'invalid_grant'), false)
 
     var model = {
       userId: user.userId,
