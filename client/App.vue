@@ -1,10 +1,15 @@
 <template>
   <div class='App' id='app'>
-    <AuthCheck></AuthCheck>
-    <HeaderBar></HeaderBar>
-    <transition name='fade' mode='out-in'>
-      <router-view class='view'></router-view>
-    </transition>
+    <div v-if="$auth.ready()" >
+      <AuthCheck></AuthCheck>
+      <HeaderBar></HeaderBar>
+      <transition name='fade' mode='out-in'>
+        <router-view class='view'></router-view>
+      </transition>
+    </div>
+    <div v-if="!$auth.ready()" >
+      loading...
+    </div>
   </div>
 </template>
 
