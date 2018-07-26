@@ -3,10 +3,10 @@
     <b-navbar toggleable='md' type='dark' variant='info' role='navigation'>
       <b-navbar-toggle target='nav_collapse'></b-navbar-toggle>
       <b-navbar-brand to='/'>
-        <img v-if='$auth.check()' class='logo' src='~public/appLogo.png' alt='logo'>
+        <img class='logo' src='~public/appLogo.png' alt='logo'>
         theBasis
       </b-navbar-brand>
-      <b-collapse is-nav id='nav_collapse' v-if='$auth.check()'>
+      <b-collapse is-nav id='nav_collapse'>
         <b-navbar-nav>
           <b-nav-item to='/'>Telegram users</b-nav-item>
           <b-nav-item to='/logs' disabled>Logs</b-nav-item>
@@ -17,7 +17,7 @@
             <b-form-input size='sm' class='mr-sm-2' type='text' placeholder='Search'/>
             <b-button size='sm' class='my-2 my-sm-0' type='submit'>Search</b-button>
           </b-nav-form>
-          <b-button size='sm' class='my-2 my-sm-0' v-if='$auth.check()' v-on:click='logout()'>Logout</b-button>
+          <b-button size='sm' class='my-2 my-sm-0' v-on:click='logout()'>Logout</b-button>
         </b-navbar-nav>        
       </b-collapse>
     </b-navbar>
@@ -25,25 +25,10 @@
 </template>
 
 <script>
-//import NoSSR from 'vue-no-ssr'
-
 export default {
   name: 'HeaderBar',
   methods: {
     logout() {
-      var redirect = this.$auth.redirect()
-
-      this.$auth.logout({
-        makeRequest: true,
-        redirect: {name: redirect ? redirect.from.name : 'login'},
-        success() {
-          console.log('success ' + this.context);
-        },
-        error() {
-          console.log('error ' + this.context);
-        }
-        //params: {}, data: {} in axios
-      })
     }
   }
 }

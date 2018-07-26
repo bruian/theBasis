@@ -5,6 +5,9 @@ import { createRouter } from './router'
 import { sync } from 'vuex-router-sync'
 import titleMixin from './util/title'
 import * as filters from './util/filters'
+import Vuetify from 'vuetify'
+
+Vue.use(Vuetify)
 
 // mixin for handling title
 Vue.mixin(titleMixin)
@@ -20,9 +23,6 @@ export function createApp () {
   // create store and router instances
   const store = createStore()
   const router = createRouter()
-
-  Vue.router = router
-  //router.redirect({ '*' : '/' })
 
   // sync the router with the vuex store.
   // this registers `store.state.route`

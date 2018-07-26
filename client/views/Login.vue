@@ -48,7 +48,7 @@
 </template>
 
 <script>
-import querystring from 'querystring'
+//import querystring from 'querystring'
 
 export default {
 	name: 'login-view',
@@ -72,37 +72,6 @@ export default {
   },
   methods: {
     onSubmit (evt) {
-      evt.preventDefault()
-      var redirect = this.$auth.redirect()
-
-      this.$auth.login({
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        methods: 'post',
-        data: querystring.stringify(this.data.body),
-        rememberMe: this.data.rememberMe,
-        redirect: {name: redirect ? redirect.from.name : 'TgmUsers'},
-        fetchUser: this.data.fetchUser
-      })
-      .then((res) => {
-        console.log('User loged ' + res.data)
-      }, (res) => {
-        var error = 'Unhandled error'
-        var errorDescription = `You need to contact the developers and send the following information:
-        module: Login.vue, caller: $auth.login`
-
-        try {
-          error = res.response.data.error
-          errorDescription = res.response.data.error_description
-        } catch (err) {}
-
-        this.showError = true
-        this.error = error
-        this.errorDescription = errorDescription
-
-        res.response = null
-      })
     }
   }
 }

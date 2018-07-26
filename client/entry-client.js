@@ -13,6 +13,8 @@ import VueAxios from 'vue-axios'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
 
+import 'vuetify/dist/vuetify.min.css'
+
 Vue.use(BootstrapVue)
 Vue.use(VueAxios, axios)
 Vue.axios.defaults.baseURL = `http://${window.location.host}/api/`
@@ -38,9 +40,7 @@ Vue.mixin({
 
 const { app, router, store } = createApp()
 
-Vue.router = router
-import VueAuth from '@websanova/vue-auth'
-
+/*
 const bearerAuth = {
   request: function (req, token) {
     token = token.split(';')
@@ -66,33 +66,7 @@ const bearerAuth = {
     }
   }
 }
-
-Vue.use(VueAuth, {
-  auth: bearerAuth,
-	http: require('@websanova/vue-auth/drivers/http/axios.1.x.js'),
-  router: require('@websanova/vue-auth/drivers/router/vue-router.2.x.js'),
-  parseUserData: function (data) {
-    return data
-  },
-  token: [{ 
-    request: 'Authorization', 
-    response: 'Authorization', 
-    authType: 'bearer', 
-    foundIn: 'header' 
-  }, {
-    request: 'token', 
-    response: 'token', 
-    authType: 'bearer', 
-    foundIn: 'response'
-  }]
-  //fetchData: { enabled: false },
-/*  refreshData: {
-    url: '/auth/refresh',
-    method: 'POST',
-    enabled: true,
-    interval: 60 * 5
-  } */
-})
+*/
 
 // prime the store with server-initialized state.
 // the state is determined during SSR and inlined in the page markup.
@@ -107,7 +81,6 @@ router.onReady(() => {
   // Doing it after initial route is resolved so that we don't double-fetch
   // the data that we already have. Using router.beforeResolve() so that all
   // async components are resolved.
-  //debugger
   router.beforeResolve((to, from, next) => {
     logRequests && console.log(`onReady ${from}...${to}`)
     const matched = router.getMatchedComponents(to)
@@ -116,6 +89,7 @@ router.onReady(() => {
     const activated = matched.filter((c, i) => {
       return diffed || (diffed = (prevMatched[i] !== c))
     })
+    
     const asyncDataHooks = activated.map(c => c.asyncData).filter(_ => _)
     if (!asyncDataHooks.length) {
       return next()

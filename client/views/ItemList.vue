@@ -1,20 +1,5 @@
 <template>
   <div class='news-view'>
-    <NoSSR>
-      <div class='SessionInfo'>
-        <p>LoginStatus</p>
-        <template v-if="$auth">
-          <a v-if="!$auth.check()">Not logged in</a>
-          <a v-if="$auth.check()">You are logged in</a>
-          <button @click="$auth.login({
-            data: {
-              username: 'admin',
-              password: 'secret'
-            }
-          })">Login</button>
-        </template>
-      </div>
-    </NoSSR>
     <div class='news-list-nav'>
       <router-link v-if='page > 1' :to="'/' + type + '/' + (page - 1)">&lt; prev</router-link>
       <a v-else class="disabled">&lt; prev</a>
@@ -24,7 +9,7 @@
     </div>
     <transition :name='transition'>
       <div class="news-list" :key="displayedPage" v-if="displayedPage > 0">
-        <a>❌Yor adress: {{ location }}</a>
+        <a>❌Your address: {{ location }}</a>
         <transition-group tag="ul" name="item">
           <item v-for="item in displayedItems" :key="item.id" :item="item">
           </item>
@@ -36,14 +21,12 @@
 
 <script>
 import { watchList } from '../api'
-import NoSSR from 'vue-no-ssr'
 import Item from '../components/Item.vue'
 
 export default {
   name: 'item-list',
 
   components: {
-    NoSSR,
     Item
   },
 
