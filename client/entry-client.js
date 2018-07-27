@@ -13,7 +13,7 @@ import VueAxios from 'vue-axios'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
 
-import 'vuetify/dist/vuetify.min.css'
+import 'iview/dist/styles/iview.css'
 
 Vue.use(BootstrapVue)
 Vue.use(VueAxios, axios)

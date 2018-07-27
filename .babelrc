@@ -1,6 +1,6 @@
 {
   "presets": ["es2015", "es2016",
-    ["env", { 
+    ["env", {
       "modules": false,
       "targets": {
         "node": "current",
@@ -10,6 +10,10 @@
   ],
   "plugins": [
     "add-module-exports",
-    "syntax-dynamic-import"
+		"syntax-dynamic-import",
+		["import", {
+			"libraryName": "iview",
+			"libraryDirectory": "src/components"
+		}]
   ]
 }

@@ -25,17 +25,30 @@ module.exports = {
     noParse: /es6-promise\.js$/, // avoid webpack shimming process
     rules: [
       {
-        test: /\.vue$/,
-        loader: 'vue-loader',
-        options: {
-          compilerOptions: {
-            preserveWhitespace: false
-          }
-        }
-      },
+				test: /\.vue$/,
+				use: [
+					{
+						loader: 'vue-loader',
+						options: {
+							compilerOptions: {
+								preserveWhitespace: false
+							}
+						}
+					},
+					{
+						loader: 'iview-loader',
+						options: {
+							prefix: true
+						}
+					}
+				]
+			},
+			{
+				test: /iview\/.*?js$/,
+				loader: 'babel-loader'
+			},
       {
         test: /\.js$/,
-        // loader: 'babel-loader',
         use: {
           loader: 'babel-loader',
           options: {
@@ -46,7 +59,7 @@ module.exports = {
         include: [require.resolve('bootstrap-vue'),  '/node_modules/bootstrap-vue/', '/node_modules/bootstrap/']
       },
       {
-        test: /\.(png|jpg|gif|svg)$/,
+        test: /\.(png|jpg|gif|svg|eot|ttf|woff)$/,
         loader: 'url-loader',
         options: {
           limit: 10000,
@@ -68,8 +81,8 @@ module.exports = {
             })
           : ['vue-style-loader', 'css-loader', 'stylus-loader']
       },
-      {test: /\.scss?$/, loaders: ['style-loader', 'css-loader', 'sass-loader']},
-      {test: /\.css?$/, loaders: ['style-loader', 'css-loader', 'sass-loader']},
+			{test: /\.scss?$/, loaders: ['style-loader', 'css-loader', 'sass-loader']},
+      {test: /\.css?$/, loaders: ['style-loader', 'css-loader', 'sass-loader']}
     ]
   },
   performance: {
