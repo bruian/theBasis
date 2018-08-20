@@ -7,7 +7,9 @@ import titleMixin from './util/title'
 import * as filters from './util/filters'
 import Vuetify from 'vuetify'
 
-Vue.use(Vuetify)
+Vue.use(Vuetify, {
+	iconfont: 'md' //'md' || 'mdi' || 'fa' || 'fa4'
+})
 
 // mixin for handling title
 Vue.mixin(titleMixin)

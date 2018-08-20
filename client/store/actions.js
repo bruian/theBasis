@@ -1,18 +1,12 @@
-/*
-import {
-  fetchUser,
-  fetchItems,
-  fetchIdsByType
-} from '../api'
-*/
-
 import config from '../config'
+import mTypes from './mutation-types'
 import Vue from 'vue'
-import querystring from 'querystring'
+//import querystring from 'querystring'
 
 const logRequests = !!config.DEBUG_API
+const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
 
-const zeroTgmUsers = { 
+const zeroTgmUsers = {
   id: '0',
   username: 'Add telegram user',
   phonenumber: '',
@@ -31,7 +25,7 @@ function fetchTgmItem(id) {
       zeroTgmUsers.__lastUpdated = Date.now()
       return resolve(zeroTgmUsers)
     }
-  
+
     logRequests && console.log(`fetching ${id}...`)
     Vue.axios.get(`/tgmUsers/${id}`)
     .then(function (response) {
@@ -41,7 +35,7 @@ function fetchTgmItem(id) {
         tgmUser.__lastUpdated = Date.now()
         tgmUser.id = tgmUser._id
         delete tgmUser._id
-  
+
         logRequests && console.log(`fetched ${id}.`)
         resolve(tgmUser)
       }
@@ -78,6 +72,32 @@ function fetchTgmItems(ids) {
 }
 
 export default {
+	//*** Authentication actions */
+	[mTypes.AUTH_REQUEST]: ({ commit, dispatch }, user) => {
+		return new Promise((resolve, reject) => {
+			commit(mTypes.AUTH_REQUEST)
+
+			Vue.axios({ url: 'auth/login', data: user, method: 'POST' })
+				.then(res => {
+					const token = res.data.token
+					storage.setItem('theBasis-token', token)
+
+					commit(mTypes.AUTH_SUCCESS, token)
+
+					//we have token, then we can log in user
+					//dispatch(mTypes.USER_REQUEST)
+					resolve(res)
+				})
+				.catch(err => {
+					commit(mTypes.AUTH_ERROR, err)
+
+					storage.removeItem('user-token')
+					reject(err)
+				})
+		})
+	},
+
+	//*** Other actions */
   ENSURE_TGMUSER_ACTIVE_ITEMS: ({ dispatch, getters }) => {
     return dispatch('FETCH_TGMUSER_ITEMS', {
       ids: getters.activeIds
@@ -111,10 +131,10 @@ export default {
       var ids = state.lists[state.activeType]
       ids.push(response.data.id)
       obj.id = response.data.id
-      
+
       commit('SET_LIST', { type: state.activeType, ids })
       commit('SET_TGMUSER_ITEM', obj)
-      
+
       return true
     })
     .catch(function(error) {
@@ -145,7 +165,7 @@ export default {
       var ids = state.lists[state.activeType]
       const idx = ids.findIndex((element) => { return element == obj.id })
       ids.splice(idx, 1)
-  
+
       commit('SET_LIST', { type: state.activeType, ids })
       commit('DELETE_ITEM', obj)
     })
@@ -155,7 +175,7 @@ export default {
       return false
     })
   },
-  
+
   // ensure data for rendering given list type
   FETCH_LIST_DATA: ({ commit, dispatch, state }, { type }) => {
     commit('SET_ACTIVE_TYPE', { type })

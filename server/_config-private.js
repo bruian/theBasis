@@ -12,7 +12,11 @@ const environment = {
 module.exports = Object.assign({
   mongoose: {
     uri: 'insert this mongodb connection string'
-    // for example 'mongodb://<userDB>:<password>@<server>:<port>/<database>'
+    // for example uri: 'mongodb://<userDB>:<password>@<server>:<port>/<database>'
     // try use https://mlab.com/
-  },
+	},
+  security: {
+		sessionSecret: 'insert this your server session secret key'
+		// for example sessionSecret: 'fjdkajjfiajfjapfjakdfja;'
+	}
 }, environment);

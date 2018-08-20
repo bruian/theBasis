@@ -2,11 +2,12 @@ const passport               = require('passport')
 const BasicStrategy          = require('passport-http').BasicStrategy
 const BearerStrategy         = require('passport-http-bearer').Strategy
 const ClientPasswordStrategy = require('passport-oauth2-client-password').Strategy
+const LocalStrategy					 = require('passport-local').Strategy
 
 const srvPath = process.cwd() + '/server/'
 
 const log               = require(srvPath + 'log')(module)
-const config            = require(srvPath + 'config')
+const configPrivate     = require(srvPath + 'config-private')
 const UserModel         = require(srvPath + 'model/user')
 const ClientModel       = require(srvPath + 'model/client')
 const AccessTokenModel  = require(srvPath + 'model/accessToken')
@@ -32,7 +33,7 @@ const cbClientPasswordStrategy = (clientId, clientSecret, done) => {
     if (err) return done(err)
     if (!client) return done(null, false)
     if (client.clientSecret != clientSecret) return done(null, false)
-    
+
     log.debug(`in cbClientPasswordStrategy - ClientModel done`)
     return done(null, client)
   })
@@ -40,12 +41,12 @@ const cbClientPasswordStrategy = (clientId, clientSecret, done) => {
 
 const cbBearerStrategy = (req, cliToken, done) => {
   log.debug(`in cbBearerStrategy with token: ${ cliToken }`)
-  
+
   let TokenModel = undefined
 
   if (req.headers) {
     if (req.headers.grant_type && req.headers.grant_type == 'refresh_token') {
-      req.body = { 
+      req.body = {
         grant_type: req.headers.grant_type,
         refresh_token: cliToken,
         scope: ' '
@@ -59,16 +60,16 @@ const cbBearerStrategy = (req, cliToken, done) => {
     TokenModel.findOne({ token: cliToken }, (err, token) => {
       if (err) return done(err)
       if (!token) return done(null, false)
-  
-      if (Math.round((Date.now() - token.created)/1000) > config.security.tokenLife) {
+
+      if (Math.round((Date.now() - token.created)/1000) > configPrivate.security.tokenLife) {
         TokenModel.remove({ token: cliToken }, (err) => {
           if (err) return done(err)
         })
-        
+
         log.debug(`in cbBearerStrategy - token expired`)
         return done(null , false, { message: 'Token expired' })
       }
-  
+
       if (req.headers.grant_type && req.headers.grant_type == 'refresh_token') {
         ClientModel.findOne( { clientId: req.headers.client_id }, (err, client) => {
           if (err) return done(err)
@@ -82,7 +83,7 @@ const cbBearerStrategy = (req, cliToken, done) => {
         UserModel.findById(token.userId, (err, user) => {
           if (err) return done(err)
           if (!user) return done(null, false, { message: 'Unknow user' } )
-    
+
           log.debug(`in cbBearerStrategy - UserModel done`)
           var info = { scope: '*' }
           return done(null, user, info)
@@ -92,6 +93,7 @@ const cbBearerStrategy = (req, cliToken, done) => {
   }
 }
 
-passport.use(new BasicStrategy(cbBasicStrategy))
-passport.use(new BearerStrategy({ passReqToCallback: true }, cbBearerStrategy))
-passport.use(new ClientPasswordStrategy(cbClientPasswordStrategy))
+//passport.use(new LocalStrategy(cbLocalStrategy))
+//passport.use(new BasicStrategy(cbBasicStrategy))
+//passport.use(new BearerStrategy({ passReqToCallback: true }, cbBearerStrategy))
+//passport.use(new ClientPasswordStrategy(cbClientPasswordStrategy))

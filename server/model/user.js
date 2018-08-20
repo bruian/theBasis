@@ -1,9 +1,9 @@
 import mongoose from 'mongoose'
 import crypto from 'crypto'
 
-var Schema = mongoose.Schema
+const Schema = mongoose.Schema
 
-var User = new Schema({
+const User = new Schema({
   username: {
     type: String,
     unique: true,

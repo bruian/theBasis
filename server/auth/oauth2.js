@@ -4,8 +4,8 @@ import oauth2orize      from 'oauth2orize'
 
 const srvPath = process.cwd() + '/server/';
 
-const config            = require(srvPath + 'config')
-const db                = require(srvPath + 'db/mongoose')
+const configPrivate     = require(srvPath + 'config-private')
+//const db                = require(srvPath + 'db/mongoose')
 const log               = require(srvPath + 'log')(module)
 const UserModel         = require(srvPath + 'model/user')
 const AccessTokenModel  = require(srvPath + 'model/accessToken')
@@ -37,7 +37,7 @@ async function generateTokens(data, done) {
     rtm = await token.save()
 
     log.debug(`generateTokens -> Generated new tokens access: ${accessTokenValue} - refresh: ${refreshTokenValue}`)
-    done(null, accessTokenValue, refreshTokenValue, { 'expires_in': config.security.tokenLife })
+    done(null, accessTokenValue, refreshTokenValue, { 'expires_in': configPrivate.security.tokenLife })
   } catch (err) {
     log.error(err)
     return done(err)
@@ -87,7 +87,7 @@ server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, 
     if (err) return done(err)
     if (!token) return done(null, false)
     log.debug(`server.exchange->oauth2orize.exchange.refreshToken->RefreshTokenModel`)
-    
+
     UserModel.findById(token.userId, (err, user) => {
       if (err) return done(err)
       if (!user) return done(null, false)
@@ -109,7 +109,7 @@ const cbRefreshAuth = function(req, res, next) {
 
     if (user) {
       req.user = user
-      
+
       return next()
     } else {
       return res.status(401).json({ status: 'error', code: 'unauthorized' })
@@ -124,7 +124,7 @@ const cbLogout = function(req, res, next) {
     if (user) {
       log.debug(`cbLogout->logout user ${user}`)
       logoutUser(user)
-      
+
       return res.status(204).end()
     } else {
       return res.status(401).json({ status: 'error', code: 'unauthorized' })

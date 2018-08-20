@@ -36,7 +36,6 @@ export default context => {
 
     // wait until router has resolved possible async hooks
     router.onReady(() => {
-      debugger
       const matchedComponents = router.getMatchedComponents()
       // no matched routes
       if (!matchedComponents.length) {

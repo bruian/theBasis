@@ -2,27 +2,26 @@ import mongoose from 'mongoose'
 
 var Schema = mongoose.Schema
 
-var RefreshToken = new Schema({
+var grantCode = new Schema({
   value: {
     type: String,
-    unique: true,
+    required: true
+  },
+  redirectUri: {
+    type: String,
+    required: true
+  },
+  userId: {
+    type: String,
     required: true
   },
   clientId: {
     type: String,
     required: true
 	},
-	userId: {
-    type: String,
-    required: true
-	},
 	scope: {
 		type: String
-	},
-  expiration: {
-    type: Date,
-    default: Date.now
-  }
+	}
 })
 
-module.exports = mongoose.model('RefreshToken', RefreshToken)
+module.exports = mongoose.model('grantCode', grantCode)

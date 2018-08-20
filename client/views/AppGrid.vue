@@ -1,25 +1,92 @@
 <template>
-	<v-container grid-list-md text-xs-center>
-		<v-layout row wrap>
-      <v-flex xs12>
-        <v-card dark color="primary">
-          <v-card-text class="px-0">{{ isMobile }}</v-card-text>
-        </v-card>
-      </v-flex>
-      <v-flex xs12>
-        <v-card dark color="primary">
-          <v-card-text class="px-0">{{ bp }}</v-card-text>
-        </v-card>
-      </v-flex>			
-		</v-layout>
-	</v-container>
+	<v-content class="pt-0">
+		<div class="info-block">
+			<pre class="c-s" v-html="codes[0].code"></pre>
+			<pre class="c-s" v-html="codes[1].code"></pre>
+			<pre class="c-s" v-html="codes[2].code"></pre>
+		</div>
+
+		<pre class="c-s" v-html="codes[3].code"></pre>
+		<v-container text-xs-center>
+			<v-card dark color="primary" class="elevation-0">
+				<v-card-text class="px-0">12</v-card-text>
+			</v-card>
+		</v-container>
+
+		<pre class="c-s" v-html="codes[4].code"></pre>
+		<v-container text-xs-center>
+			<v-layout>
+				<v-flex xs12>
+					<v-card dark color="primary" class="elevation-8">
+						<v-card-text class="px-0">12</v-card-text>
+					</v-card>
+				</v-flex>
+				<v-flex v-for="i in 2" :key="`6${i}`" xs6>
+					<v-card dark color="secondary" class="elevation-8">
+						<v-card-text class="px-0">6</v-card-text>
+					</v-card>
+				</v-flex>
+			</v-layout>
+		</v-container>
+
+		<pre class="c-s" v-html="codes[5].code"></pre>
+		<v-container text-xs-center grid-list-md>
+			<v-layout>
+				<v-flex xs12>
+					<v-card dark color="primary" class="elevation-8">
+						<v-card-text class="px-0">12</v-card-text>
+					</v-card>
+				</v-flex>
+				<v-flex v-for="i in 2" :key="`6${i}`" xs6>
+					<v-card dark color="secondary" class="elevation-8">
+						<v-card-text class="px-0">6</v-card-text>
+					</v-card>
+				</v-flex>
+			</v-layout>
+		</v-container>
+
+		<pre class="c-s" v-html="codes[6].code"></pre>
+		<v-container text-xs-center grid-list-md>
+			<v-layout row wrap>
+				<v-flex xs12>
+					<v-card dark color="primary" class="elevation-8">
+						<v-card-text class="px-0">12</v-card-text>
+					</v-card>
+				</v-flex>
+				<v-flex v-for="i in 2" :key="`6${i}`" xs6>
+					<v-card dark color="secondary" class="elevation-8">
+						<v-card-text class="px-0">6</v-card-text>
+					</v-card>
+				</v-flex>
+			</v-layout>
+		</v-container>
+
+		<pre class="c-s" v-html="codes[7].code"></pre>
+		<v-container fluid text-xs-center grid-list-md>
+			<v-layout row wrap>
+				<v-flex xs12>
+					<v-card dark color="primary" class="elevation-8">
+						<v-card-text class="px-0">12</v-card-text>
+					</v-card>
+				</v-flex>
+				<v-flex xs6 offset-xs6>
+					<v-card dark color="secondary" class="elevation-8">
+						<v-card-text class="px-0">6</v-card-text>
+					</v-card>
+				</v-flex>
+			</v-layout>
+		</v-container>
+	</v-content>
 </template>
 
 <script>
+import impCode from '../codes.js'
+
 export default {
 	name: 'AppGrid',
 	data: () => ({
-    isMobile: false
+		isMobile: false,
+		codes: impCode
 	}),
 	computed: {
 		bp: function() {
@@ -46,4 +113,30 @@ export default {
 <style lang='stylus'>
 .btnLogin
   margin-right 5px
+
+.c-s
+	padding 5px
+	display block
+	white-space pre-wrap
+	box-sizing border-box
+ 	-moz-box-sizing border-box
+ 	webkit-box-sizing border-box
+ 	white-space pre-wrap
+ 	white-space -moz-pre-wrap
+ 	white-space -pre-wrap
+ 	white-space -o-pre-wrap
+ 	word-wrap break-word
+	overflow-x auto
+	background-color #f5f5f5
+	color #bd4147
+	box-shadow 0 2px 1px -1px rgba(0, 0 , 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12)
+
+.o-s
+	color green
+
+.info-block
+	display flex
+	justify-content space-around
+	flex-wrap wrap
+
 </style>

@@ -23,7 +23,12 @@ export function createStore () {
         job: []
       },
       client_id: 'webxx090518',
-      client_secret: 'abc123456'
+			client_secret: 'abc123456',
+			auth: {
+				//token: localStorage.getItem('theBasis-token') || '',
+				token: '',
+				status: '', //status API call - loading, success, error
+			}
     },
     actions,
     mutations,

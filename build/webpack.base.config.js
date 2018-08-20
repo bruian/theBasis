@@ -46,7 +46,7 @@ module.exports = {
         include: [require.resolve('bootstrap-vue'),  '/node_modules/bootstrap-vue/', '/node_modules/bootstrap/']
       },
       {
-        test: /\.(png|jpg|gif|svg)$/,
+        test: /\.(png|jpg|gif|svg|ttf|woff2|woff|eot)$/,
         loader: 'url-loader',
         options: {
           limit: 10000,

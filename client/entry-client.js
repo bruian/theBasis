@@ -13,6 +13,9 @@ import VueAxios from 'vue-axios'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
 
+import 'material-design-icons-iconfont/dist/material-design-icons.css'
+//import '@mdi/font/css/materialdesignicons.css'
+//import '@fortawesome/fontawesome-free/css/all.css'
 import 'vuetify/dist/vuetify.min.css'
 
 Vue.use(BootstrapVue)
@@ -45,7 +48,7 @@ const bearerAuth = {
   request: function (req, token) {
     token = token.split(';')
     var grant_type = ''
-    
+
     if (req.url.indexOf('refresh') > -1) {
       token =  token[1]
       grant_type = 'refresh_token'
@@ -54,8 +57,8 @@ const bearerAuth = {
       grant_type = 'access_token'
     }
 
-    this.options.http._setHeaders.call(this, req, { 
-      Authorization: 'Bearer ' + token, 
+    this.options.http._setHeaders.call(this, req, {
+      Authorization: 'Bearer ' + token,
       grant_type: grant_type,
       client_id: store.state.client_id
     })
@@ -89,7 +92,7 @@ router.onReady(() => {
     const activated = matched.filter((c, i) => {
       return diffed || (diffed = (prevMatched[i] !== c))
     })
-    
+
     const asyncDataHooks = activated.map(c => c.asyncData).filter(_ => _)
     if (!asyncDataHooks.length) {
       return next()

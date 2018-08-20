@@ -1,92 +1,65 @@
 <template>
-	<div class="login-view">
-		<b-container class="b-login-row">
-      <b-row align-v="start">
-        <b-col class="text-center">
-          <b-img align-h="center" width="180" height="180" alt="center image" class="m-1" src="./public/appLogo.png"/>
-        </b-col>
-      </b-row>
-      <b-row>
-        <b-col><span class="sp1"></span></b-col>
-        <b-col cols="8">
-          <b-form @submit="onSubmit">
-            <b-form-group id="emailGroup" 
-              label="Email address:" 
-              label-for="emailGroup">
-              <b-form-input id="emailUser" 
-                type="email" 
-                v-model="data.body.username" 
-                required 
-                placeholder="Enter email">
-              </b-form-input>
-            </b-form-group>
-            <b-form-group id="passwordGroup" 
-              label="Your password:" 
-              label-for="passwordGroup">
-              <b-form-input id="passwordUser" 
-                type="password" 
-                v-model="data.body.password" 
-                required 
-                placeholder="Enter password">
-              </b-form-input>
-            </b-form-group>
-            <b-alert :show="showError" 
-              dismissible 
-              variant="warning" 
-              @dismissed="showError=false"
-              fade>
-              {{errorDescription}}
-            </b-alert> 
-            <b-button class="btnLogin" type="submit" variant="primary">Log in</b-button>
-          </b-form>
-        </b-col>
-        <b-col><span class="sp3"></span></b-col>
-      </b-row>
-      <b-row align-v='end'></b-row>
-    </b-container>
-	</div>
+	<v-dialog v-model="value" width="500px">
+		<v-card class="elevation-12">
+			<v-toolbar dark color="primary">
+				<v-toolbar-title>
+					<a class="login-header" v-bind:class="[formState == 0 ? 'active-login-header' : '']" href="" @click.prevent="formState=0">Login</a>
+					<span> | </span>
+					<a class="login-header" v-bind:class="[formState == 1 ? 'active-login-header' : '']" href="" @click.prevent="formState=1">Register</a>
+				</v-toolbar-title>
+				<v-spacer></v-spacer>
+				<v-tooltip bottom>
+					<v-btn icon @click="$emit('input', false)" slot="activator">
+						<v-icon>cancel</v-icon>
+					</v-btn>
+					<span>cancel</span>
+				</v-tooltip>
+			</v-toolbar>
+			<v-card-text>
+				<v-form @submit.prevent="login">
+					<v-text-field prepend-icon="person" name="login" v-model="username" label="Login" type="text"></v-text-field>
+					<v-text-field prepend-icon="lock" name="password" v-model="password" label="Password" id="password" type="password"></v-text-field>
+					<v-card-actions>
+						<v-spacer></v-spacer>
+						<v-btn color="primary" type="submit">Login</v-btn>
+					</v-card-actions>
+				</v-form>
+			</v-card-text>
+		</v-card>
+	</v-dialog>
 </template>
 
 <script>
-//import querystring from 'querystring'
-
 export default {
-	name: 'login-view',
-	data() {
+	name: 'Login',
+	props: {
+		value: {
+			type: Boolean,
+			required: true
+		}
+	},
+	data: function() {
 		return {
-			data: {
-        body: {
-          grant_type: 'password',
-          client_id: this.$store.state.client_id,
-          client_secret: this.$store.state.client_secret,
-          username: '',
-          password: ''
-        },
-        rememberMe: false,
-        fetchUser: true,
-      },
-      showError: false,
-      error: '',
-      errorDescription: ''
-    }
-  },
-  methods: {
-    onSubmit (evt) {
-    }
-  }
+			username: '',
+			password: '',
+			formState: 0, //0 - show Login form; 1 - show Register form
+		}
+	},
+	methods: {
+		login() {
+			const { username, password } = this
+			this.$store.dispatch('AUTH_REQUEST', { username, password }).then(() => {
+				//this.$router.push('/')
+				console.log('AUTH_REQUEST')
+			})
+		}
+	}
 }
 </script>
 
-<style lang='stylus'>
-.btnLogin
-  margin-right 5px
-.sp1
-  background-color #263238
-  color white
-.sp2
-  background-color #CFD8DC
-.sp3
-  background-color #FF5722
-.login-view
-  /* background: #ccc */
+<style lang="stylus">
+.login-header
+	color white
+.active-login-header
+	text-decoration underline
 </style>

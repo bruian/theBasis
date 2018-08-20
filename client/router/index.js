@@ -18,8 +18,9 @@ export function createRouter () {
     fallback: false,
     scrollBehavior: () => ({ y: 0 }),
     routes: [
-      { path: '/login', name: 'login', component: Login },
-      { path: '/', name: 'home', component: () => import('../views/AppGrid.vue') },
+			{ path: '/login', name: 'login', component: Login },
+			{ path: '/', name: 'home', component: () => import('../views/Home.vue') },
+      { path: '/appGrid', name: 'appGrid', component: () => import('../views/AppGrid.vue') },
       { path: '/tgmUsers', name: 'TgmUsers', component: TgmUsers, meta: { auth: true } },
       { path: '/tgmUsers/:id', component: TgmUsers, meta: { auth: true } },
       { path: '/top/:page(\\d+)?', component: createListView('top') },

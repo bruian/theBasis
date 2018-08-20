@@ -3,20 +3,23 @@ import mongoose from 'mongoose'
 var Schema = mongoose.Schema
 
 var AccessToken = new Schema({
-  userId: {
+  value: {
     type: String,
+    unique: true,
     required: true
   },
   clientId: {
     type: String,
     required: true
-  },
-  token: {
+	},
+	userId: {
     type: String,
-    unique: true,
     required: true
-  },
-  created: {
+	},
+	scope: {
+		type: String
+	},
+  expiration: {
     type: Date,
     default: Date.now
   }

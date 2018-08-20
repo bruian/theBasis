@@ -12,11 +12,11 @@ import { createBundleRenderer } from 'vue-server-renderer'
 import session        from 'express-session'
 import passport       from 'passport'
 import bodyParser     from 'body-parser'
-import cookieParser   from 'cookie-parser'
+//import cookieParser   from 'cookie-parser'
 import methodOverride from 'method-override'
 
 import config from './config'
-import oauth2 from './auth/oauth2';
+import configPrivate from './config-private'
 
 import apiOauth    from './apis/api-oauth'
 import apiArticles from './apis/api-articles'
@@ -30,8 +30,6 @@ const useMicroCache = process.env.MICRO_CACHE !== 'false'
 const serverInfo =
    `express/${require('express/package.json').version} ` +
    `vue-server-renderer/${require('vue-server-renderer/package.json').version}`
-
-require('./auth/auth')
 
 const app = express()
 
@@ -90,35 +88,49 @@ app.use('/public', serve('../public', true))
 app.use('/manifest.json', serve('../manifest.json', true))
 app.use('/service-worker.js', serve('../dist/service-worker.js'))
 
-app.use(cookieParser())
+//app.use(cookieParser()) //TODO cut cookie parser, because express-session already maintenance this
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(methodOverride())
-app.use(session({ secret: 'keyboard cat', resave: false, saveUninitialized: false }))
+app.use(session({
+	secret: configPrivate.security.sessionSecret,
+	resave: false,
+	saveUninitialized: false
+}))
+
+//**(passport)* Say express use passport middleware */
 app.use(passport.initialize())
 app.use(passport.session())
 
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  res.header('Access-Control-Allow-Methods', 'DELETE, PUT, UPDATE, HEAD, OPTIONS, GET, POST');
+  res.header('Access-Control-Allow-Origin', '*')
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
+  res.header('Access-Control-Allow-Methods', 'DELETE, PUT, UPDATE, HEAD, OPTIONS, GET, POST')
 
-  next();
+  next()
 })
 
 if (!isProd) {
   app.use((req, res, next) => {
-    log.debug('🐰  FROM client= METHOD:%s URL:%s', req.method, req.url);
-    log.debug(req.body);
-    log.debug(req.headers);
-    
-    next();
+    log.debug('🐰  FROM client= METHOD:%s URL:%s', req.method, req.url)
+    log.debug(req.body)
+		log.debug(req.headers)
+		log.debug(req.session)
+
+    next()
   })
 }
 
+const clientController = require('./controllers/clients')
+const userController = require('./controllers/users')
+
 //spmApp.use('/api', api);
 //app.use('/api/auth/user', apiUsers);
-app.use('/api/auth', apiOauth)
+app.use('/api/oauth2', apiOauth.router)
+app.use('/api/clients', express.Router()
+	.post('/', passport.authenticate(['basic'], { session : false }), clientController.postClients)
+	.get('/', passport.authenticate(['basic', 'bearer'], { session : false }), clientController.getClients))
+app.use('/api/users', express.Router().post('/', userController.postUsers).get('/', userController.getUsers))
 app.use('/api/articles', apiArticles)
 app.use('/api/tgmUsers', apiTgmUsers)
 
@@ -142,7 +154,7 @@ function render (req, res) {
     } else if(err.code === 404) {
       log.error(`❌  Fatal error when rendering : ${req.url}`)
       log.error(err)
-  
+
       res.status(404).send('404 | Page Not Found')
     } else {
       // Render Error Page or Redirect
@@ -178,14 +190,14 @@ if (config.port) {
     if (err) {
       log.error(err);
     }
-    
+
     console.log(`Session started ${ new Date() } *********************\n`)
     log.info(
       '✅  %s is running, talking to API server on %s.',
       config.app.title,
       config.apiPort
     );
-    
+
     log.info(
       '💻  Open http://%s:%s in a browser to view the app.',
       config.host,
