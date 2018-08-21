@@ -17,6 +17,8 @@ const BasicStrategy 		= require('passport-http').BasicStrategy
 const BearerStrategy    = require('passport-http-bearer').Strategy
 const ClientPasswordStrategy = require('passport-oauth2-client-password').Strategy
 
+import jwt							from 'jsonwebtoken'
+import passportJWT			from 'passport-jwt'
 import crypto           from 'crypto'
 import oauth2orize      from 'oauth2orize'
 
@@ -25,6 +27,9 @@ const router = express.Router()
 const server = oauth2orize.createServer()
 const TokenError = oauth2orize.TokenError
 const accessExpiresIn = { expires_in: config.security.accessTokenExpires }
+const jwtExpiresIn = { expiresIn: config.security.jwtTokenExpires }
+const JWTStrategy = passportJWT.Strategy
+const ExtractJWT = passportJWT.ExtractJwt
 
 /** Register serialialization and deserialization functions.
  *
@@ -83,11 +88,8 @@ async function createToken(data, tokenType) {
   try {
 		const tokens = []
 
-		if(tokenType === 'access' || tokenType === 'both') {
-			let atm = await AccessTokenModel.findOneAndRemove({ clientId: data.clientId, userId: data.userId })
-			if (!atm) {
-				log.debug('🔑  generateTokens -> AccessToken not found')
-			}
+		if (tokenType === 'access' || tokenType === 'both') {
+			await AccessTokenModel.findOneAndRemove({ clientId: data.clientId, userId: data.userId })
 
 			const accessTokenData = Object.assign({}, data)
 			accessTokenData.value = crypto.randomBytes(32).toString('hex')
@@ -97,11 +99,8 @@ async function createToken(data, tokenType) {
 			tokens.push(accessTokenData)
 		}
 
-		if(tokenType === 'refresh' || tokenType === 'both') {
-			let rtm = await RefreshTokenModel.findOneAndRemove({ clientId: data.clientId, userId: data.userId })
-			if (!rtm) {
-				log.debug('🔑  generateTokens -> RefreshToken not found')
-			}
+		if (tokenType === 'refresh' || tokenType === 'both') {
+			await RefreshTokenModel.findOneAndRemove({ clientId: data.clientId, userId: data.userId })
 
 			const refreshTokenData = Object.assign({}, data)
 			refreshTokenData.value = crypto.randomBytes(32).toString('hex')
@@ -109,6 +108,13 @@ async function createToken(data, tokenType) {
 			let token = new RefreshTokenModel(refreshTokenData)
 			rtm = await token.save()
 			tokens.push(refreshTokenData)
+		}
+
+		if (tokenType === 'jwt') {
+			const accessTokenData = Object.assign({}, data)
+			accessTokenData.value = jwt.sign(data, configPrivate.security.sessionSecret, jwtExpiresIn)
+			accessTokenData.expiration = calculateExpirationDate(config.security.jwtTokenExpires)
+			tokens.push(accessTokenData)
 		}
 
     log.debug(`🔑  generateTokens -> Generated new tokens for client.id: ${data.clientId} and user.id: ${data.userId} =tokens: ${tokens}`)
@@ -223,29 +229,35 @@ server.exchange(oauth2orize.exchange.code(function(client, code, redirectUri, do
  * application issues an access token on behalf of the user who authorized the code.
 */
 server.exchange(oauth2orize.exchange.password((client, username, password, scope, done) => {
-	log.debug(`🔑  exchange.password for client: ${client.id}=${client.name}, user: ${username} and password: ${password}`)
+	log.debug(`🔑  exchange.password for client: ${client.id}, user: ${username} and password: ${password}`)
 
-	UserModel.findOne({ username: username }, (err, user) => {
-		if (err) return done(err)
+	UserModel.findOne({ username: username })
+	.then(user => {
 		if (!user) return done(null, false, { message: 'Incorrect username' })
 		if (!user.checkPassword(password)) return done(null, false, { message: 'Wrong password' })
 
-		createToken({
+		const data = {
 			userId: user.id,
 			clientId: client.id,
 			scope: scope
-		}, 'both').then((tokens) => {
-			log.debug(`🔑  exchange.password token: ${tokens} created for ${client.id}=${client.name}, user: ${username} and password: ${password}`)
+		}
 
-			if (tokens.length === 1) {
-				return done(null, tokens[0].value, null, accessExpiresIn);
-			}
-			if (tokens.length === 2) {
-				return done(null, tokens[0].value, tokens[1].value, accessExpiresIn);
-			}
-		}).catch((err) => {
-			done(err)
-		})
+		return createToken(data, (config.security.jwtOn) ? 'jwt' : 'both')
+	})
+	.then(tokens => {
+		log.debug(`🔑  exchange.password token created: ${tokens} created for ${client.id}, user: ${username} and password: ${password}`)
+
+		let params = accessExpiresIn
+		if (config.security.jwtOn) {
+			params = jwtExpiresIn
+			params.token_type = 'jwt'
+		}
+
+		if (tokens.length === 1) return done(null, tokens[0].value, null, params)
+		if (tokens.length === 2) return done(null, tokens[0].value, tokens[1].value, params)
+	})
+	.catch(err => {
+		done(err)
 	})
 }))
 
@@ -316,6 +328,10 @@ server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, 
 		done(err)
 	})
 }))
+
+/**
+ * Exchange the client id and password/secret for an access token. JWT Bearer ex
+ */
 
 /**
  * LocalStrategy
@@ -437,17 +453,19 @@ const cbBearerStrategy = (bearerToken, done) => {
 	})
 }
 
-passport.use(new BasicStrategy(cbBasicStrategy))
-passport.use(new LocalStrategy(cbLocalStrategy))
-passport.use(new BearerStrategy(cbBearerStrategy))
-passport.use('client-basic', new BasicStrategy({ passReqToCallback: true }, cbClientBasicStrategy))
-passport.use(new ClientPasswordStrategy(cbClientPasswordStrategy))
+/**
+ * JSON Web Tokens is an authentication standard that works by assigning and passing around an
+ * encrypted token in requests that helps to identify the logged in user, instead of storing
+ * the user in a session on the server and creating a cookie
+*/
+const cbJWTStrategy = (jwtPayload, done) => {
+	log.debug(`🔑  cbJWTStrategy for jwtPayload: ${jwtPayload}`)
+}
 
-const isAuthenticated = passport.authenticate(['basic', 'bearer'], { session: false })
-const isClientAuthenticated = passport.authenticate(['client-basic', 'oauth2-client-password', 'bearer'], { session : false })
-const isBearerAuthenticated = passport.authenticate('bearer', { session: false })
-
-const authorization = [
+/**
+ * code Authorization middleware
+*/
+const codeAuthorization = [
 	server.authorization(function(clientId, redirectUri, scope, done) {
 		log.debug(`🔑  authorization`)
 
@@ -463,11 +481,42 @@ const authorization = [
   function(req, res){
 		log.debug(`🔑  authorization second middleware`)
 		res.json({ transactionID: req.oauth2.transactionID, user: req.user, client: req.oauth2.client })
+		//TODO: add (allow/deny) response dialog, which will be asked client and after request, implement server.decision
+		//for info read https://github.com/FrankHassanabad/Oauth2orizeRecipes/wiki/Authorization-code
     //res.render('dialog', { transactionID: req.oauth2.transactionID, user: req.user, client: req.oauth2.client });
   }
 ]
 
-const decision = [
+for (let index = 0; index < config.security.securityStrategy.length; index++) {
+	const element = config.security.securityStrategy[index];
+	if (element === 'basic') passport.use(new BasicStrategy(cbBasicStrategy))
+	if (element === 'local') passport.use(new LocalStrategy(cbLocalStrategy))
+	if (element === 'bearer') passport.use(new BearerStrategy(cbBearerStrategy))
+	if (element === 'client-basic') passport.use('client-basic', new BasicStrategy({ passReqToCallback: true }, cbClientBasicStrategy))
+	if (element === 'oauth2-client-password') passport.use(new ClientPasswordStrategy(cbClientPasswordStrategy))
+	if (element === 'jwt') passport.use(new JWTStrategy({
+		jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
+		secretOrKey: configPrivate.security.sessionSecret },
+		cbJWTStrategy))
+}
+
+let isAuthenticated = undefined
+if (config.security.jwtOn) {
+	isAuthenticated = passport.authenticate(['jwt'], { session: false })
+} else {
+	isAuthenticated = passport.authenticate(['basic', 'bearer'], { session: false })
+}
+
+const securityStrategy = passport.authenticate(config.security.securityStrategy, { session : false })
+
+/*
+const isAuthenticated = passport.authenticate(['basic', 'bearer'], { session: false })
+const isClientAuthenticated = passport.authenticate(['client-basic', 'oauth2-client-password', 'bearer'], { session : false })
+const isBearerAuthenticated = passport.authenticate('bearer', { session: false })
+const isLocalAuthenticated = passport.authenticate('local', { session: false })
+*/
+
+const codeDecision = [
 	server.decision()
 ]
 
@@ -476,12 +525,13 @@ const token = [
 	server.errorHandler()
 ]
 
-router.get('/authorize', isAuthenticated, authorization)
-router.post('/authorize', isAuthenticated, decision)
-router.post('/token', isClientAuthenticated, token)
+router.get('/code-authorize', isAuthenticated, codeAuthorization)
+router.post('/code-authorize', isAuthenticated, codeDecision)
+router.post('/token', securityStrategy, token)
+router.post('/login', securityStrategy, token)
 
 exports.router = router
-exports.isBearerAuthenticated = isBearerAuthenticated
+exports.isAuthenticated = isAuthenticated
 
 /*** Security scenarios
  * 1) Resource Owner Password Credentials
@@ -542,4 +592,6 @@ exports.isBearerAuthenticated = isBearerAuthenticated
 	"expires_in": 3600,
 	"token_type": "bearer"
  }
+ * 2) Authorization-code
+ * for info read https://github.com/FrankHassanabad/Oauth2orizeRecipes/wiki/Authorization-code
 */
