@@ -21,6 +21,7 @@ import jwt							from 'jsonwebtoken'
 import passportJWT			from 'passport-jwt'
 import crypto           from 'crypto'
 import oauth2orize      from 'oauth2orize'
+import { AuthError }		from '../errors'
 
 //*** Create OAuth 2.0 server */
 const router = express.Router()
@@ -170,11 +171,13 @@ server.grant(oauth2orize.grant.token((client, user, ares, done) => {
 		userId: user.id,
 		clientId: client.id,
 		scope: client.scope
-	}, 'access').then((tokens) => {
+	}, 'access')
+	.then((tokens) => {
 		log.debug(`🔑  grant.token.value: ${tokens[0].value} success for client: ${client.id}=${client.name} and user: ${user.id}=${user.username}`)
 
 		done(null, tokens[0].value, accessExpiresIn)
-	}).catch((err) => {
+	})
+	.catch((err) => {
 		done(err)
 	})
 }))
@@ -232,7 +235,7 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
 	log.debug(`🔑  exchange.password for client: ${client.id}, user: ${username} and password: ${password}`)
 
 	UserModel.findOne({ username: username })
-	.then(user => {
+	.then((user) => {
 		if (!user) return done(null, false, { message: 'Incorrect username' })
 		if (!user.checkPassword(password)) return done(null, false, { message: 'Wrong password' })
 
@@ -244,19 +247,19 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
 
 		return createToken(data, (config.security.jwtOn) ? 'jwt' : 'both')
 	})
-	.then(tokens => {
+	.then((tokens) => {
 		log.debug(`🔑  exchange.password token created: ${tokens} created for ${client.id}, user: ${username} and password: ${password}`)
 
 		let params = accessExpiresIn
 		if (config.security.jwtOn) {
-			params = jwtExpiresIn
+			params = Object.assign({}, jwtExpiresIn)
 			params.token_type = 'jwt'
 		}
 
 		if (tokens.length === 1) return done(null, tokens[0].value, null, params)
 		if (tokens.length === 2) return done(null, tokens[0].value, tokens[1].value, params)
 	})
-	.catch(err => {
+	.catch((err) => {
 		done(err)
 	})
 }))
@@ -275,11 +278,13 @@ server.exchange(oauth2orize.exchange.clientCredentials((client, scope, done) => 
 		userId: '',
 		clientId: client.id,
 		scope: scope
-	}, 'access').then((tokens) => {
+	}, 'access')
+	.then((tokens) => {
 		log.debug(`🔑  exchange.clientCredentials token: ${tokens} created for client: ${client.id}=${client.name}`)
 
 		done(null, tokens[0].value, null, accessExpiresIn)
-	}).catch((err) => {
+	})
+	.catch((err) => {
 		done(err)
 	})
 }))
@@ -313,7 +318,6 @@ server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, 
 				clientId: client.id,
 				scope: (scope) ? scope : '*'
 			}, 'both')
-
 		} catch (err) {
 			log.error(err)
 			throw err
@@ -399,7 +403,7 @@ const cbClientBasicStrategy = (req, username, password, done) => {
 		log.debug(`in cbClientBasicStrategy for client.name: ${client.name} -> done`)
 		done(null, client)
 	})
-	.catch(err => done(err))
+	.catch((err) => done(err))
 }
 
 /**
@@ -460,6 +464,74 @@ const cbBearerStrategy = (bearerToken, done) => {
 */
 const cbJWTStrategy = (jwtPayload, done) => {
 	log.debug(`🔑  cbJWTStrategy for jwtPayload: ${jwtPayload}`)
+
+	done(null, jwtPayload)
+}
+
+const cbRegistrationStrategy = function (req, res, done) {
+	log.debug(`🔑  registrationStrategy for body: ${req.body}`)
+
+	//body composition check
+	try {
+		if (!req.body) throw new AuthError('Missing request body', 'invalid_request')
+		if (!req.body.username) throw new AuthError('Missing required parameter: username', 'invalid_request')
+		if (!req.body.password) throw new AuthError('Missing required parameter: password', 'invalid_request')
+		if (!req.body.client_name) throw new AuthError('Missing required parameter: client_name', 'invalid_request')
+		if (!req.body.scope) throw new AuthError('Missing required parameter: scope', 'invalid_request')
+		if (!req.body.email) throw new AuthError('Missing required parameter: e-mail', 'invalid_request')
+		if (!utils.validateEmail(req.body.email)) throw new AuthError('Wrong parameter: e-mail', 'invalid_data')
+
+		const newUser = new UserModel()
+
+		UserModel.findOne({ email: req.body.email })
+		.then((user) => {
+			if (user) throw new AuthError(`User with this email (${req.body.email}) already exists`, 'invalid_data')
+
+			newUser.username = req.body.username
+			newUser.password = req.body.password
+			newUser.email = req.body.email
+			newUser.verified = false
+			newUser.verify_token = utils.randomToken()
+
+			return newUser.save()
+		})
+		.then((newUser) => {
+			return ClientModel.create({ name: req.body.client_name, secret: req.body.password, userId: newUser.id })
+		})
+		.then((newClient) => {
+			req.login(newUser, (err) => {
+				if (err) throw err
+				req.body.grant_type = 'password'
+
+				const emailData = {
+					to: newUser.email,
+					from: configPrivate.email.address,
+					template: 'emailverification',
+					subject: 'Verify your account',
+					context: {
+						url: 'http://localhost:8080/api/oauth2/verifytoken?token=' + newUser.verify_token,
+						name: newUser.username
+					}
+				}
+
+				utils.smtpTransport.sendMail(emailData, function(err) {
+					if (err) {
+						log.err(`🔑  send email error`)
+					} else {
+						log.debug(`🔑  email sended`)
+					}
+				})
+
+				done(null, newClient, newUser)
+			})
+		})
+		.catch((err) => {
+			log.error(err)
+			done(err)
+		})
+	} catch (err) {
+		return done(err)
+	}
 }
 
 /**
@@ -496,18 +568,38 @@ for (let index = 0; index < config.security.securityStrategy.length; index++) {
 	if (element === 'oauth2-client-password') passport.use(new ClientPasswordStrategy(cbClientPasswordStrategy))
 	if (element === 'jwt') passport.use(new JWTStrategy({
 		jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
-		secretOrKey: configPrivate.security.sessionSecret },
+		secretOrKey: configPrivate.security.sessionSecret,
+		ignoreExpiration: false },
 		cbJWTStrategy))
 }
 
 let isAuthenticated = undefined
 if (config.security.jwtOn) {
-	isAuthenticated = passport.authenticate(['jwt'], { session: false })
+	isAuthenticated = function(req, res, next) {
+		passport.authenticate(['jwt'], { session: false }, function(err, user, info) {
+			if (!user) {
+				let resErr = []
+
+				if (Array.isArray(info)) {
+					for (let index = 0; index < info.length; index++) {
+						const element = info[index];
+						if(element instanceof Error) {
+							resErr.push({ name: element.name, message: element.message })
+						}
+					}
+				}
+
+				return res.status(401).send(resErr)
+			}
+
+			return next(null, user)
+		})(req, res, next)
+	}
 } else {
 	isAuthenticated = passport.authenticate(['basic', 'bearer'], { session: false })
 }
 
-const securityStrategy = passport.authenticate(config.security.securityStrategy, { session : false })
+const cbSecurityStrategy = passport.authenticate(config.security.securityStrategy, { session : false })
 
 /*
 const isAuthenticated = passport.authenticate(['basic', 'bearer'], { session: false })
@@ -527,11 +619,29 @@ const token = [
 
 router.get('/code-authorize', isAuthenticated, codeAuthorization)
 router.post('/code-authorize', isAuthenticated, codeDecision)
-router.post('/token', securityStrategy, token)
-router.post('/login', securityStrategy, token)
+router.post('/token', cbSecurityStrategy, token)
+router.post('/login', cbSecurityStrategy, token)
+router.post('/registration', cbRegistrationStrategy, token)
 
 exports.router = router
 exports.isAuthenticated = isAuthenticated
+
+/*** Registration new user scenarios
+ cli: Use this URL with POST:
+ -> https://localhost:8080/api/oauth2/registration
+
+ cli: In the payload section you want to set the Content-Type header to "application/x-www-form-urlencoded"
+ and this to the raw payload
+ -> username=bob&password=secret&scope=*
+
+ cli: Send and you should get back your access token that looks like this if all fine
+ {
+	"access_token": "lTCGXgP0K6w2NTz9Zgi9UuBRgGc2dnWEwXsMUAmHz0V2aiKqLtoEFskhxWaGARgXHv",
+	"refresh_token": "c9pEaQvTXmJKm0CC5AqUuBRgGc2dnWEwXLwAyf5Gn2IvwWxomK3V66WqAj0EiFBGD",
+	"expires_in": 3600,
+	"token_type": "bearer"
+ }
+ */
 
 /*** Security scenarios
  * 1) Resource Owner Password Credentials
@@ -556,8 +666,8 @@ exports.isAuthenticated = isAuthenticated
 	"token_type": "bearer"
  }
 
- From here you exchange the access token for access to a resource. We'll access the api/userinfo resource
- -> https://localhost:8080/api/users
+ From here you exchange the access token for access to a resource. We'll access the api/info resource
+ -> https://localhost:8080/api/info
 
  In the header section add the key of Authorization with the value of your access_token.
  It will look like this in Raw

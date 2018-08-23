@@ -25,11 +25,20 @@ exports.postClients = function(req, res) {
 
 // Create endpoint /api/clients for GET
 exports.getClients = function(req, res) {
-  // Use the Client model to find all clients
-  ClientModel.find({ userId: req.user.id }, function(err, clients) {
-    if (err)
-      res.send(err)
+	// Use the Client model to find all clients
+	if (req.user) {
+		ClientModel.find({ userId: req.user.id }, function(err, clients) {
+			if (err)
+				res.send(err)
 
-    res.json(clients)
-  })
+			res.json(clients)
+		})
+	} else {
+		ClientModel.find({ }, function(err, clients) {
+			if (err)
+				res.send(err)
+
+			res.json(clients)
+		})
+	}
 }

@@ -5,21 +5,34 @@ const Schema = mongoose.Schema
 
 const User = new Schema({
   username: {
-    type: String,
-    unique: true,
-    required: true
-  },
-  hashedPassword: {
-    type: String,
-    required: true
-  },
-  salt: {
-    type: String,
-    required: true
-  },
+    type: String
+	},
+	email: {
+		type: String,
+		unique: true,
+		required: true,
+		validate: {
+			validator: (v) => { return /^([a-z0-9_\.-])+@[a-z0-9-]+\.([a-z]{2,4}\.)?[a-z]{2,4}$/.test(v) },
+			message: props => `${props.value} is not valid e-mail`
+		}
+	},
   created: {
     type: Date,
     default: Date.now
+	},
+	verified: {
+		type: Boolean
+	},
+	verify_token: {
+		type: String
+	},
+  hashedPassword: {
+    type: String,
+    required: true
+	},
+  salt: {
+    type: String,
+    required: true
   }
 })
 

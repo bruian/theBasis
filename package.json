@@ -38,6 +38,8 @@
     "lru-cache": "^4.1.1",
     "method-override": "^2.3.10",
     "mongoose": "^5.0.16",
+    "nodemailer": "^4.6.8",
+    "nodemailer-express-handlebars": "^3.0.0",
     "oauth2orize": "^1.11.0",
     "passport": "^0.4.0",
     "passport-http": "^0.3.0",

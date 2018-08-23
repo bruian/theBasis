@@ -127,9 +127,11 @@ const userController = require('./controllers/users')
 //spmApp.use('/api', api);
 //app.use('/api/auth/user', apiUsers);
 app.use('/api/oauth2', apiOauth.router)
-app.use('/api/clients', express.Router()
+/*app.use('/api/clients', express.Router()
 	.post('/', passport.authenticate(['basic'], { session : false }), clientController.postClients)
 	.get('/', passport.authenticate(['basic', 'bearer'], { session : false }), clientController.getClients))
+*/
+app.use('/api/clients', express.Router().get('/', apiOauth.isAuthenticated, userController.getUsers))
 app.use('/api/users', express.Router().post('/', userController.postUsers).get('/', userController.getUsers))
 app.use('/api/articles', apiArticles)
 app.use('/api/tgmUsers', apiTgmUsers)

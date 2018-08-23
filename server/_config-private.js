@@ -18,5 +18,11 @@ module.exports = Object.assign({
   security: {
 		sessionSecret: 'insert this your server session secret key'
 		// for example sessionSecret: 'fjdkajjfiajfjapfjakdfja;'
+	},
+	email: {
+		address: '',
+		password: '',
+		provider: ''
+		// for send verification email for user
 	}
 }, environment);
