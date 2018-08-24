@@ -481,50 +481,63 @@ const cbRegistrationStrategy = function (req, res, done) {
 		if (!req.body.email) throw new AuthError('Missing required parameter: e-mail', 'invalid_request')
 		if (!utils.validateEmail(req.body.email)) throw new AuthError('Wrong parameter: e-mail', 'invalid_data')
 
-		const newUser = new UserModel()
+		function onCreateClient(newUser, newClient) {
+			return req.login(newUser, (err) => {
+				if (err) throw err
+				req.body.grant_type = 'password'
+
+				if (config.security.sendEmailVerification) {
+					const emailData = {
+						to: newUser.email,
+						from: configPrivate.email.address,
+						template: 'emailverification',
+						subject: 'Verify your account',
+						context: {
+							url: 'http://localhost:8080/api/oauth2/verifytoken?token=' + newUser.verify_token,
+							name: newUser.username
+						}
+					}
+
+					//You can not wait for the completion of this task and release the user
+					utils.smtpTransport.sendMail(emailData, function(err) {
+						if (err) {
+							log.err(`🔑  send email error`)
+						} else {
+							log.debug(`🔑  email sended`)
+						}
+					})
+				}
+
+				done(null, newClient, newUser)
+			})
+		}
+
+		function onSaveUser(newUser) {
+			return ClientModel.create({ name: req.body.client_name, secret: req.body.password, userId: newUser.id })
+				.then(function (newClient) {
+					return onCreateClient(newUser, newClient)
+				})
+		}
 
 		UserModel.findOne({ email: req.body.email })
 		.then((user) => {
 			if (user) throw new AuthError(`User with this email (${req.body.email}) already exists`, 'invalid_data')
 
+			const newUser = new UserModel()
 			newUser.username = req.body.username
 			newUser.password = req.body.password
 			newUser.email = req.body.email
-			newUser.verified = false
-			newUser.verify_token = utils.randomToken()
+			if (config.security.sendEmailVerification) {
+				newUser.verified = false
+				newUser.verify_token = utils.randomToken()
+			} else {
+				newUser.verified = true
+				newUser.verify_token = ''
+			}
 
 			return newUser.save()
 		})
-		.then((newUser) => {
-			return ClientModel.create({ name: req.body.client_name, secret: req.body.password, userId: newUser.id })
-		})
-		.then((newClient) => {
-			req.login(newUser, (err) => {
-				if (err) throw err
-				req.body.grant_type = 'password'
-
-				const emailData = {
-					to: newUser.email,
-					from: configPrivate.email.address,
-					template: 'emailverification',
-					subject: 'Verify your account',
-					context: {
-						url: 'http://localhost:8080/api/oauth2/verifytoken?token=' + newUser.verify_token,
-						name: newUser.username
-					}
-				}
-
-				utils.smtpTransport.sendMail(emailData, function(err) {
-					if (err) {
-						log.err(`🔑  send email error`)
-					} else {
-						log.debug(`🔑  email sended`)
-					}
-				})
-
-				done(null, newClient, newUser)
-			})
-		})
+		.then(onSaveUser)
 		.catch((err) => {
 			log.error(err)
 			done(err)
