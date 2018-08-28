@@ -48,7 +48,7 @@
       "sourceMaps": true,
       "smartStep": true,
       "name": "Отладка entryPoint",
-      "program": "${workspaceFolder}\\entry-point.js"
+      "program": "${workspaceFolder}\\server\\db\\start.js"
     },
     {
       "name": "Launch localhost",

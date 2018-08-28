@@ -2,13 +2,14 @@
 
 ## About theBasis (Vue + vue-router + vuex + ssr vue + auth) + Webpack
 
-This **basis** is designed for: 
+This **basis** is designed for:
 
-- Be the basis for market applications
+- Be the basis for vue ssr applications
 - Provide the ability to clone the foundation for other applications
 - Allow access rights settings and authentication
+- Example of a running application
 
-## Application Architecture
+## Application features
 
 - Server Side Rendering
   - Vue + vue-router + vuex working together
@@ -27,14 +28,13 @@ This **basis** is designed for:
 - Animation
   - Effects when switching route views
   - Real-time list updates with FLIP Animation
-
 - Isomorphic client-server application
 - [Node.js](https://nodejs.org/en/) + [Express.js](http://expressjs.com/) simple web-service
 - [Babel](https://babeljs.io/) транспилятор для JavaScript предоставляет обратную совместимость современных стандартов  ES-2015, а так же поддержку большого количества полифилов для распространенных функций JS, поддерживает JSХ и Flow
 - Error handling
 - RESTful API endpoints, CRUD
 - [MongoDB](https://www.mongodb.com/) and [Mongoose.js](http://mongoosejs.com/)
-- Access control - OAuth 2.0, [Passport.js](http://www.passportjs.org/)
+- Access control - OAuth 2.0, [Passport.js](http://www.passportjs.org/), [oauth2orize]
 
 ## Agreement
 
@@ -48,7 +48,7 @@ $ git clone https://github.com/bruian/theBasis.git
 # install dependencies
 npm install
 
-# rename _config-private.js to config-private.js and set db connection string (your DB)
+# rename _config-private.js to config-private.js and set your settings
 
 # create new testing user in your mongoDB
 npm renewuser
@@ -62,6 +62,32 @@ npm run build
 # serve in production mode
 npm start
 ```
+
+## Testing
+
+- For testing you should install mocha additionally
+
+```bash
+$ npm install --save-dev mocha
+
+$ npm run test
+```
+
+- Optionaly Install [mochawesome](https://www.npmjs.com/package/mochawesome) for custom repoting your tests
+
+```bash
+$ npm install --save-dev mochawesome
+
+$ npm run testawesome
+```
+
+## Roadmap
+
+> server partitioning into a micro-service architecture
+> add React client basis
+> add Koa server framework as part theBasis server
+> add autoconfiguration theBasis
+
 ## Documentation
 
 > Coming soon on GitBook
@@ -83,18 +109,12 @@ npm start
   - Connecting mongoose + mongoDB
   - re-setup config
 
-## RoadMap
-
-- Вынести в отдельный Express модуль vue server route
-- Решить проблему обрыва подключения к DB. Как должен отвечать сервер, должен ли он дожидатся подключения или сразу отпускать клиента
-(техн.долг: выдача предупреждения о потере соединения с DB)
-
 ## Description
-- package.json описывает конфигурацию и состав пакета, скрипты для развертывания и запуска приложения
-- .babelrc описывает конфигурацию транспилятора babel. В данной конфигурации используются следующие настройки:
-    [Stage 0](https://babeljs.io/docs/plugins/preset-stage-0/) пакет включающий transform-do-expression и transform-function-bind
-    [es2015](https://babeljs.io/docs/plugins/preset-es2015) пакет включающий большой набор пресетов для поддержки стандарта ES-2015
-    [React](https://babeljs.io/docs/plugins/preset-react/) пакет включающий набор пресетов для поддержки React и JSX
+- package.json describes the configuration and composition of the package, the scripts for deploying and running the application
+- .babelrc describes the configuration of the babel transporter. In this configuration, the following settings are used:
+    [Stage 0](https://babeljs.io/docs/plugins/preset-stage-0/) a package including transform-do-expression and transform-function-bind
+    [es2015](https://babeljs.io/docs/plugins/preset-es2015) a package that includes a large set of presets to support the standard ES-2015
+    [React](https://babeljs.io/docs/plugins/preset-react/) package that includes a set of presets to support React and JSX
 
 ## License
 

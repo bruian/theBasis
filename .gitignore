@@ -10,5 +10,6 @@ logs/
 .github/
 server/config-private.js
 server/keys/
+mochawesome-report/
 .idea
 *.iml
