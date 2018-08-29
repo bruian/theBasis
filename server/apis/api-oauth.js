@@ -96,7 +96,7 @@ async function createToken(data, tokenType) {
 			accessTokenData.value = crypto.randomBytes(32).toString('hex')
 			accessTokenData.expiration = calculateExpirationDate(config.security.accessTokenExpires)
 			let token = new AccessTokenModel(accessTokenData)
-			atm = await token.save()
+			await token.save()
 			tokens.push(accessTokenData)
 		}
 
@@ -107,7 +107,7 @@ async function createToken(data, tokenType) {
 			refreshTokenData.value = crypto.randomBytes(32).toString('hex')
 			refreshTokenData.expiration = calculateExpirationDate(config.security.refreshTokenExpires)
 			let token = new RefreshTokenModel(refreshTokenData)
-			rtm = await token.save()
+			await token.save()
 			tokens.push(refreshTokenData)
 		}
 
@@ -243,6 +243,9 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
 			userId: user.id,
 			clientId: client.id,
 			scope: scope
+		}
+		if (!user.verified) {
+			data.verify_expired = user.verify_expired
 		}
 
 		return createToken(data, (config.security.jwtOn) ? 'jwt' : 'both')
@@ -462,10 +465,95 @@ const cbBearerStrategy = (bearerToken, done) => {
  * encrypted token in requests that helps to identify the logged in user, instead of storing
  * the user in a session on the server and creating a cookie
 */
-const cbJWTStrategy = (jwtPayload, done) => {
+const cbJWTStrategy = (req, jwtPayload, done) => {
 	log.debug(`🔑  cbJWTStrategy for jwtPayload: ${jwtPayload}`)
+	debugger
 
-	done(null, jwtPayload)
+	/* If the token has an "verify_expired" label, then it is necessary to check the verification
+	of the user and the expiry date of verification, if the user is verified, then update the token
+	to the worker, if the verification period has expired, then withdraw the current token and log out
+	the user */
+	if(jwtPayload.verify_expired) {
+		UserModel.findOne({ _id: jwtPayload.userId })
+		.then((user) => {
+			if (!user) throw new AuthError(`User with this id (${jwtPayload.userId}) not exists`, 'invalid_data')
+
+			if (!user.verified) {
+				if (user.verify_expired > new Date()) {
+					done(null, null, jwtPayload)
+				} else {
+					//TODO: log out user
+					user.loged = false
+					user.save((err) => {
+						if (err) done(err)
+
+						req.logout()
+						done(new AuthError('Session expired', 'session_expired'))
+					})
+				}
+			} else {
+				//TODO: refresh token
+				const data = {
+					userId: user.id,
+					clientId: jwtPayload.clientId,
+					scope: jwtPayload.scope
+				}
+
+				createToken(data, 'jwt')
+				.then((tokens) => {
+					const params = Object.assign({}, jwtExpiresIn)
+					params.token_type = 'jwt'
+
+					done(null, tokens[0].value, params)
+				}).catch((err) => {
+					log.error(err)
+					done(err)
+				})
+			}
+		}).catch((err) => {
+			log.error(err)
+			done(err)
+		})
+		/*
+		*Получаем пользователя по его id
+		*Проверяем верифицирован ли он
+			*Если не верифицирован, проверяем срок истечения токена-верификации
+				*Если срок истёк, делаем лог аут пользователя
+				*Если срок не истёк, то отдаем данные по временному-токену
+			*Если верифицирован, то меняем пользователю временный токен на постоянный (рефреш токен) -> Отдаем данные пользователю
+		*/
+	} else {
+		/*
+		Проверяем граничное значение времени для обновления токена
+			Если попадаем в граничное значение, то обновляем токен
+			Если находимся раньше граничного значения, то отдаем данные
+		*/
+		done(null, null, jwtPayload)
+	}
+}
+
+const cbVerifyMailToken = function (req, res, done) {
+	log.debug(`🔑  cbVerifyToken for body: ${req.body}`)
+	debugger
+	if (!req.query.token) done(null)
+
+	UserModel.findOne({ verify_token: req.query.token, verify_expired: { $gt: Date.now() }})
+	.then((user) => {
+		if (!user) throw new AuthError(`User with this token (${req.body.token}) not exists`, 'invalid_data')
+
+		user.verified = true
+		user.verify_token = ''
+		return user.save().then(() => {
+			res.redirect('/appGrid')
+		}).catch((err) => {
+			log.error(err)
+			done(err)
+		})
+	})
+	.catch((err) => {
+		log.error(err)
+		done(err)
+	})
 }
 
 const cbRegistrationStrategy = function (req, res, done) {
@@ -530,6 +618,7 @@ const cbRegistrationStrategy = function (req, res, done) {
 			if (config.security.sendEmailVerification) {
 				newUser.verified = false
 				newUser.verify_token = utils.randomToken()
+				newUser.verify_expired = new Date(calculateExpirationDate(config.security.jwtTokenExpires))
 			} else {
 				newUser.verified = true
 				newUser.verify_token = ''
@@ -582,30 +671,46 @@ for (let index = 0; index < config.security.securityStrategy.length; index++) {
 	if (element === 'jwt') passport.use(new JWTStrategy({
 		jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
 		secretOrKey: configPrivate.security.sessionSecret,
-		ignoreExpiration: false },
+		ignoreExpiration: false,
+		passReqToCallback: true },
 		cbJWTStrategy))
 }
 
 let isAuthenticated = undefined
 if (config.security.jwtOn) {
 	isAuthenticated = function(req, res, next) {
-		passport.authenticate(['jwt'], { session: false }, function(err, user, info) {
-			if (!user) {
+		passport.authenticate(['jwt'], { session: false }, function(err, data, info) {
+			if (err) {
 				let resErr = []
 
-				if (Array.isArray(info)) {
-					for (let index = 0; index < info.length; index++) {
-						const element = info[index];
+				if (Array.isArray(err)) {
+					for (let index = 0; index < err.length; index++) {
+						const element = err[index];
 						if(element instanceof Error) {
 							resErr.push({ name: element.name, message: element.message })
 						}
 					}
+				} else {
+					resErr.push({ name: err.name, message: err.message })
 				}
 
 				return res.status(401).send(resErr)
 			}
 
-			return next(null, user)
+			if (!data) {
+				return next(null, info)
+			} else {
+				let tok = {}
+				tok.access_token = data
+				if (info) { tok = Object.assign(tok, info) }
+				tok.token_type = tok.token_type || 'Bearer';
+
+				let json = JSON.stringify(tok);
+				res.setHeader('Content-Type', 'application/json');
+				res.setHeader('Cache-Control', 'no-store');
+				res.setHeader('Pragma', 'no-cache');
+				res.end(json);
+			}
 		})(req, res, next)
 	}
 } else {
@@ -630,11 +735,14 @@ const token = [
 	server.errorHandler()
 ]
 
-router.get('/code-authorize', isAuthenticated, codeAuthorization)
-router.post('/code-authorize', isAuthenticated, codeDecision)
-router.post('/token', cbSecurityStrategy, token)
+if(!config.jwtOn) {
+	router.get('/code-authorize', isAuthenticated, codeAuthorization)
+	router.post('/code-authorize', isAuthenticated, codeDecision)
+	router.post('/token', cbSecurityStrategy, token)
+}
 router.post('/login', cbSecurityStrategy, token)
 router.post('/registration', cbRegistrationStrategy, token)
+router.get('/verifytoken', cbVerifyMailToken)
 
 exports.router = router
 exports.isAuthenticated = isAuthenticated
@@ -643,17 +751,32 @@ exports.isAuthenticated = isAuthenticated
  cli: Use this URL with POST:
  -> https://localhost:8080/api/oauth2/registration
 
- cli: In the payload section you want to set the Content-Type header to "application/x-www-form-urlencoded"
+ cli: In the payload section cli want to set the Content-Type header to "application/x-www-form-urlencoded"
  and this to the raw payload
  -> username=bob&password=secret&scope=*
 
- cli: Send and you should get back your access token that looks like this if all fine
+ cli: Send and should get back access token that looks like this if all fine
  {
 	"access_token": "lTCGXgP0K6w2NTz9Zgi9UuBRgGc2dnWEwXsMUAmHz0V2aiKqLtoEFskhxWaGARgXHv",
 	"refresh_token": "c9pEaQvTXmJKm0CC5AqUuBRgGc2dnWEwXLwAyf5Gn2IvwWxomK3V66WqAj0EiFBGD",
 	"expires_in": 3600,
 	"token_type": "bearer"
  }
+
+ srv: Receives the request and starts the router /registration which in case of executing the @cbRegistrationStrategy
+ without errors, issues a temporary-token (with verify awayt payload) via the @token function
+
+ srv: in @cbRegistrationStrategy function generates a mail-token and sends it to the user e-mail
+
+ cli: get token on e-mail and click verification link
+
+ srv: receive the request and starts the router /verifytoken, when the tokens match, the server sets the user's
+ status to "verified" and redirect user to homepage
+
+ cli: makes any request to the server via api and receives an updated work-token
+
+ srv: receive temporary-token chech user status of the user for the presence of verify and if true, then generate
+ work-token and send user
  */
 
 /*** Security scenarios

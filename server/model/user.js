@@ -4,9 +4,7 @@ import crypto from 'crypto'
 const Schema = mongoose.Schema
 
 const User = new Schema({
-  username: {
-    type: String
-	},
+  username: { type: String },
 	email: {
 		type: String,
 		unique: true,
@@ -16,24 +14,13 @@ const User = new Schema({
 			message: props => `${props.value} is not valid e-mail`
 		}
 	},
-  created: {
-    type: Date,
-    default: Date.now
-	},
-	verified: {
-		type: Boolean
-	},
-	verify_token: {
-		type: String
-	},
-  hashedPassword: {
-    type: String,
-    required: true
-	},
-  salt: {
-    type: String,
-    required: true
-  }
+  created: { type: Date, default: Date.now },
+	verified: { type: Boolean },
+	verify_expired: {	type: Date },
+	verify_token: {	type: String },
+  hashedPassword: { type: String, required: true },
+  salt: { type: String, required: true },
+	loged: { type: Boolean }
 })
 
 User.methods.encryptPassword = function(password) {

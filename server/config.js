@@ -27,8 +27,8 @@ module.exports = Object.assign({
 		accessTokenExpires: 60 * 15, //15 min
 		refreshTokenExpires: 60 * 60, //1 hour
 		codeTokenExpires: 60 * 60, //1 hour
-		jwtTokenExpires: 20, //24 hours
-		sendEmailVerification: false,
+		jwtTokenExpires: 60 * 60, //1 hour
+		sendEmailVerification: true,
 		//must be: ResourceOwnerPasswordCredentials, AuthorizationCode
 		securityScenarios: ['ResourceOwnerPasswordCredentials'],
 		//must be: local, basic, bearer, client-basic, oauth2-client-password, jwt

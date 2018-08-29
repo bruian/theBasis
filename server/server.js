@@ -133,6 +133,7 @@ app.use('/api/oauth2', apiOauth.router)
 */
 app.use('/api/clients', express.Router().get('/', apiOauth.isAuthenticated, userController.getUsers))
 app.use('/api/users', express.Router().post('/', userController.postUsers).get('/', userController.getUsers))
+
 app.use('/api/articles', apiArticles)
 app.use('/api/tgmUsers', apiTgmUsers)
 
