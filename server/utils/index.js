@@ -74,3 +74,13 @@ module.exports.randomToken = () => {
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
+
+/**
+ * Returns various elements when comparing two arrays
+ * @param {Array} First array
+ * @param {Array} Second array
+ * @return {Array} Distinguished Elements
+*/
+module.exports.differentArray = (firstArr, secondArr) => {
+	return firstArr.filter(i => !secondArr.includes(i)).concat(secondArr.filter(i => !firstArr.includes(i)))
+}

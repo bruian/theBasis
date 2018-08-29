@@ -1,12 +1,7 @@
-import crypto 						 from 'crypto'
-import mongoose 					 from './mongoose'
 import NodeCache 					 from 'node-cache'
-import BlacklistTokenModel from '../model/blacklistToken'
 import { MongoCacheError } from '../errors'
-import { rejects } from 'assert';
-import { model } from 'mongoose';
 
-const showDebugMessage = true
+const showDebugMessage = false
 function log(message) { if (showDebugMessage) console.log(message) }
 
 Object.equals = function(x, y) {
@@ -85,7 +80,7 @@ function MongoCache(MongoModel, initCache = false) {
 	}
 
 	/* Set value in cache */
-	this.set = (key, value) => {
+	this.set = (key, value, cb) => {
 		log('Set value function is started')
 		let self = this
 		if (typeof(value) !== 'object') {
@@ -120,6 +115,7 @@ function MongoCache(MongoModel, initCache = false) {
 						if(self.counter === 0) {
 							self.queue = null
 							self.queue = Promise.resolve()
+							if(typeof cb === 'function') cb(null)
 							log('queue clear')
 						}
 						log('Mongo document updated')
@@ -132,6 +128,7 @@ function MongoCache(MongoModel, initCache = false) {
 							if(self.counter === 0) {
 								self.queue = null
 								self.queue = Promise.resolve()
+								if(typeof cb === 'function') cb(null)
 								log('queue clear')
 							}
 
@@ -144,6 +141,7 @@ function MongoCache(MongoModel, initCache = false) {
 					if(self.counter === 0) {
 						self.queue = null
 						self.queue = Promise.resolve()
+						if(typeof cb === 'function') cb(err)
 						log('queue clear')
 					}
 					log('Error: in try create new model - ' + err.message)
@@ -161,54 +159,3 @@ function MongoCache(MongoModel, initCache = false) {
 MongoCache.prototype = Object.create(NodeCache.prototype)
 
 exports.MongoCache = MongoCache
-
-/* Implementation protocol */
-
-/* implement section */
-const fill = 3
-const key = '4e02fdf8d23306d34742e316d44c240cc64961ff46247edffce97b71a5e43e1b'
-const start = +new Date()
-
-let mongoCache = new MongoCache(BlacklistTokenModel)
-
-if (fill === 0) {
-	const dateValue = new Date()
-	dateValue.setMinutes(dateValue.getMinutes() + 3)
-
-	for (let index = 0; index < 10; index++) {
-		let key = crypto.randomBytes(32).toString('hex')
-		mongoCache.set(key, { value: dateValue })
-	}
-	mongoCache.set(key, { value: dateValue })
-} else if (fill === 1) {
-	mongoCache.init().then(() => {
-		return mongoose.disconnect()}).then(()=>{
-			let val = mongoCache.keys()
-			log('get val:' + Object.values(val))
-	})
-} else if (fill === 2) {
-	mongoCache.init().then(() => {
-		let val = mongoCache.keys()
-		log('get val:' + Object.values(val))
-
-		const value = mongoCache.get(key)
-		log('Get value:' + value)
-	})
-} else if (fill === 3) {
-	const dateValue = new Date()
-	dateValue.setSeconds(dateValue.getSeconds() + 5)
-
-	mongoCache.set(key, { value: dateValue })
-	log('value from cache' + mongoCache.get(key))
-
-	setTimeout(() => {
-		log('value from cache throught 10 seconds: ' + mongoCache.get(key))
-	}, 10000)
-
-	setTimeout(() => {
-		log(Object.values(mongoCache.keys()))
-	}, 15000)
-}
-
-const end = +new Date()
-console.log(`Execution Time: ${end - start} ms`)
