@@ -26,11 +26,14 @@ import { AuthError }		from '../errors'
 //*** Create OAuth 2.0 server */
 const router = express.Router()
 const server = oauth2orize.createServer()
-const TokenError = oauth2orize.TokenError
+//const TokenError = oauth2orize.TokenError
 const accessExpiresIn = { expires_in: config.security.accessTokenExpires }
 const jwtExpiresIn = { expiresIn: config.security.jwtTokenExpires }
 const JWTStrategy = passportJWT.Strategy
 const ExtractJWT = passportJWT.ExtractJwt
+
+//TODO : place it in util functions
+const calculateExpirationDate = (expIn) => new Date(Date.now() + (expIn * 1000))
 
 /** Register serialialization and deserialization functions.
  *
@@ -55,7 +58,7 @@ passport.deserializeUser((id, done) => {
 	log.debug('🔑  deserializeUser atempt user.id: ${id}')
 
 	UserModel.findOne({ id: id }, (err, user) => {
-    if (err) return done(err)
+    if (err) return done(new AuthError(err))
     if (!user) return done(null, false)
 
     log.debug('🔑  deserializeUser success user.id: ${id}, user.username: ${user.username}')
@@ -74,16 +77,13 @@ server.deserializeClient((id, done) => {
 	log.debug('🔑  deserializeClient atempt client.id: ${id}')
 
 	ClientModel.findOne({ id: id }, (err, client) => {
-    if (err) return done(err)
+    if (err) return done(new AuthError(err))
     if (!client) return done(null, false)
 
     log.debug('🔑  deserializeClient success client.id: ${id}, client.name: ${client.name}')
     return done(null, client)
   })
 })
-
-//TODO : place it in util functions
-const calculateExpirationDate = (expIn) => new Date(Date.now() + (expIn * 1000))
 
 async function createToken(data, tokenType) {
   try {
@@ -112,16 +112,16 @@ async function createToken(data, tokenType) {
 		}
 
 		if (tokenType === 'jwt') {
+			data.expiration = calculateExpirationDate(config.security.jwtTokenExpires)
 			const accessTokenData = Object.assign({}, data)
 			accessTokenData.value = jwt.sign(data, configPrivate.security.sessionSecret, jwtExpiresIn)
-			accessTokenData.expiration = calculateExpirationDate(config.security.jwtTokenExpires)
+			accessTokenData.expiration = data.expiration
 			tokens.push(accessTokenData)
 		}
 
     log.debug(`🔑  generateTokens -> Generated new tokens for client.id: ${data.clientId} and user.id: ${data.userId} =tokens: ${tokens}`)
     return tokens
   } catch (err) {
-    log.error(err)
 		throw err
 	}
 }
@@ -135,7 +135,7 @@ async function createToken(data, tokenType) {
  * duration, etc. as parsed by the application.  The application issues a code,
  * which is bound to these values, and will be exchanged for an access token.
 */
-server.grant(oauth2orize.grant.code(function(client, redirectUri, user, ares, done) {
+server.grant(oauth2orize.grant.code((client, redirectUri, user, ares, done) => {
 	log.debug(`🔑  grant.code atempt for client: ${client.id}=${client.name} and user: ${user.id}=${user.username}`)
 	//const token = createToken({ sub: user.id, expires_in: config.security.codeTokenExpires })
 	const codeValue = crypto.randomBytes(16).toString('hex')
@@ -148,8 +148,8 @@ server.grant(oauth2orize.grant.code(function(client, redirectUri, user, ares, do
 		scope: client.scope
 	})
 
-	code.save(function(err) {
-		if (err) { return done(err) }
+	code.save((err) => {
+		if (err) return done(new AuthError(err))
 
 		log.debug(`🔑  grant.code.value: ${codeValue} success for client: ${client.id}=${client.name} and user: ${user.id}=${user.username}`)
 		done(null, codeValue)
@@ -166,6 +166,7 @@ server.grant(oauth2orize.grant.code(function(client, redirectUri, user, ares, do
 */
 server.grant(oauth2orize.grant.token((client, user, ares, done) => {
 	log.debug(`🔑  grant.token atempt for client: ${client.id}=${client.name} and user: ${user.id}=${user.username}`)
+
 	//const token = createToken({ sub: user.id, exp: config.security.accessTokenExpires })
 	createToken({
 		userId: user.id,
@@ -178,7 +179,7 @@ server.grant(oauth2orize.grant.token((client, user, ares, done) => {
 		done(null, tokens[0].value, accessExpiresIn)
 	})
 	.catch((err) => {
-		done(err)
+		done(new AuthError(err))
 	})
 }))
 
@@ -190,35 +191,36 @@ server.grant(oauth2orize.grant.token((client, user, ares, done) => {
  * are validated, the application issues an access token on behalf of the user who
  * authorized the code.
 */
-server.exchange(oauth2orize.exchange.code(function(client, code, redirectUri, done) {
+server.exchange(oauth2orize.exchange.code((client, code, redirectUri, done) => {
 	log.debug(`🔑  exchange.code atempt for client: ${client.id}=${client.name} and code: ${code}`)
 
-	GrantCodeModel.findOne({ value: code }, function(err, authCode) {
-		if (err) { return done(err) }
-		if (authCode === undefined) { return done(null, false) }
-		if (client.id.toString() !== authCode.clientId) { return done(null, false) }
-		if (redirectUri !== authCode.redirectUri) { return done(null, false) }
+	GrantCodeModel.findOne({ value: code }, (err, authCode) => {
+		if (err) return done(new AuthError(err))
+		if (authCode === undefined) return done(null, false)
+		if (client.id.toString() !== authCode.clientId) return done(null, false)
+		if (redirectUri !== authCode.redirectUri) return done(null, false)
 
 		log.debug(`🔑  exchange.code found for client: ${client.id}=${client.name} and code: ${code}`)
 
-		authCode.remove(function(err) {
-			if (err) { return done(err) }
+		authCode.remove((err) => {
+			if (err) return done(new AuthError(err))
 
 			createToken({
 				userId: authCode.userId,
 				clientId: authCode.clientId,
 				scope: '*'
-			}, 'both').then(tokens => {
+			}, 'both')
+			.then((tokens) => {
 				log.debug(`🔑  exchange.code token: ${tokens} created for client: ${client.id}=${client.name} and code: ${code}`)
 
 				if (tokens.length === 1) {
-					return done(null, tokens[0].value, null, accessExpiresIn);
+					return done(null, tokens[0].value, null, accessExpiresIn)
 				}
 				if (tokens.length === 2) {
-					return done(null, tokens[0].value, tokens[1].value, accessExpiresIn);
+					return done(null, tokens[0].value, tokens[1].value, accessExpiresIn)
 				}
 			}).catch((err) => {
-				done(err)
+				done(new AuthError(err))
 			})
 		})
 	})
@@ -236,16 +238,44 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
 
 	UserModel.findOne({ username: username })
 	.then((user) => {
-		if (!user) return done(null, false, { message: 'Incorrect username' })
-		if (!user.checkPassword(password)) return done(null, false, { message: 'Wrong password' })
+		if (!user) {
+			done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
+			return Promise.reject()
+		}
+
+		if (!user.checkPassword(password)) {
+			done(new AuthError('Wrong password', 'invalid_verification'))
+			return Promise.reject()
+		}
 
 		const data = {
 			userId: user.id,
 			clientId: client.id,
 			scope: scope
 		}
-		if (!user.verified) {
+
+		if (config.security.sendEmailVerification && !user.verified && user.verify_token) {
+			const emailData = {
+				to: user.email,
+				from: configPrivate.email.address,
+				template: 'emailverification',
+				subject: 'Verify your account',
+				context: {
+					url: 'http://localhost:8080/api/oauth2/verifytoken?token=' + user.verify_token,
+					name: user.username
+				}
+			}
+
 			data.verify_expired = user.verify_expired
+
+			//You can not wait for the completion of this task and release the user
+			utils.smtpTransport.sendMail(emailData, (err) => {
+				if (err) {
+					log.error(`🔑  send email error`)
+				} else {
+					log.debug(`🔑  email sended`)
+				}
+			})
 		}
 
 		return createToken(data, (config.security.jwtOn) ? 'jwt' : 'both')
@@ -257,13 +287,14 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
 		if (config.security.jwtOn) {
 			params = Object.assign({}, jwtExpiresIn)
 			params.token_type = 'jwt'
+			params.action = 'created'
 		}
 
 		if (tokens.length === 1) return done(null, tokens[0].value, null, params)
 		if (tokens.length === 2) return done(null, tokens[0].value, tokens[1].value, params)
-	})
+	}, (rej) => {})
 	.catch((err) => {
-		done(err)
+		done(new AuthError(err))
 	})
 }))
 
@@ -288,7 +319,7 @@ server.exchange(oauth2orize.exchange.clientCredentials((client, scope, done) => 
 		done(null, tokens[0].value, null, accessExpiresIn)
 	})
 	.catch((err) => {
-		done(err)
+		done(new AuthError(err))
 	})
 }))
 
@@ -304,8 +335,15 @@ server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, 
 
 	RefreshTokenModel.findOne({ value: refreshToken })
 	.then((token) => {
-		if(!token) { return done(null, false) }
-		if(token.clientId !== client.id) { return done(null, false) }
+		if(!token) {
+			done(new AuthError(`A token does not exist in db`, 'invalid_verification'), false)
+			return Promise.reject()
+		}
+
+		if(token.clientId !== client.id) {
+			done(new AuthError(`A client and token not equals`, 'invalid_verification'), false)
+			return Promise.reject()
+		}
 
 		return Promise.resolve(client)
 	})
@@ -322,17 +360,16 @@ server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, 
 				scope: (scope) ? scope : '*'
 			}, 'both')
 		} catch (err) {
-			log.error(err)
 			throw err
 		}
-	})
+	}, (rej) => {})
 	.then((tokens) => {
 		log.debug(`🔑  exchange.refreshToken token: ${tokens} created for client: ${client.id}=${client.name}`)
 
 		done(null, tokens[0].value, tokens[1].value, accessExpiresIn)
-	})
+	}, (rej) => {})
 	.catch((err) => {
-		done(err)
+		done(new AuthError(err))
 	})
 }))
 
@@ -347,13 +384,13 @@ server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, 
  * Anytime a request is made to authorize an application, we must ensure that
  * a user is logged in before asking them to approve the request.
 */
-const cbLocalStrategy = function(username, password, done) {
+const cbLocalStrategy = (username, password, done) => {
 	log.debug(`🔑  cbLocalStrategy for username: ${username} and password: ${password}`)
 
 	UserModel.findOne({ username: username }, (err, user) => {
-		if (err) return done(err)
-		if (!user) return done(null, false, { message: 'Incorrect username' })
-		if (!user.checkPassword(password)) return done(new TokenError('Wrong password', 'invalid_grant'), false)
+		if (err) return done(new AuthError(err))
+		if (!user) return done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
+		if (!user.checkPassword(password)) return done(new AuthError('Wrong password', 'invalid_verification'))
 
 		log.debug(`in cbLocalStrategy for username: ${username} and password: ${password} -> done`)
 		return done(null, user)
@@ -374,10 +411,10 @@ const cbLocalStrategy = function(username, password, done) {
 const cbBasicStrategy = (username, password, done) => {
 	log.debug(`🔑  cbBasicStrategy for username: ${username} and password: ${password}`)
 
-	UserModel.findOne({ username: username }, function (err, user) {
-		if (err) { return done(err) }
-		if (!user) { return done(null, false) }
-		if (!user.checkPassword(password)) return done(new TokenError('Wrong password', 'invalid_grant'), false)
+	UserModel.findOne({ username: username }, (err, user) => {
+		if (err) return done(new AuthError(err))
+		if (!user) return done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
+		if (!user.checkPassword(password)) return done(new AuthError('Wrong password', 'invalid_verification'))
 
 		log.debug(`in cbBasicStrategy for username: ${username} and password: ${password} -> done`)
 		return done(null, user)
@@ -389,10 +426,18 @@ const cbClientBasicStrategy = (req, username, password, done) => {
 
 	UserModel.findOne({ username: username })
 	.then((user) => {
-		if (!user) { return done(null, false) }
-		if (!user.checkPassword(password)) { return done(null, false, { message: 'Wrong user password' }) }
-
 		log.debug(`in cbClientBasicStrategy for user: ${username} and password: ${password} -> done`)
+
+		if (!user) {
+			done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_data'))
+			return Promise.reject()
+		}
+
+		if (!user.checkPassword(password)) {
+			done(new AuthError('Wrong password', 'invalid_verification'))
+			return Promise.reject()
+		}
+
 		req.user = user
 
 		const client_name = (req.body.client_name) ? req.body.client_name : 'WebBrowser'
@@ -400,13 +445,15 @@ const cbClientBasicStrategy = (req, username, password, done) => {
 		//return Promise.resolve(user)
 	})
 	.then((client) => {
-		if (!client) { return done(null, false) }
-		if (!client.checkSecret(password)) { return done(null, false, { message: 'Wrong client password' }) }
+		if (!client) return done(new AuthError('A client not found', 'invalid_data'))
+		if (!client.checkSecret(password)) return done(new AuthError('A client wrong password', 'invalid_verification'))
 
 		log.debug(`in cbClientBasicStrategy for client.name: ${client.name} -> done`)
 		done(null, client)
+	}, (rej) => {})
+	.catch((err) => {
+		done(new AuthError(err))
 	})
-	.catch((err) => done(err))
 }
 
 /**
@@ -420,9 +467,9 @@ const cbClientPasswordStrategy = (clientId, clientSecret, done) => {
 	log.debug(`🔑  cbClientPasswordStrategy for clientId: ${clientId} and clientSecret: ${clientSecret}`)
 
   ClientModel.findOne({ id: clientId }, (err, client) => {
-    if (err) return done(err)
-    if (!client) return done(null, false)
-    if (!client.checkSecret(clientSecret)) return done(new TokenError('Wrong secret', 'invalid_grant'), false)
+    if (err) return done(new AuthError(err))
+    if (!client) return done(new AuthError('A client not found', 'invalid_data'))
+    if (!client.checkSecret(clientSecret)) return done(new AuthError('A client wrong password', 'invalid_verification'))
 
     log.debug(`🔑  in cbClientPasswordStrategy for clientId: ${clientId} and clientSecret: ${clientSecret} -> done`)
     done(null, client)
@@ -443,18 +490,19 @@ const cbClientPasswordStrategy = (clientId, clientSecret, done) => {
 const cbBearerStrategy = (bearerToken, done) => {
 	log.debug(`🔑  cbBearerStrategy for bearerToken: ${bearerToken}`)
 
-	AccessTokenModel.findOne({ value: bearerToken }, function (err, accessToken) {
-		if (err) { return done(err) }
+	AccessTokenModel.findOne({ value: bearerToken }, (err, accessToken) => {
+		if (err) return done(new AuthError(err))
 		if (!accessToken) {
-			RefreshTokenModel.findOne({ value: bearerToken }, function (err, refreshToken) {
-				if (err) { return done(err) }
-				if (!refreshToken) return done(null, false)
+			RefreshTokenModel.findOne({ value: bearerToken }, (err, refreshToken) => {
+				if (err) return done(new AuthError(err))
+				if (!refreshToken) return done(new AuthError(`A token does not exist in db`, 'invalid_verification'))
 
 				log.debug(`🔑  cbBearerStrategy for bearerToken: ${bearerToken} - refres token found`)
 				done(null, refreshToken, { scope: '*'})
 			})
 		} else {
 			log.debug(`🔑  cbBearerStrategy for bearerToken: ${bearerToken} - access token found`)
+
 			done(null, accessToken, { scope: '*' })
 		}
 	})
@@ -476,19 +524,19 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 	if(jwtPayload.verify_expired) {
 		UserModel.findOne({ _id: jwtPayload.userId })
 		.then((user) => {
-			if (!user) throw new AuthError(`User with this id (${jwtPayload.userId}) not exists`, 'invalid_data')
+			if (!user) done(new AuthError(`User with this id (${jwtPayload.userId}) not exists`, 'invalid_data'))
 
 			if (!user.verified) {
 				if (user.verify_expired > new Date()) {
-					done(null, null, jwtPayload)
+					done(null, jwtPayload)
 				} else {
 					//TODO: log out user
 					user.loged = false
 					user.save((err) => {
-						if (err) done(err)
+						if (err) throw new AuthError(err)
 
 						req.logout()
-						done(new AuthError('Session expired', 'session_expired'))
+						throw new AuthError('Session expired', 'session_expired')
 					})
 				}
 			} else {
@@ -503,16 +551,15 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 				.then((tokens) => {
 					const params = Object.assign({}, jwtExpiresIn)
 					params.token_type = 'jwt'
+					params.action = 'refreshed'
 
 					done(null, tokens[0].value, params)
 				}).catch((err) => {
-					log.error(err)
-					done(err)
+					done(new AuthError(err))
 				})
 			}
 		}).catch((err) => {
-			log.error(err)
-			done(err)
+			done(new AuthError(err))
 		})
 		/*
 		*Получаем пользователя по его id
@@ -523,36 +570,60 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 			*Если верифицирован, то меняем пользователю временный токен на постоянный (рефреш токен) -> Отдаем данные пользователю
 		*/
 	} else {
+		const expirationTime = new Date(jwtPayload.expiration) - Date.now()
+		if (expirationTime <= 0) {
+			//TODO log out
+			done(AuthError('Session expired', 'session_expired'))
+		} else if (expirationTime <= (config.security.jwtTokenExpires *1000 * config.security.boundaryBeginExpires)) {
+			const data = {
+				userId: jwtPayload.userId,
+				clientId: jwtPayload.clientId,
+				scope: jwtPayload.scope
+			}
+
+			createToken(data, 'jwt')
+			.then((tokens) => {
+				const params = Object.assign({}, jwtExpiresIn)
+				params.token_type = 'jwt'
+				params.action = 'refreshed'
+
+				done(null, tokens[0].value, params)
+			}).catch((err) => {
+				done(new AuthError(err))
+			})
+		} else {
+			done(null, jwtPayload)
+		}
 		/*
 		Проверяем граничное значение времени для обновления токена
 			Если попадаем в граничное значение, то обновляем токен
 			Если находимся раньше граничного значения, то отдаем данные
 		*/
-		done(null, null, jwtPayload)
 	}
 }
 
-const cbVerifyMailToken = function (req, res, done) {
+const cbVerifyMailToken = (req, res, done) => {
 	log.debug(`🔑  cbVerifyToken for body: ${req.body}`)
 	debugger
 	if (!req.query.token) done(null)
 
 	UserModel.findOne({ verify_token: req.query.token, verify_expired: { $gt: Date.now() }})
 	.then((user) => {
-		if (!user) throw new AuthError(`User with this token (${req.body.token}) not exists`, 'invalid_data')
+		if (!user) {
+			done(new AuthError(`User with this token (${req.body.token}) not exists`, 'invalid_data'))
+			return Promise.reject()
+		}
 
 		user.verified = true
-		user.verify_token = ''
+		user.verify_token = null
 		return user.save().then(() => {
 			res.redirect('/appGrid')
 		}).catch((err) => {
-			log.error(err)
-			done(err)
+			done(new AuthError(err))
 		})
 	})
 	.catch((err) => {
-		log.error(err)
-		done(err)
+		done(new AuthError(err))
 	})
 }
 
@@ -571,30 +642,8 @@ const cbRegistrationStrategy = function (req, res, done) {
 
 		function onCreateClient(newUser, newClient) {
 			return req.login(newUser, (err) => {
-				if (err) throw err
+				if (err) throw new AuthError(err)
 				req.body.grant_type = 'password'
-
-				if (config.security.sendEmailVerification) {
-					const emailData = {
-						to: newUser.email,
-						from: configPrivate.email.address,
-						template: 'emailverification',
-						subject: 'Verify your account',
-						context: {
-							url: 'http://localhost:8080/api/oauth2/verifytoken?token=' + newUser.verify_token,
-							name: newUser.username
-						}
-					}
-
-					//You can not wait for the completion of this task and release the user
-					utils.smtpTransport.sendMail(emailData, function(err) {
-						if (err) {
-							log.err(`🔑  send email error`)
-						} else {
-							log.debug(`🔑  email sended`)
-						}
-					})
-				}
 
 				done(null, newClient, newUser)
 			})
@@ -609,7 +658,10 @@ const cbRegistrationStrategy = function (req, res, done) {
 
 		UserModel.findOne({ email: req.body.email })
 		.then((user) => {
-			if (user) throw new AuthError(`User with this email (${req.body.email}) already exists`, 'invalid_data')
+			if (user) {
+				done(new AuthError(`User with this email (${req.body.email}) already exists`, 'invalid_data'))
+				return Promise.reject()
+			}
 
 			const newUser = new UserModel()
 			newUser.username = req.body.username
@@ -621,18 +673,17 @@ const cbRegistrationStrategy = function (req, res, done) {
 				newUser.verify_expired = new Date(calculateExpirationDate(config.security.jwtTokenExpires))
 			} else {
 				newUser.verified = true
-				newUser.verify_token = ''
+				newUser.verify_token = null
 			}
 
 			return newUser.save()
 		})
-		.then(onSaveUser)
+		.then(onSaveUser, (rej) => {})
 		.catch((err) => {
-			log.error(err)
-			done(err)
+			done(new AuthError(err))
 		})
 	} catch (err) {
-		return done(err)
+		return done(new AuthError(err))
 	}
 }
 
@@ -640,13 +691,13 @@ const cbRegistrationStrategy = function (req, res, done) {
  * code Authorization middleware
 */
 const codeAuthorization = [
-	server.authorization(function(clientId, redirectUri, scope, done) {
+	server.authorization((clientId, redirectUri, scope, done) => {
 		log.debug(`🔑  authorization`)
 
-		ClientModel.findOne({ id: clientId }, function (err, client) {
+		ClientModel.findOne({ id: clientId }, (err, client) => {
 			log.debug(`🔑  authorization - client found`)
 
-			if (err) { return done(err) }
+			if (err) return done(new AuthError(err))
 			client.scope = scope
 
       return done(null, client, redirectUri)
@@ -678,28 +729,31 @@ for (let index = 0; index < config.security.securityStrategy.length; index++) {
 
 let isAuthenticated = undefined
 if (config.security.jwtOn) {
-	isAuthenticated = function(req, res, next) {
-		passport.authenticate(['jwt'], { session: false }, function(err, data, info) {
-			if (err) {
+	isAuthenticated = (req, res, next) => {
+		passport.authenticate(['jwt'], { session: false }, (err, data, info) => {
+			if (err || !data) {
 				let resErr = []
+				let arrErr = []
 
 				if (Array.isArray(err)) {
-					for (let index = 0; index < err.length; index++) {
-						const element = err[index];
-						if(element instanceof Error) {
-							resErr.push({ name: element.name, message: element.message })
-						}
-					}
+					arrErr = err
+				} else if (Array.isArray(info)) {
+					arrErr = info
 				} else {
 					resErr.push({ name: err.name, message: err.message })
+				}
+
+				for (let index = 0; index < arrErr.length; index++) {
+					const element = arrErr[index];
+					if(element instanceof Error) {
+						resErr.push({ name: element.name, message: element.message })
+					}
 				}
 
 				return res.status(401).send(resErr)
 			}
 
-			if (!data) {
-				return next(null, info)
-			} else {
+			if (data && info) {
 				let tok = {}
 				tok.access_token = data
 				if (info) { tok = Object.assign(tok, info) }
@@ -710,6 +764,8 @@ if (config.security.jwtOn) {
 				res.setHeader('Cache-Control', 'no-store');
 				res.setHeader('Pragma', 'no-cache');
 				res.end(json);
+			} else {
+				return next(null, data)
 			}
 		})(req, res, next)
 	}
@@ -735,7 +791,7 @@ const token = [
 	server.errorHandler()
 ]
 
-if(!config.jwtOn) {
+if(!config.security.jwtOn) {
 	router.get('/code-authorize', isAuthenticated, codeAuthorization)
 	router.post('/code-authorize', isAuthenticated, codeDecision)
 	router.post('/token', cbSecurityStrategy, token)
@@ -746,6 +802,16 @@ router.get('/verifytoken', cbVerifyMailToken)
 
 exports.router = router
 exports.isAuthenticated = isAuthenticated
+
+/*** JWT Payload Structure
+ jwtPayload = {
+	 expiration, time to expiration token = Data.now + (jwtTokenExpires * 1000)
+	 userId,
+	 clientId,
+	 scope,
+	 verify_expired: time to expiration mail token
+ }
+ */
 
 /*** Registration new user scenarios
  cli: Use this URL with POST:

@@ -28,6 +28,9 @@ module.exports = Object.assign({
 		refreshTokenExpires: 60 * 60, //1 hour
 		codeTokenExpires: 60 * 60, //1 hour
 		jwtTokenExpires: 60 * 60, //1 hour
+		//the moment from which the received token will be updated to the new one
+		//if ((date.now() - ("Date on moment create token" + (jwtTokenExpires * 1000))) <= (jwtTokenExpires * 1000 * boundaryBeginExpires)) then refresh token
+		boundaryBeginExpires: 1 / 4,
 		sendEmailVerification: true,
 		//must be: ResourceOwnerPasswordCredentials, AuthorizationCode
 		securityScenarios: ['ResourceOwnerPasswordCredentials'],
