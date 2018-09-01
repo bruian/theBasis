@@ -3,7 +3,7 @@ import chai from 'chai'
 
 import { MongoCache } from '../db/cachedb'
 
-import crypto from 'crypto'
+import crypto 						 from 'crypto'
 import mongoose 					 from '../db/mongoose'
 import BlacklistTokenModel from '../model/blacklistToken'
 

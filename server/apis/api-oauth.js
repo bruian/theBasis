@@ -7,21 +7,25 @@ const log               = require(srvPath + 'log')(module)
 const utils							= require(srvPath + 'utils')
 const configPrivate     = require(srvPath + 'config-private')
 const config						= require(srvPath + 'config')
-const UserModel         = require(srvPath + 'model/user')
-const ClientModel       = require(srvPath + 'model/client')
-const GrantCodeModel		= require(srvPath + 'model/grantCode')
-const AccessTokenModel  = require(srvPath + 'model/accessToken')
-const RefreshTokenModel = require(srvPath + 'model/refreshToken')
 const LocalStrategy			= require('passport-local').Strategy
 const BasicStrategy 		= require('passport-http').BasicStrategy
 const BearerStrategy    = require('passport-http-bearer').Strategy
 const ClientPasswordStrategy = require('passport-oauth2-client-password').Strategy
+
+import UserModel         	 from '../model/user'
+import ClientModel       	 from '../model/client'
+import GrantCodeModel			 from '../model/grantCode'
+import AccessTokenModel  	 from '../model/accessToken'
+import RefreshTokenModel 	 from '../model/refreshToken'
+import BlacklistTokenModel from '../model/blacklistToken'
 
 import jwt							from 'jsonwebtoken'
 import passportJWT			from 'passport-jwt'
 import crypto           from 'crypto'
 import oauth2orize      from 'oauth2orize'
 import { AuthError }		from '../errors'
+//import { MongoCache } 	from '../db/cachedb'
+import { BlackListCache } 	from '../db/cachedb'
 
 //*** Create OAuth 2.0 server */
 const router = express.Router()
@@ -31,6 +35,9 @@ const accessExpiresIn = { expires_in: config.security.accessTokenExpires }
 const jwtExpiresIn = { expiresIn: config.security.jwtTokenExpires }
 const JWTStrategy = passportJWT.Strategy
 const ExtractJWT = passportJWT.ExtractJwt
+
+/*** Initialization MongoCache */
+//const mongoCache = new MongoCache(BlacklistTokenModel, true)
 
 //TODO : place it in util functions
 const calculateExpirationDate = (expIn) => new Date(Date.now() + (expIn * 1000))
@@ -536,7 +543,7 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 						if (err) throw new AuthError(err)
 
 						req.logout()
-						throw new AuthError('Session expired', 'session_expired')
+						done(AuthError('Session expired', 'session_expired'))
 					})
 				}
 			} else {
@@ -570,6 +577,14 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 			*Если верифицирован, то меняем пользователю временный токен на постоянный (рефреш токен) -> Отдаем данные пользователю
 		*/
 	} else {
+		let token = ExtractJWT.fromAuthHeaderAsBearerToken()(req)
+		if (BlackListCache.get(token)) {
+			//token in black list, reject
+			return done(new AuthError('The token is withdraw', 'invalid_verification'))
+		} else {
+			jwtPayload.token = token
+		}
+
 		const expirationTime = new Date(jwtPayload.expiration) - Date.now()
 		if (expirationTime <= 0) {
 			//TODO log out
@@ -604,7 +619,7 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 
 const cbVerifyMailToken = (req, res, done) => {
 	log.debug(`🔑  cbVerifyToken for body: ${req.body}`)
-	debugger
+	//debugger
 	if (!req.query.token) done(null)
 
 	UserModel.findOne({ verify_token: req.query.token, verify_expired: { $gt: Date.now() }})
@@ -687,6 +702,18 @@ const cbRegistrationStrategy = function (req, res, done) {
 	}
 }
 
+//const cbLogOut = (err, req, jwtPayload) => {
+const cbLogOut = (req, res) => {
+	req.logout()
+
+	res.setHeader('Content-Type', 'application/json')
+	res.setHeader('Cache-Control', 'no-store')
+	res.setHeader('Pragma', 'no-cache')
+	res.json({ action: 'logout' })
+
+	//deprecated: res.redirect('/')
+}
+
 /**
  * code Authorization middleware
 */
@@ -753,17 +780,22 @@ if (config.security.jwtOn) {
 				return res.status(401).send(resErr)
 			}
 
+			if (req.path === '/logout' && (data.token)) {
+				BlackListCache.set(data.token, { value: data.expiration })
+			}
+			delete data.token
+
 			if (data && info) {
 				let tok = {}
 				tok.access_token = data
 				if (info) { tok = Object.assign(tok, info) }
-				tok.token_type = tok.token_type || 'Bearer';
+				tok.token_type = tok.token_type || 'Bearer'
 
-				let json = JSON.stringify(tok);
-				res.setHeader('Content-Type', 'application/json');
-				res.setHeader('Cache-Control', 'no-store');
-				res.setHeader('Pragma', 'no-cache');
-				res.end(json);
+				let json = JSON.stringify(tok)
+				res.setHeader('Content-Type', 'application/json')
+				res.setHeader('Cache-Control', 'no-store')
+				res.setHeader('Pragma', 'no-cache')
+				res.end(json)
 			} else {
 				return next(null, data)
 			}
@@ -799,6 +831,7 @@ if(!config.security.jwtOn) {
 router.post('/login', cbSecurityStrategy, token)
 router.post('/registration', cbRegistrationStrategy, token)
 router.get('/verifytoken', cbVerifyMailToken)
+router.get('/logout', isAuthenticated, cbLogOut)
 
 exports.router = router
 exports.isAuthenticated = isAuthenticated

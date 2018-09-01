@@ -153,9 +153,14 @@ function MongoCache(MongoModel, initCache = false) {
 		})
 	}
 
-	if (initCache) init()
+	if (initCache) this.init()
 	log('Object created')
 }
 MongoCache.prototype = Object.create(NodeCache.prototype)
 
 exports.MongoCache = MongoCache
+exports.BlackListCache = undefined
+
+exports.init = (model) => {
+	exports.BlackListCache = new MongoCache(model, true)
+}

@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
-import crypto from 'crypto'
+import { init } from './cachedb'
+import BlacklistTokenModel from '../model/blacklistToken'
 
 const srvPath  = process.cwd() + '/server/'
 
@@ -15,7 +16,9 @@ dbConnection.on('error', (err) => {
 })
 
 dbConnection.on('open', () => {
-  log.info('⚙️  Connected to MongoDB!')
+	log.info('⚙️  Connected to MongoDB!')
+
+	init(BlacklistTokenModel)
 })
 
 module.exports = mongoose
