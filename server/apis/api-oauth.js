@@ -243,7 +243,7 @@ server.exchange(oauth2orize.exchange.code((client, code, redirectUri, done) => {
 server.exchange(oauth2orize.exchange.password((client, username, password, scope, done) => {
 	log.debug(`🔑  exchange.password for client: ${client.id}, user: ${username} and password: ${password}`)
 
-	UserModel.findOne({ username: username })
+	UserModel.findOne({ email: username })
 	.then((user) => {
 		if (!user) {
 			done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
@@ -294,7 +294,7 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
 		if (config.security.jwtOn) {
 			params = Object.assign({}, jwtExpiresIn)
 			params.token_type = 'jwt'
-			params.action = 'created'
+			params.action = 'token'
 		}
 
 		if (tokens.length === 1) return done(null, tokens[0].value, null, params)
@@ -394,7 +394,7 @@ server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, 
 const cbLocalStrategy = (username, password, done) => {
 	log.debug(`🔑  cbLocalStrategy for username: ${username} and password: ${password}`)
 
-	UserModel.findOne({ username: username }, (err, user) => {
+	UserModel.findOne({ email: username }, (err, user) => {
 		if (err) return done(new AuthError(err))
 		if (!user) return done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
 		if (!user.checkPassword(password)) return done(new AuthError('Wrong password', 'invalid_verification'))
@@ -418,7 +418,7 @@ const cbLocalStrategy = (username, password, done) => {
 const cbBasicStrategy = (username, password, done) => {
 	log.debug(`🔑  cbBasicStrategy for username: ${username} and password: ${password}`)
 
-	UserModel.findOne({ username: username }, (err, user) => {
+	UserModel.findOne({ email: username }, (err, user) => {
 		if (err) return done(new AuthError(err))
 		if (!user) return done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
 		if (!user.checkPassword(password)) return done(new AuthError('Wrong password', 'invalid_verification'))
@@ -431,7 +431,7 @@ const cbBasicStrategy = (username, password, done) => {
 const cbClientBasicStrategy = (req, username, password, done) => {
 	log.debug(`🔑  cbClientBasicStrategy for user: ${username} and password: ${password}`)
 
-	UserModel.findOne({ username: username })
+	UserModel.findOne({ email: username })
 	.then((user) => {
 		log.debug(`in cbClientBasicStrategy for user: ${username} and password: ${password} -> done`)
 
@@ -515,6 +515,18 @@ const cbBearerStrategy = (bearerToken, done) => {
 	})
 }
 
+const cbEmailBearerStrategy = (bearerToken, done) => {
+	log.debug(`🔑  cbEmailBearerStrategy for bearerToken: ${bearerToken}`)
+
+	UserModel.findOne({ verify_token: bearerToken }, (err, user) => {
+		if (err) return done(new AuthError(err))
+		if (!user) return done(new AuthError(`A token does not exist in db`, 'invalid_verification'))
+
+		//TODO: user save and verify_token=null, verify=true
+		done(null, user)
+	})
+}
+
 /**
  * JSON Web Tokens is an authentication standard that works by assigning and passing around an
  * encrypted token in requests that helps to identify the logged in user, instead of storing
@@ -522,7 +534,7 @@ const cbBearerStrategy = (bearerToken, done) => {
 */
 const cbJWTStrategy = (req, jwtPayload, done) => {
 	log.debug(`🔑  cbJWTStrategy for jwtPayload: ${jwtPayload}`)
-	debugger
+	//debugger
 
 	/* If the token has an "verify_expired" label, then it is necessary to check the verification
 	of the user and the expiry date of verification, if the user is verified, then update the token
@@ -537,7 +549,7 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 				if (user.verify_expired > new Date()) {
 					done(null, jwtPayload)
 				} else {
-					//TODO: log out user
+					//log out user
 					user.loged = false
 					user.save((err) => {
 						if (err) throw new AuthError(err)
@@ -547,7 +559,7 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 					})
 				}
 			} else {
-				//TODO: refresh token
+				//refresh token
 				const data = {
 					userId: user.id,
 					clientId: jwtPayload.clientId,
@@ -617,6 +629,9 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 	}
 }
 
+/**
+ * Mail token verification
+ */
 const cbVerifyMailToken = (req, res, done) => {
 	log.debug(`🔑  cbVerifyToken for body: ${req.body}`)
 	//debugger
@@ -630,18 +645,30 @@ const cbVerifyMailToken = (req, res, done) => {
 		}
 
 		user.verified = true
-		user.verify_token = null
+		//user.verify_token = null
 		return user.save().then(() => {
-			res.redirect('/appGrid')
+			if((req.query.token_type) && (req.query.token_type === 'reset')) {
+				return req.login(user, (err) => {
+					if (err) throw new AuthError(err)
+					//req.body.grant_type = 'password'
+					return res.redirect(`/resetpassword?token=${user.verify_token}`)
+				})
+			} else {
+				res.redirect('/appGrid')
+			}
 		}).catch((err) => {
 			done(new AuthError(err))
+			return Promise.reject()
 		})
-	})
+	}).then((resolve)=>{}, (reject)=>{})
 	.catch((err) => {
 		done(new AuthError(err))
 	})
 }
 
+/**
+ * User registration function
+ */
 const cbRegistrationStrategy = function (req, res, done) {
 	log.debug(`🔑  registrationStrategy for body: ${req.body}`)
 
@@ -702,7 +729,117 @@ const cbRegistrationStrategy = function (req, res, done) {
 	}
 }
 
-//const cbLogOut = (err, req, jwtPayload) => {
+/**
+ * reset password function
+ */
+const cbResetPassword = (req, res, done) => {
+	try {
+		let onSaveUser = undefined,
+				onUpdatedClient = undefined,
+				findQuery = undefined,
+				userMutation = undefined
+
+		if (req.method === 'POST') {
+			if (!req.body.password) throw new AuthError('Missing body param: password', 'invalid_request')
+
+			const client_name = (req.body.client_name) ? req.body.client_name : 'WebBrowser'
+			findQuery = { _id: req.user.userId }
+
+			onUpdatedClient = (user, client) => {
+				return req.login(user, (err) => {
+					if (err) throw new AuthError(err)
+					req.body.grant_type = 'password'
+					req.body.scope = '*'
+					req.body.client_name = client_name
+					req.body.username = user.email
+
+					done(null, client, user)
+				})
+			}
+
+			onSaveUser = (savedUser) => {
+				return ClientModel.findOne({ name: client_name, userId: savedUser.id })
+					.then((foundClient) => {
+						foundClient.secret = req.body.password
+						return foundClient.save()
+					})
+					.then((savedClient) => {
+						return onUpdatedClient(savedUser, savedClient)
+					})
+			}
+
+			userMutation = (user) => {
+				user.verified = true
+				user.verify_token = null
+				user.password = req.body.password
+			}
+		} else {
+			if (!req.headers.email) throw new AuthError('Missing header: email', 'invalid_data')
+			if (!utils.validateEmail(req.headers.email)) throw new AuthError('Wrong parameter: e-mail', 'invalid_data')
+
+			findQuery = { email: req.headers.email }
+
+			onSaveUser = (savedUser) => {
+				if (config.security.sendEmailVerification) {
+					const emailData = {
+						to: savedUser.email,
+						from: configPrivate.email.address,
+						template: 'forgotpassword',
+						subject: 'Reset password for your account',
+						context: {
+							url: `http://localhost:8080/api/oauth2/verifytoken?token=${savedUser.verify_token}&token_type=reset`,
+							name: savedUser.username
+						}
+					}
+
+					//data.verify_expired = user.verify_expired
+
+					//You can not wait for the completion of this task and release the user
+					utils.smtpTransport.sendMail(emailData, (err) => {
+						if (err) {
+							log.error(`🔑  send email error`)
+						} else {
+							log.debug(`🔑  email sended`)
+						}
+					})
+
+					res.status(400).send({ action: 'reset_password_email_send' })
+				}
+			}
+
+			userMutation = (user) => {
+				if (config.security.sendEmailVerification) {
+					user.verified = false
+					user.verify_token = utils.randomToken()
+					user.verify_expired = new Date(calculateExpirationDate(config.security.jwtTokenExpires))
+				} else {
+					user.verified = true
+					user.verify_token = null
+				}
+			}
+		}
+
+		UserModel.findOne(findQuery)
+		.then((user) => {
+			if (!user) throw new AuthError(`User not exists`, 'invalid_data')
+
+			userMutation(user)
+
+			return user.save()
+		})
+		.then(onSaveUser, (rej) => {})
+		.catch((err) => {
+			//TODO: separe server and clienside error
+			return res.status(401).send({ action: 'error', name: err.name, message: err.message })
+		})
+	} catch (err) {
+		return res.status(401).send({ action: 'error', name: err.name, message: err.message })
+	}
+}
+
+/**
+ * log out function
+*/
 const cbLogOut = (req, res) => {
 	req.logout()
 
@@ -753,6 +890,7 @@ for (let index = 0; index < config.security.securityStrategy.length; index++) {
 		passReqToCallback: true },
 		cbJWTStrategy))
 }
+passport.use('email-bearer', new BearerStrategy(cbEmailBearerStrategy))
 
 let isAuthenticated = undefined
 if (config.security.jwtOn) {
@@ -767,13 +905,13 @@ if (config.security.jwtOn) {
 				} else if (Array.isArray(info)) {
 					arrErr = info
 				} else {
-					resErr.push({ name: err.name, message: err.message })
+					resErr.push({ action: 'error', name: err.name, message: err.message })
 				}
 
 				for (let index = 0; index < arrErr.length; index++) {
 					const element = arrErr[index];
 					if(element instanceof Error) {
-						resErr.push({ name: element.name, message: element.message })
+						resErr.push({ action: 'error', name: element.name, message: element.message })
 					}
 				}
 
@@ -790,6 +928,7 @@ if (config.security.jwtOn) {
 				tok.access_token = data
 				if (info) { tok = Object.assign(tok, info) }
 				tok.token_type = tok.token_type || 'Bearer'
+				tok.action = 'token'
 
 				let json = JSON.stringify(tok)
 				res.setHeader('Content-Type', 'application/json')
@@ -805,7 +944,8 @@ if (config.security.jwtOn) {
 	isAuthenticated = passport.authenticate(['basic', 'bearer'], { session: false })
 }
 
-const cbSecurityStrategy = passport.authenticate(config.security.securityStrategy, { session : false })
+const isSecurityAuthenticated = passport.authenticate(config.security.securityStrategy, { session : false })
+const isEmailAuthenticated = passport.authenticate('email-bearer', { session: false })
 
 /*
 const isAuthenticated = passport.authenticate(['basic', 'bearer'], { session: false })
@@ -826,10 +966,12 @@ const token = [
 if(!config.security.jwtOn) {
 	router.get('/code-authorize', isAuthenticated, codeAuthorization)
 	router.post('/code-authorize', isAuthenticated, codeDecision)
-	router.post('/token', cbSecurityStrategy, token)
+	router.post('/token', isSecurityAuthenticated, token)
 }
-router.post('/login', cbSecurityStrategy, token)
+router.post('/login', isSecurityAuthenticated, token)
 router.post('/registration', cbRegistrationStrategy, token)
+router.post('/resetpassword', isEmailAuthenticated, [cbResetPassword, server.token(), server.errorHandler()])
+router.get('/resetpassword', cbResetPassword)
 router.get('/verifytoken', cbVerifyMailToken)
 router.get('/logout', isAuthenticated, cbLogOut)
 
@@ -844,6 +986,10 @@ exports.isAuthenticated = isAuthenticated
 	 scope,
 	 verify_expired: time to expiration mail token
  }
+ */
+
+/*** Responce action
+ * action: reset_password_email_send, error, token, logout
  */
 
 /*** Registration new user scenarios

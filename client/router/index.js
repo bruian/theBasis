@@ -19,6 +19,7 @@ export function createRouter () {
     scrollBehavior: () => ({ y: 0 }),
     routes: [
 			{ path: '/login', name: 'login', component: Login },
+			{ path: '/resetpassword', name: 'resetpassword', component: () => import('../views/Home.vue') },
 			{ path: '/', name: 'home', component: () => import('../views/Home.vue') },
       { path: '/appGrid', name: 'appGrid', component: () => import('../views/AppGrid.vue') },
       { path: '/tgmUsers', name: 'TgmUsers', component: TgmUsers, meta: { auth: true } },
