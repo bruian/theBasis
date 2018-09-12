@@ -14,9 +14,6 @@
 							</v-card-title>
 						</v-flex>
 						<v-flex xs4>
-							<v-card-media src="https://www.freeiconspng.com/uploads/brain-icon-png-12.png"
-								height="125px" contain>
-							</v-card-media>
 						</v-flex>
 					</v-layout>
 					<v-divider light></v-divider>

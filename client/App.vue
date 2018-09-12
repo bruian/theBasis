@@ -49,19 +49,25 @@
 					</template>
 				</v-list>
 			</v-navigation-drawer>
+
 			<v-toolbar :clipped-left="$vuetify.breakpoint.lgAndUp" color="blue darken-3" dark	app	fixed>
 				<v-toolbar-title style="width: 300px" class="ml-0 pl-0">
 					<v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
 					<span class="hidden-sm-and-down">YouStudy</span>
 				</v-toolbar-title>
+
 				<v-text-field	flat solo-inverted hide-details prepend-inner-icon="search"	label="Search" class="hidden-sm-and-down"></v-text-field>
+
 				<v-spacer></v-spacer>
+
 				<v-btn icon>
 					<v-icon>apps</v-icon>
 				</v-btn>
+
 				<v-btn icon>
 					<v-icon>notifications</v-icon>
 				</v-btn>
+
 				<v-btn icon @click.stop="authDialog = !authDialog">
 					<v-icon v-if="!isAuth">account_circle</v-icon>
 					<v-avatar v-else size="32px" tile>
@@ -69,6 +75,7 @@
 					</v-avatar>
 				</v-btn>
 			</v-toolbar>
+
 			<v-breadcrumbs class="mt-5 pb-1">
 				<v-icon slot="divider">link</v-icon>
 
@@ -81,13 +88,18 @@
 					{{ item.text }}
 				</v-breadcrumbs-item>
 			</v-breadcrumbs>
+
 			<transition name='fade' mode='out-in'>
 				<router-view class='view'></router-view>
 			</transition>
+
 			<Login v-model="authDialog"></Login>
+			<MessageDialog v-model="messageDialog"></MessageDialog>
+
 			<v-btn fab bottom	right	color="blue" dark	fixed @click.stop="dialog = !dialog" style="bottom: 45px;">
 				<v-icon>add</v-icon>
 			</v-btn>
+
 			<v-dialog v-model="dialog" width="800px">
 				<v-card>
 					<v-card-title	class="grey lighten-4 py-4 title">
@@ -144,6 +156,7 @@
 					</v-card-actions>
 				</v-card>
 			</v-dialog>
+
       <v-footer app>
 				<span class="pl-2">YouStudy.club</span>
 				<v-spacer></v-spacer>
@@ -156,17 +169,20 @@
 <script>
 import HeaderBar from './components/HeaderBar.vue'
 import Login from './views/Login.vue'
+import MessageDialog from './views/MessageDialog.vue'
 
 export default {
 	name: 'App',
 	components: {
 		HeaderBar,
-		Login
+		Login,
+		MessageDialog
 	},
 	data: () => ({
 		dialog: false,
 		drawer: null,
 		authDialog: false,
+		messageDialog: false,
 		crumbs: [
 			{ text: "Home", disabled: false, to: '/' },
 			{ text: "iView", disabled: false, to: 'appGrid' },
@@ -206,6 +222,20 @@ export default {
 			{ icon: 'keyboard', text: 'Go to the old version' }
 		],
 	}),
+	created() {
+		if (this.$route.matched.some(record => record.meta.action === 'verified')) {
+			if (this.$route.query.token) {
+				this.$store.dispatch('AUTH_REQUEST', { verifytoken: this.$route.query.token })
+				.then(() => {
+					this.messageDialog = true
+				})
+				.catch((err) => {
+					//this.message = err.error_description
+					console.log(err.error_description)
+				})
+			}
+		}
+	},
 	computed: {
 		isAuth() {
 			return this.$store.getters.isAuth

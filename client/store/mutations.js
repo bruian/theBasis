@@ -4,14 +4,25 @@ import Vue from 'vue'
 export default {
 	//*** Authentication mutations */
 	[mTypes.AUTH_REQUEST]: (state) => {
-		state.status = 'loading'
+		state.auth.status = 'loading'
 	},
 	[mTypes.AUTH_SUCCESS]: (state, token) => {
-		state.status = 'success'
-		state.token = token
+		state.auth.status = 'success'
+		state.auth.token = token
 	},
 	[mTypes.AUTH_ERROR]: (state) => {
-		state.status = 'error'
+		state.auth.status = 'error'
+	},
+	//*** Registration mutations */
+	[mTypes.REG_REQUEST]: (state) => {
+		state.auth.status = 'loading'
+	},
+	[mTypes.REG_SUCCESS]: (state, token) => {
+		state.auth.status = 'success'
+		state.auth.token = token
+	},
+	[mTypes.REG_ERROR]: (state) => {
+		state.auth.status = 'error'
 	},
 	//*** Other mutations */
   SET_ACTIVE_TYPE: (state, { type }) => {

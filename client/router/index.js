@@ -18,10 +18,11 @@ export function createRouter () {
     fallback: false,
     scrollBehavior: () => ({ y: 0 }),
     routes: [
+			{ path: '/', name: 'home', component: () => import('../views/Home.vue') },
 			{ path: '/login', name: 'login', component: Login },
 			{ path: '/resetpassword', name: 'resetpassword', component: () => import('../views/Home.vue') },
-			{ path: '/', name: 'home', component: () => import('../views/Home.vue') },
-      { path: '/appGrid', name: 'appGrid', component: () => import('../views/AppGrid.vue') },
+			{ path: '/verified', name: 'verified', component: () => import('../views/Home.vue'), meta: { action: 'verified' } },
+			{ path: '/appGrid', name: 'appGrid', component: () => import('../views/AppGrid.vue'), meta: { auth: true } },
       { path: '/tgmUsers', name: 'TgmUsers', component: TgmUsers, meta: { auth: true } },
       { path: '/tgmUsers/:id', component: TgmUsers, meta: { auth: true } },
       { path: '/top/:page(\\d+)?', component: createListView('top') },

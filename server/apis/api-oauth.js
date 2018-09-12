@@ -278,7 +278,8 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
 			//You can not wait for the completion of this task and release the user
 			utils.smtpTransport.sendMail(emailData, (err) => {
 				if (err) {
-					log.error(`🔑  send email error`)
+					log.error(`🔑  send email error: ${err}`)
+					//TODO: добавить очередь отложенных операций
 				} else {
 					log.debug(`🔑  email sended`)
 				}
@@ -527,6 +528,41 @@ const cbEmailBearerStrategy = (bearerToken, done) => {
 	})
 }
 
+const cbVerifyToken = (req, res, done) => {
+	const client_name = (req.body.client_name) ? req.body.client_name : 'WebBrowser'
+
+	ClientModel.findOne({ name: client_name, userId: req.user.id }, (err, foundClient) => {
+		if (err) return done(new AuthError(err))
+
+		const data = {
+			userId: req.user.id,
+			clientId: foundClient.id,
+			scope: '*'
+		}
+
+		createToken(data, 'jwt')
+		.then((tokens) => {
+			const params = Object.assign({}, jwtExpiresIn)
+			params.token_type = 'jwt'
+			params.action = 'refreshed'
+
+			let tok = {}
+			tok.access_token = tokens[0].value
+			tok = Object.assign(tok, params)
+			tok.token_type = tok.token_type || 'Bearer'
+			tok.action = 'token'
+
+			let json = JSON.stringify(tok)
+			res.setHeader('Content-Type', 'application/json')
+			res.setHeader('Cache-Control', 'no-store')
+			res.setHeader('Pragma', 'no-cache')
+			res.end(json)
+		}).catch((err) => {
+			return res.status(401).send({ action: 'error', name: err.name, message: err.message })
+		})
+	})
+}
+
 /**
  * JSON Web Tokens is an authentication standard that works by assigning and passing around an
  * encrypted token in requests that helps to identify the logged in user, instead of storing
@@ -654,7 +690,7 @@ const cbVerifyMailToken = (req, res, done) => {
 					return res.redirect(`/resetpassword?token=${user.verify_token}`)
 				})
 			} else {
-				res.redirect('/appGrid')
+				res.redirect('/verified?token=${user.verify_token}')
 			}
 		}).catch((err) => {
 			done(new AuthError(err))
@@ -718,6 +754,7 @@ const cbRegistrationStrategy = function (req, res, done) {
 				newUser.verify_token = null
 			}
 
+			req.body.username = req.body.email
 			return newUser.save()
 		})
 		.then(onSaveUser, (rej) => {})
@@ -725,7 +762,11 @@ const cbRegistrationStrategy = function (req, res, done) {
 			done(new AuthError(err))
 		})
 	} catch (err) {
-		return done(new AuthError(err))
+		if (err.name === 'AuthError') {
+			return done(err)
+		} else {
+			return done(new AuthError(err))
+		}
 	}
 }
 
@@ -971,6 +1012,7 @@ if(!config.security.jwtOn) {
 router.post('/login', isSecurityAuthenticated, token)
 router.post('/registration', cbRegistrationStrategy, token)
 router.post('/resetpassword', isEmailAuthenticated, [cbResetPassword, server.token(), server.errorHandler()])
+router.post('/verifytoken', isEmailAuthenticated, cbVerifyToken)
 router.get('/resetpassword', cbResetPassword)
 router.get('/verifytoken', cbVerifyMailToken)
 router.get('/logout', isAuthenticated, cbLogOut)

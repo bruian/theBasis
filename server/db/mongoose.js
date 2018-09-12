@@ -7,7 +7,7 @@ const srvPath  = process.cwd() + '/server/'
 const log = require(srvPath + 'log')(module)
 const configPrivate = require(srvPath + 'config-private')
 
-mongoose.connect(configPrivate.mongoose.uri)
+mongoose.connect(configPrivate.mongoose.uri, { ssl: configPrivate.mongoose.ssl })
 
 var dbConnection = mongoose.connection
 

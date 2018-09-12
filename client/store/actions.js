@@ -77,10 +77,24 @@ export default {
 		return new Promise((resolve, reject) => {
 			commit(mTypes.AUTH_REQUEST)
 
-			Vue.axios({ url: 'auth/login', data: user, method: 'POST' })
+			if (user.verifytoken) {
+				Vue.axios({ url: 'oauth2/verifytoken',
+										method: 'POST',
+										headers: { 'content-type': 'application/x-www-form-urlencoded',
+															 'Authorization': 'Bearer ' + user.verifytoken } })
+				.then((res) => {
+					const token = res.data
+					storage.setItem('access_token', token.access_token)
+
+					commit(mTypes.AUTH_SUCCESS, token)
+
+					resolve(res)
+				})
+			} else {
+				Vue.axios({ url: 'auth/login', data: user, method: 'POST' })
 				.then(res => {
 					const token = res.data.token
-					storage.setItem('theBasis-token', token)
+					storage.setItem('access_token', token)
 
 					commit(mTypes.AUTH_SUCCESS, token)
 
@@ -91,8 +105,37 @@ export default {
 				.catch(err => {
 					commit(mTypes.AUTH_ERROR, err)
 
-					storage.removeItem('user-token')
+					storage.removeItem('access_token')
 					reject(err)
+				})
+			}
+		})
+	},
+
+	//*** Registration actions */
+	[mTypes.REG_REQUEST]: ({ commit, dispatch }, userData) => {
+		return new Promise((resolve, reject) => {
+			const payload = {
+				username: '',
+				scope: '*',
+				client_name: 'WebBrowser'
+			}
+			const bodyData = Object.assign(payload, userData)
+
+			commit(mTypes.REG_REQUEST)
+
+			Vue.axios({ url: 'oauth2/registration', data: bodyData, method: 'POST' })
+				.then((res) => {
+					const token = res.data
+
+					storage.setItem('access_token', token.access_token)
+					commit(mTypes.REG_SUCCESS, token)
+					resolve(res)
+				})
+				.catch((err) => {
+					commit(mTypes.REG_ERROR, err.response.data)
+					storage.removeItem('access_token')
+					reject(err.response.data)
 				})
 		})
 	},
