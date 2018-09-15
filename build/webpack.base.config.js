@@ -18,7 +18,8 @@ module.exports = {
   },
   resolve: {
     alias: {
-      'public': path.resolve(__dirname, '../public')
+			'public': path.resolve(__dirname, '../public'),
+			'@': path.join(__dirname, '..', 'client')
     }
   },
   module: {
@@ -68,8 +69,33 @@ module.exports = {
             })
           : ['vue-style-loader', 'css-loader', 'stylus-loader']
       },
-      {test: /\.scss?$/, loaders: ['style-loader', 'css-loader', 'sass-loader']},
-      {test: /\.css?$/, loaders: ['style-loader', 'css-loader', 'sass-loader']},
+      {
+				test: /\.scss?$/,
+				loaders: ['style-loader', 'css-loader', 'sass-loader']
+			},
+      {
+				test: /\.css?$/,
+				loader: ExtractTextPlugin.extract({
+					use: {
+						loader: 'css-loader',
+						options: { minimize: isProd }
+					},
+					fallback: 'vue-style-loader'
+				})
+				/*
+				test: /\.css?$/,
+				use: isProd ? ExtractTextPlugin.extract({
+					use: [
+						{
+							loader: 'css-loader',
+							options: { minimize: false }
+						}
+					],
+					fallback: 'vue-style-loader'
+				})
+				: ['style-loader', 'css-loader', 'sass-loader']
+				*/
+			}
     ]
   },
   performance: {
@@ -89,7 +115,10 @@ module.exports = {
         })
       ]
     : [
-        new VueLoaderPlugin(),
+				new VueLoaderPlugin(),
+				new ExtractTextPlugin({
+					filename: 'common.[chunkhash].css'
+				}),
         new FriendlyErrorsPlugin()
       ]
 }

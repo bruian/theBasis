@@ -75,40 +75,49 @@ export default {
 	//*** Authentication actions */
 	[mTypes.AUTH_REQUEST]: ({ commit, dispatch }, user) => {
 		return new Promise((resolve, reject) => {
-			commit(mTypes.AUTH_REQUEST)
+			let axiosData = {}
 
 			if (user.verifytoken) {
-				Vue.axios({ url: 'oauth2/verifytoken',
-										method: 'POST',
-										headers: { 'content-type': 'application/x-www-form-urlencoded',
-															 'Authorization': 'Bearer ' + user.verifytoken } })
-				.then((res) => {
-					const token = res.data
-					storage.setItem('access_token', token.access_token)
-
-					commit(mTypes.AUTH_SUCCESS, token)
-
-					resolve(res)
-				})
+				axiosData = {
+					url: 'oauth2/verifytoken',
+					method: 'POST',
+					headers: { 'content-type': 'application/x-www-form-urlencoded',
+										 'Authorization': 'Bearer ' + user.verifytoken }
+				}
 			} else {
-				Vue.axios({ url: 'auth/login', data: user, method: 'POST' })
-				.then(res => {
-					const token = res.data.token
-					storage.setItem('access_token', token)
+				const bodyData = {
+					grant_type: 'password',
+					scope: '*',
+					client_name: 'WebBrowser'
+				}
 
-					commit(mTypes.AUTH_SUCCESS, token)
-
-					//we have token, then we can log in user
-					//dispatch(mTypes.USER_REQUEST)
-					resolve(res)
-				})
-				.catch(err => {
-					commit(mTypes.AUTH_ERROR, err)
-
-					storage.removeItem('access_token')
-					reject(err)
-				})
+				axiosData = {
+					url: 'oauth2/login',
+					data: bodyData,
+					method: 'POST',
+					auth: user
+				}
 			}
+
+			commit(mTypes.AUTH_REQUEST)
+
+			Vue.axios(axiosData)
+			.then((res) => {
+				const token = res.data
+
+				storage.setItem('access_token', token.access_token)
+				commit(mTypes.AUTH_SUCCESS, token)
+
+				//we have token, then we can log in user
+				//dispatch(mTypes.USER_REQUEST)
+				resolve(res)
+			})
+			.catch((err) => {
+				commit(mTypes.AUTH_ERROR, err.response.data)
+
+				storage.removeItem('access_token')
+				reject(err.response.data)
+			})
 		})
 	},
 
@@ -121,22 +130,57 @@ export default {
 				client_name: 'WebBrowser'
 			}
 			const bodyData = Object.assign(payload, userData)
+			let axiosData = {
+				url: 'oauth2/registration',
+				data: bodyData,
+				method: 'POST'
+			}
 
 			commit(mTypes.REG_REQUEST)
 
-			Vue.axios({ url: 'oauth2/registration', data: bodyData, method: 'POST' })
-				.then((res) => {
-					const token = res.data
+			Vue.axios(axiosData)
+			.then((res) => {
+				const token = res.data
 
-					storage.setItem('access_token', token.access_token)
-					commit(mTypes.REG_SUCCESS, token)
-					resolve(res)
-				})
-				.catch((err) => {
-					commit(mTypes.REG_ERROR, err.response.data)
-					storage.removeItem('access_token')
-					reject(err.response.data)
-				})
+				storage.setItem('access_token', token.access_token)
+				commit(mTypes.REG_SUCCESS, token)
+				resolve(res)
+			})
+			.catch((err) => {
+				commit(mTypes.REG_ERROR, err.response.data)
+				storage.removeItem('access_token')
+				reject(err.response.data)
+			})
+		})
+	},
+
+	//*** LogOut actions */
+	[mTypes.AUTH_LOGOUT]: ({ commit, state }) => {
+		return new Promise((resolve, reject) => {
+			const axiosData = {
+				url: 'oauth2/logout',
+				method: 'GET',
+				headers: { 'content-type': 'application/x-www-form-urlencoded',
+									 'Authorization': 'Bearer ' + state.auth.token.access_token }
+			}
+
+			commit(mTypes.AUTH_REQUEST)
+
+			Vue.axios(axiosData)
+			.then((res) => {
+				storage.removeItem('access_token')
+				commit(mTypes.AUTH_LOGOUT)
+
+				//we have token, then we can log in user
+				//dispatch(mTypes.USER_REQUEST)
+				resolve(res)
+			})
+			.catch((err) => {
+				commit(mTypes.AUTH_ERROR, err.response.data)
+
+				storage.removeItem('access_token')
+				reject(err.response.data)
+			})
 		})
 	},
 

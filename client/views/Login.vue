@@ -1,5 +1,6 @@
 <template>
-	<v-dialog v-model="value" width="500px">
+	<!-- v-bind:value="value" -->
+	<v-dialog v-model="localValue" width="500px">
 		<v-card class="elevation-12">
 			<v-toolbar dark color="primary" v-if="formState < 2">
 				<v-toolbar-title>
@@ -26,7 +27,8 @@
 							required
 							:error-messages="emailErrors"
 							@input="$v.email.$touch()"
-							@blur="$v.email.$touch()">
+							@blur="$v.email.$touch()"
+							@keyup.enter="onSubmit">
 						</v-text-field>
 						<v-text-field prepend-icon="lock"
 							name="password"
@@ -35,10 +37,16 @@
 							:append-icon="passwordShow ? 'visibility_off' : 'visibility'"
 							:rules="[rules.required, rules.min]"
 							:type="passwordShow ? 'text' : 'password'"
-							@click:append="passwordShow = !passwordShow">
+							@click:append="passwordShow = !passwordShow"
+							@keyup.enter="onSubmit">
 						</v-text-field>
 						<v-card-actions>
-							<v-spacer></v-spacer>
+							<v-slide-y-transition>
+								<v-card-text v-show="message">
+									{{ message }}
+								</v-card-text>
+							</v-slide-y-transition>
+							<v-spacer v-show="!message"></v-spacer>
 							<v-btn color="primary"
 								:loading="fetching"
 								type="button"
@@ -48,11 +56,7 @@
 						</v-card-actions>
 					</v-flex>
 				</v-container>
-				<v-slide-y-transition>
-					<v-card-text v-show="message">
-						{{ message }}
-					</v-card-text>
-				</v-slide-y-transition>
+
 				<svg viewBox="0 0 120 28">
 					<defs>
 						<path id="wave" d="M 0,10 C 30,10 30,15 60,15 90,15 90,10 120,10 150,10 150,15 180,15 210,15 210,10 240,10 v 28 h -240 z" />
@@ -178,6 +182,7 @@ export default {
 	},
 	data: function() {
 		return {
+			localValue: this.value,
 			email: '',
 			password: '',
 			passwordShow: false,
@@ -190,6 +195,17 @@ export default {
 			formState: 0, //0 - show Login form; 1 - show Register form; 2 - show Congrats form;
 			fetching: false, //true - show load animation on button
 			message: '' //not empty - show message string at form
+		}
+	},
+	watch: {
+		formState: function() {
+			this.message = ''
+		},
+		value: function() {
+			this.localValue = this.value
+		},
+		localValue: function() {
+			this.$emit('input', this.localValue)
 		}
 	},
 	computed: {
@@ -206,6 +222,9 @@ export default {
 		}
 	},
 	methods: {
+		onSubmit() {
+			if (this.$v.email.email || (this.password)) this.submit()
+		},
 		submit() {
 			const { email, password } = this
 
@@ -223,9 +242,10 @@ export default {
 					this.fetching = false
 				})
 			} else {
-				this.$store.dispatch('AUTH_REQUEST', { email, password })
+				this.$store.dispatch('AUTH_REQUEST', { username: email, password })
 				.then(() => {
 					this.fetching = false
+					this.$emit('input', false)
 					//this.$router.push('/')
 				})
 				.catch((err) => {

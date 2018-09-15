@@ -24,6 +24,10 @@ export default {
 	[mTypes.REG_ERROR]: (state) => {
 		state.auth.status = 'error'
 	},
+	[mTypes.AUTH_LOGOUT]: (state) => {
+		state.auth.status = 'logout'
+		state.auth.token = null
+	},
 	//*** Other mutations */
   SET_ACTIVE_TYPE: (state, { type }) => {
     state.activeType = type

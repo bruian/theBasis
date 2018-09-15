@@ -17,7 +17,7 @@ import ClientModel       	 from '../model/client'
 import GrantCodeModel			 from '../model/grantCode'
 import AccessTokenModel  	 from '../model/accessToken'
 import RefreshTokenModel 	 from '../model/refreshToken'
-import BlacklistTokenModel from '../model/blacklistToken'
+//import BlacklistTokenModel from '../model/blacklistToken'
 
 import jwt							from 'jsonwebtoken'
 import passportJWT			from 'passport-jwt'
@@ -268,7 +268,7 @@ server.exchange(oauth2orize.exchange.password((client, username, password, scope
 				template: 'emailverification',
 				subject: 'Verify your account',
 				context: {
-					url: 'http://localhost:8080/api/oauth2/verifytoken?token=' + user.verify_token,
+					url: 'http://192.168.1.36:8080/api/oauth2/verifytoken?token=' + user.verify_token,
 					name: user.username
 				}
 			}
@@ -447,6 +447,8 @@ const cbClientBasicStrategy = (req, username, password, done) => {
 		}
 
 		req.user = user
+		if (!req.body.username) req.body.username = username
+		if (!req.body.password) req.body.password = password
 
 		const client_name = (req.body.client_name) ? req.body.client_name : 'WebBrowser'
 		return ClientModel.findOne({ userId: user.id, name: client_name })
@@ -557,7 +559,7 @@ const cbVerifyToken = (req, res, done) => {
 			res.setHeader('Cache-Control', 'no-store')
 			res.setHeader('Pragma', 'no-cache')
 			res.end(json)
-		}).catch((err) => {
+		}, (reject)=>{}).catch((err) => {
 			return res.status(401).send({ action: 'error', name: err.name, message: err.message })
 		})
 	})
@@ -690,7 +692,7 @@ const cbVerifyMailToken = (req, res, done) => {
 					return res.redirect(`/resetpassword?token=${user.verify_token}`)
 				})
 			} else {
-				res.redirect('/verified?token=${user.verify_token}')
+				res.redirect(`/verified?token=${user.verify_token}`)
 			}
 		}).catch((err) => {
 			done(new AuthError(err))
@@ -828,7 +830,7 @@ const cbResetPassword = (req, res, done) => {
 						template: 'forgotpassword',
 						subject: 'Reset password for your account',
 						context: {
-							url: `http://localhost:8080/api/oauth2/verifytoken?token=${savedUser.verify_token}&token_type=reset`,
+							url: `http://192.168.1.36:8080/api/oauth2/verifytoken?token=${savedUser.verify_token}&token_type=reset`,
 							name: savedUser.username
 						}
 					}

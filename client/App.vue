@@ -1,104 +1,46 @@
 <template>
   <div id="app">
-    <v-app id="inspire">
-      <v-navigation-drawer :clipped="$vuetify.breakpoint.lgAndUp" v-model="drawer" fixed app>
-				<v-list dense>
-					<template v-for="item in items">
-						<v-layout v-if="item.heading" :key="item.heading" row align-center>
-							<v-flex xs6>
-								<v-subheader v-if="item.heading">
-									{{ item.heading }}
-								</v-subheader>
-							</v-flex>
-							<v-flex xs6 class="text-xs-center">
-								<a href="#!" class="body-2 black--text">Edit</a>
-							</v-flex>
-						</v-layout>
-						<v-list-group	v-else-if="item.children"	v-model="item.model"
-							:key="item.text"
-							:prepend-icon="item.model ? item.icon : item['icon-alt']"
-							append-icon="">
-							<v-list-tile slot="activator">
-								<v-list-tile-content>
-									<v-list-tile-title>
-										{{ item.text }}
-									</v-list-tile-title>
-								</v-list-tile-content>
-							</v-list-tile>
-							<v-list-tile v-for="(child, i) in item.children" :key="i"	@click="">
-								<v-list-tile-action v-if="child.icon">
-									<v-icon>{{ child.icon }}</v-icon>
-								</v-list-tile-action>
-								<v-list-tile-content>
-									<v-list-tile-title>
-										{{ child.text }}
-									</v-list-tile-title>
-								</v-list-tile-content>
-							</v-list-tile>
-						</v-list-group>
-						<v-list-tile v-else :key="item.text" @click="">
-							<v-list-tile-action>
-								<v-icon>{{ item.icon }}</v-icon>
-							</v-list-tile-action>
-							<v-list-tile-content>
-								<v-list-tile-title>
-									{{ item.text }}
-								</v-list-tile-title>
-							</v-list-tile-content>
-						</v-list-tile>
-					</template>
-				</v-list>
-			</v-navigation-drawer>
+		<template>
+    <v-app id="inspire" class="app">
+			<app-drawer v-model="drawer" class="app--drawer"></app-drawer>
+			<app-toolbar v-model="drawer" v-bind:authDialog.sync="authDialog" class="app--toolbar"></app-toolbar>
 
-			<v-toolbar :clipped-left="$vuetify.breakpoint.lgAndUp" color="blue darken-3" dark	app	fixed>
-				<v-toolbar-title style="width: 300px" class="ml-0 pl-0">
-					<v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
-					<span class="hidden-sm-and-down">YouStudy</span>
-				</v-toolbar-title>
+			<v-content>
+				<!-- Page Header -->
+				<!--page-header v-if="$route.meta.breadcrumb"></page-header-->
+				<v-breadcrumbs class="mt-0 pb-1">
+					<v-icon slot="divider">link</v-icon>
 
-				<v-text-field	flat solo-inverted hide-details prepend-inner-icon="search"	label="Search" class="hidden-sm-and-down"></v-text-field>
+					<v-breadcrumbs-item
+						v-for="item in crumbs"
+						:disabled="item.disabled"
+						:key="item.text"
+						:to="item.to"
+					>
+						{{ item.text }}
+					</v-breadcrumbs-item>
+				</v-breadcrumbs>
 
-				<v-spacer></v-spacer>
+				<transition name='fade' mode='out-in'>
+					<div class="page-wrapper">
+						<router-view class='view'></router-view>
+					</div>
+				</transition>
 
-				<v-btn icon>
-					<v-icon>apps</v-icon>
+				<v-btn fab bottom	right	color="blue" dark	fixed @click.stop="dialog = !dialog" style="bottom: 45px;">
+					<v-icon>add</v-icon>
 				</v-btn>
 
-				<v-btn icon>
-					<v-icon>notifications</v-icon>
-				</v-btn>
-
-				<v-btn icon @click.stop="authDialog = !authDialog">
-					<v-icon v-if="!isAuth">account_circle</v-icon>
-					<v-avatar v-else size="32px" tile>
-						<img src="https://www.freeiconspng.com/uploads/brain-icon-png-12.png" alt="YouStudy">
-					</v-avatar>
-				</v-btn>
-			</v-toolbar>
-
-			<v-breadcrumbs class="mt-5 pb-1">
-				<v-icon slot="divider">link</v-icon>
-
-				<v-breadcrumbs-item
-					v-for="item in crumbs"
-					:disabled="item.disabled"
-					:key="item.text"
-					:to="item.to"
-				>
-					{{ item.text }}
-				</v-breadcrumbs-item>
-			</v-breadcrumbs>
-
-			<transition name='fade' mode='out-in'>
-				<router-view class='view'></router-view>
-			</transition>
+				<!-- App Footer -->
+				<v-footer app>
+					<span class="pl-2">YouStudy.club</span>
+					<v-spacer></v-spacer>
+					<span class="pr-2">&copy; 2018</span>
+				</v-footer>
+			</v-content>
 
 			<Login v-model="authDialog"></Login>
 			<MessageDialog v-model="messageDialog"></MessageDialog>
-
-			<v-btn fab bottom	right	color="blue" dark	fixed @click.stop="dialog = !dialog" style="bottom: 45px;">
-				<v-icon>add</v-icon>
-			</v-btn>
 
 			<v-dialog v-model="dialog" width="800px">
 				<v-card>
@@ -156,31 +98,28 @@
 					</v-card-actions>
 				</v-card>
 			</v-dialog>
-
-      <v-footer app>
-				<span class="pl-2">YouStudy.club</span>
-				<v-spacer></v-spacer>
-				<span class="pr-2">&copy; 2018</span>
-			</v-footer>
     </v-app>
+		</template>
   </div>
 </template>
 
 <script>
-import HeaderBar from './components/HeaderBar.vue'
+import AppDrawer from './components/AppDrawer.vue'
+import AppToolbar from './components/AppToolbar.vue'
 import Login from './views/Login.vue'
 import MessageDialog from './views/MessageDialog.vue'
 
 export default {
 	name: 'App',
 	components: {
-		HeaderBar,
+		AppDrawer,
+		AppToolbar,
 		Login,
 		MessageDialog
 	},
 	data: () => ({
 		dialog: false,
-		drawer: null,
+		drawer: false,
 		authDialog: false,
 		messageDialog: false,
 		crumbs: [
@@ -189,42 +128,11 @@ export default {
 			{ text: "flex-box", disabled: false, to: 'flexBox' },
 			{ text: "css", disabled: true, to: 'css' }
 		],
-		items: [
-			{ icon: 'contacts', text: 'Contacts' },
-			{ icon: 'history', text: 'Frequently contacted' },
-			{ icon: 'content_copy', text: 'Duplicates' },
-			{
-				icon: 'keyboard_arrow_up',
-				'icon-alt': 'keyboard_arrow_down',
-				text: 'Labels',
-				model: true,
-				children: [
-					{ icon: 'add', text: 'Create label' }
-				]
-			},
-			{
-				icon: 'keyboard_arrow_up',
-				'icon-alt': 'keyboard_arrow_down',
-				text: 'More',
-				model: false,
-				children: [
-					{ text: 'Import' },
-					{ text: 'Export' },
-					{ text: 'Print' },
-					{ text: 'Undo changes' },
-					{ text: 'Other contacts' }
-				]
-			},
-			{ icon: 'settings', text: 'Settings' },
-			{ icon: 'chat_bubble', text: 'Send feedback' },
-			{ icon: 'help', text: 'Help' },
-			{ icon: 'phonelink', text: 'App downloads' },
-			{ icon: 'keyboard', text: 'Go to the old version' }
-		],
 	}),
 	created() {
 		if (this.$route.matched.some(record => record.meta.action === 'verified')) {
 			if (this.$route.query.token) {
+
 				this.$store.dispatch('AUTH_REQUEST', { verifytoken: this.$route.query.token })
 				.then(() => {
 					this.messageDialog = true
@@ -235,6 +143,13 @@ export default {
 				})
 			}
 		}
+	},
+	watch: {
+		/*
+		drawer: function() {
+			console.log('App drawer:' + this.drawer)
+		}
+		*/
 	},
 	computed: {
 		isAuth() {
