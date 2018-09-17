@@ -1,7 +1,8 @@
 export default {
 	//*** Authentication getters */
 	isAuth: state => !!state.auth.token,
-	authStatus: state => state.auth.status,
+	apiStatus: state => state.apiStatus,
+	token: state => state.auth.token,
 	user: state => state.user,
 
   // ids of the items that should be currently displayed based on
