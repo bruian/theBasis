@@ -124,17 +124,17 @@ if (!isProd) {
 const clientController = require('./controllers/clients')
 const userController = require('./controllers/users')
 
-//app.use('/api/user', userController.getUser);
 app.use('/api/oauth2', apiOauth.router)
+app.use('/api/user', express.Router().get('/', apiOauth.isAuthenticated, userController.getUser))
+
 /*app.use('/api/clients', express.Router()
 	.post('/', passport.authenticate(['basic'], { session : false }), clientController.postClients)
 	.get('/', passport.authenticate(['basic', 'bearer'], { session : false }), clientController.getClients))
 */
-app.use('/api/clients', express.Router().get('/', apiOauth.isAuthenticated, userController.getUsers))
-app.use('/api/users', express.Router().post('/', userController.postUsers).get('/', userController.getUsers))
-
-app.use('/api/articles', apiArticles)
-app.use('/api/tgmUsers', apiTgmUsers)
+//app.use('/api/clients', express.Router().get('/', apiOauth.isAuthenticated, userController.getUsers))
+//app.use('/api/users', express.Router().post('/', userController.postUsers).get('/', userController.getUsers))
+//app.use('/api/articles', apiArticles)
+//app.use('/api/tgmUsers', apiTgmUsers)
 
 // since this app has no user-specific content, every page is micro-cacheable.
 // if your app involves user-specific content, you need to implement custom

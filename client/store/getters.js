@@ -2,6 +2,7 @@ export default {
 	//*** Authentication getters */
 	isAuth: state => !!state.auth.token,
 	authStatus: state => state.auth.status,
+	user: state => state.user,
 
   // ids of the items that should be currently displayed based on
   // current list type and current pagination

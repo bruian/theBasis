@@ -72,6 +72,55 @@ function fetchTgmItems(ids) {
 }
 
 export default {
+	//*** User actions */
+	[mTypes.USER_REQUEST]: ({ commit, dispatch }, token) => {
+		return new Promise((resolve, reject) => {
+			const axiosData = {
+				url: 'user',
+				method: 'GET',
+				headers: { 'content-type': 'application/x-www-form-urlencoded',
+									 'Authorization': 'Bearer ' + token }
+			}
+
+			commit(mTypes.USER_REQUEST)
+
+			//Request from server
+			//If the token is close to expiration, we will get a new token
+			//else we get the requested data
+			Vue.axios(axiosData)
+			.then((res) => {
+				//debugger
+				const data = res.data
+				if (data.action && data.action === 'refreshed') {
+					storage.setItem('access_token', data.access_token)
+					commit(mTypes.AUTH_SUCCESS, data.access_token)
+
+					//have received a new token and do it again for our data
+					axiosData.headers.Authorization = 'Bearer ' + data.access_token
+					return Vue.axios(axiosData)
+				} else {
+					//if you did not receive an update token, then we will pass the
+					//server response to the next handler
+					commit(mTypes.AUTH_SUCCESS, token)
+
+					return Promise.resolve(res)
+				}
+			})
+			.then((res) => {
+				//debugger
+				const data = res.data
+				commit(mTypes.USER_SUCCESS, data)
+
+				resolve(res)
+			})
+			.catch((err) => {
+				commit(mTypes.API_ERROR, err.response.data)
+
+				//reject(err.response.data)
+			})
+		})
+	},
+
 	//*** Authentication actions */
 	[mTypes.AUTH_REQUEST]: ({ commit, dispatch }, user) => {
 		return new Promise((resolve, reject) => {
@@ -106,15 +155,14 @@ export default {
 				const token = res.data
 
 				storage.setItem('access_token', token.access_token)
-				commit(mTypes.AUTH_SUCCESS, token)
+				commit(mTypes.AUTH_SUCCESS, token.access_token)
 
 				//we have token, then we can log in user
 				//dispatch(mTypes.USER_REQUEST)
 				resolve(res)
 			})
 			.catch((err) => {
-				commit(mTypes.AUTH_ERROR, err.response.data)
-
+				commit(mTypes.API_ERROR, err.response.data)
 				storage.removeItem('access_token')
 				reject(err.response.data)
 			})
@@ -143,11 +191,11 @@ export default {
 				const token = res.data
 
 				storage.setItem('access_token', token.access_token)
-				commit(mTypes.REG_SUCCESS, token)
+				commit(mTypes.REG_SUCCESS, token.access_token)
 				resolve(res)
 			})
 			.catch((err) => {
-				commit(mTypes.REG_ERROR, err.response.data)
+				commit(mTypes.API_ERROR, err.response.data)
 				storage.removeItem('access_token')
 				reject(err.response.data)
 			})
@@ -161,7 +209,7 @@ export default {
 				url: 'oauth2/logout',
 				method: 'GET',
 				headers: { 'content-type': 'application/x-www-form-urlencoded',
-									 'Authorization': 'Bearer ' + state.auth.token.access_token }
+									 'Authorization': 'Bearer ' + state.auth.token }
 			}
 
 			commit(mTypes.AUTH_REQUEST)
@@ -176,7 +224,7 @@ export default {
 				resolve(res)
 			})
 			.catch((err) => {
-				commit(mTypes.AUTH_ERROR, err.response.data)
+				commit(mTypes.API_ERROR, err.response.data)
 
 				storage.removeItem('access_token')
 				reject(err.response.data)

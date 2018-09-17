@@ -74,7 +74,14 @@ const bearerAuth = {
 // prime the store with server-initialized state.
 // the state is determined during SSR and inlined in the page markup.
 if (window.__INITIAL_STATE__) {
-  store.replaceState(window.__INITIAL_STATE__)
+	store.replaceState(window.__INITIAL_STATE__)
+
+	/*
+	const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
+	if (storage) {
+		store.state.auth.token = storage.getItem('access_token') || ''
+	}
+	*/
 }
 
 // wait until router has resolved all async before hooks
@@ -98,14 +105,14 @@ router.onReady(() => {
       return next()
     }
 
-    bar.start()
+		bar.start()
     Promise.all(asyncDataHooks.map(hook => hook({ store, route: to })))
       .then(() => {
         bar.finish()
         next()
       })
       .catch(next)
-  })
+	})
 
   // actually mount to DOM
   app.$mount('#app')

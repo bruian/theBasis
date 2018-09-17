@@ -2,31 +2,49 @@ import mTypes from './mutation-types'
 import Vue from 'vue'
 
 export default {
+	//*** API Status mutation */
+	[mTypes.API_ERROR]: (state, error) => {
+		state.apiStatus = 'error'
+		state.apiError = error
+	},
 	//*** Authentication mutations */
 	[mTypes.AUTH_REQUEST]: (state) => {
-		state.auth.status = 'loading'
+		state.apiStatus = mTypes.AUTH_REQUEST
+		state.apiError = null
 	},
 	[mTypes.AUTH_SUCCESS]: (state, token) => {
-		state.auth.status = 'success'
+		state.apiStatus = mTypes.AUTH_SUCCESS
+		state.apiError = null
+
 		state.auth.token = token
 	},
-	[mTypes.AUTH_ERROR]: (state) => {
-		state.auth.status = 'error'
+	[mTypes.AUTH_LOGOUT]: (state) => {
+		state.apiStatus = mTypes.AUTH_LOGOUT
+		state.apiError = null
+
+		state.auth.token = null
 	},
 	//*** Registration mutations */
 	[mTypes.REG_REQUEST]: (state) => {
-		state.auth.status = 'loading'
+		state.apiStatus = mTypes.REG_REQUEST
+		state.apiError = null
 	},
 	[mTypes.REG_SUCCESS]: (state, token) => {
-		state.auth.status = 'success'
+		state.apiStatus = mTypes.REG_SUCCESS
+		state.apiError = null
+
 		state.auth.token = token
 	},
-	[mTypes.REG_ERROR]: (state) => {
-		state.auth.status = 'error'
+	//*** User mutations */
+	[mTypes.USER_REQUEST]: (state) => {
+		state.apiStatus = mTypes.USER_REQUEST
+		state.apiError = null
 	},
-	[mTypes.AUTH_LOGOUT]: (state) => {
-		state.auth.status = 'logout'
-		state.auth.token = null
+	[mTypes.USER_SUCCESS]: (state, user) => {
+		state.apiStatus = mTypes.USER_SUCCESS
+		state.apiError = null
+
+		state.user = user
 	},
 	//*** Other mutations */
   SET_ACTIVE_TYPE: (state, { type }) => {

@@ -39,6 +39,20 @@
 				</v-footer>
 			</v-content>
 
+			<v-btn small fab dark falt fixed top="top" right="right" class="setting-fab" color="red" @click="settingsDrawer = !settingsDrawer">
+				<v-icon>settings</v-icon>
+			</v-btn>
+			<v-navigation-drawer
+				class="setting-drawer"
+				temporary
+				right
+				v-model="settingsDrawer"
+				hide-overlay
+				fixed
+				>
+				<panel-settings></panel-settings>
+			</v-navigation-drawer>
+
 			<Login v-model="authDialog"></Login>
 			<MessageDialog v-model="messageDialog"></MessageDialog>
 
@@ -104,8 +118,11 @@
 </template>
 
 <script>
+import mTypes from './store/mutation-types'
+
 import AppDrawer from './components/AppDrawer.vue'
 import AppToolbar from './components/AppToolbar.vue'
+import PanelSettings from './components/PanelSettings.vue'
 import Login from './views/Login.vue'
 import MessageDialog from './views/MessageDialog.vue'
 
@@ -115,11 +132,13 @@ export default {
 		AppDrawer,
 		AppToolbar,
 		Login,
-		MessageDialog
+		MessageDialog,
+		PanelSettings
 	},
 	data: () => ({
 		dialog: false,
 		drawer: false,
+		settingsDrawer: false,
 		authDialog: false,
 		messageDialog: false,
 		crumbs: [
@@ -140,6 +159,19 @@ export default {
 				.catch((err) => {
 					//this.message = err.error_description
 					console.log(err.error_description)
+				})
+			}
+		} else {
+			const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
+			if (storage && !storage.getItem('access_token')) {
+				const token = storage.getItem('access_token')
+
+				this.$store.dispatch(mTypes.USER_REQUEST, token)
+				.then(() => {
+					console.log('user get from server')
+				})
+				.catch((err) => {
+					console.log(err)
 				})
 			}
 		}
@@ -168,6 +200,14 @@ export default {
 
 .fade-enter, .fade-leave-active
   opacity 0
+
+.setting-fab
+	top:50%!important;
+	right:0;
+	border-radius:0
+
+.page-wrapper
+	min-height:calc(100vh - 64px - 50px - 81px );
 
 @media (max-width 860px)
   .header .inner

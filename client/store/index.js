@@ -9,6 +9,9 @@ Vue.use(Vuex)
 export function createStore () {
   return new Vuex.Store({
     state: {
+			apiStatus: 'success',										//ok
+			apiError: null, 												//ok
+			user:	undefined,												//ok
       activeType: null,
       itemsPerPage: 20,
       items: {/* [id: number]: Item */},
@@ -25,9 +28,7 @@ export function createStore () {
       client_id: 'webxx090518',
 			client_secret: 'abc123456',
 			auth: {
-				//token: localStorage.getItem('theBasis-token') || '',
-				token: '',
-				status: '', //status API call - loading, success, error
+				token: ''														//ok
 			}
     },
     actions,

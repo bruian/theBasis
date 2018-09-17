@@ -64,7 +64,7 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser((id, done) => {
 	log.debug('🔑  deserializeUser atempt user.id: ${id}')
 
-	UserModel.findOne({ id: id }, (err, user) => {
+	UserModel.findOne({ _id: id }, (err, user) => {
     if (err) return done(new AuthError(err))
     if (!user) return done(null, false)
 
@@ -83,7 +83,7 @@ server.serializeClient((client, done) => {
 server.deserializeClient((id, done) => {
 	log.debug('🔑  deserializeClient atempt client.id: ${id}')
 
-	ClientModel.findOne({ id: id }, (err, client) => {
+	ClientModel.findOne({ _id: id }, (err, client) => {
     if (err) return done(new AuthError(err))
     if (!client) return done(null, false)
 
@@ -657,6 +657,9 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 				done(new AuthError(err))
 			})
 		} else {
+			req.body.userId = jwtPayload.userId
+			req.body.clientId = jwtPayload.clientId
+
 			done(null, jwtPayload)
 		}
 		/*
@@ -1033,7 +1036,8 @@ exports.isAuthenticated = isAuthenticated
  */
 
 /*** Responce action
- * action: reset_password_email_send, error, token, logout
+ * action: reset_password_email_send, error, token, logout, refreshed
+ * token_type: jwt, bearer
  */
 
 /*** Registration new user scenarios

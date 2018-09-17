@@ -11,7 +11,7 @@ import VueAxios from 'vue-axios'
 Vue.use(VueAxios, axios)
 Vue.axios.defaults.baseURL = `http://localhost:8080/api/`
 
-const { app, router, store } = createApp()
+//const { app, router, store } = createApp()
 
 /* This exported function will be called by `bundleRenderer`.
 This is where we perform data-prefetching to determine the

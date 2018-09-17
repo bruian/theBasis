@@ -26,9 +26,28 @@ exports.postUsers = function(req, res) {
 exports.getUsers = function(req, res) {
   // Use the Client model to find all clients
   UserModel.find({ }, function(err, users) {
-    if (err)
-      res.send(err)
+    if (err) res.send(err)
 
     res.json(users)
+  })
+}
+
+exports.getUser = function(req, res) {
+	//debugger
+	UserModel.findOne({ _id: req.body.userId }, (err, user) => {
+    if (err) return res.send(err)
+		if (!user) return res.send({ message: 'User contained in token not found', status: 400, code: 'invalid_verification', name: 'AuthError' })
+
+		const data = Object.assign({}, user._doc)
+		delete data._id
+		delete data.hashedPassword
+		delete data.salt
+		delete data.verify_token
+		delete data.verify_expired
+		delete data.loged
+
+		data.id = user.id
+
+    res.json(data)
   })
 }
