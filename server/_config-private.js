@@ -11,7 +11,8 @@ const environment = {
 
 module.exports = Object.assign({
   mongoose: {
-    uri: 'insert this mongodb connection string'
+		uri: 'insert this mongodb connection string',
+		ssl: true
     // for example uri: 'mongodb://<userDB>:<password>@<server>:<port>/<database>'
     // try use https://mlab.com/
 	},

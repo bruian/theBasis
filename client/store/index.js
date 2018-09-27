@@ -11,7 +11,8 @@ export function createStore () {
     state: {
 			apiStatus: 'success',										//ok
 			apiError: null, 												//ok
-			user:	undefined,												//ok
+			theUser: { username:'', email: '' },		//ok
+			appReady: false,												//ok
       activeType: null,
       itemsPerPage: 20,
       items: {/* [id: number]: Item */},

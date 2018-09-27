@@ -10,7 +10,7 @@
 			<v-card-actions>
 				<v-spacer></v-spacer>
 				<v-btn color="primary"
-					@click="$emit('input', false)"
+					@click=""
 					slot="activator"
 					type="button">
 					OK
@@ -28,6 +28,12 @@ export default {
 		value: {
 			type: Boolean,
 			required: true
+		}
+	},
+	methods: {
+		onSubmit() {
+			this.$store.commit('CHANGE_APP_READY', true)
+			this.$emit('input', false)
 		}
 	}
 }

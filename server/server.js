@@ -168,7 +168,7 @@ function render (req, res) {
   }
 
   const context = {
-    title: 'theBasis', // default title
+    title: config.app.title, // default title
     url: req.url
   }
 

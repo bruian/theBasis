@@ -19,8 +19,8 @@ module.exports = Object.assign({
   apiHost: process.env.APIHOST || 'localhost',
   apiPort: process.env.APIPORT,
   app: {
-    title: 'theBasis',
-    description: 'Simple application',
+    title: 'inTask.me',
+    description: 'Incredible taskmanager',
 	},
 	security: {
 		on: true, //true - authentication сhecking, false - no checking access grants

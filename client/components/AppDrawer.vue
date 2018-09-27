@@ -22,8 +22,8 @@
 			<v-layout pa-2 column fill-height class="lightbox white--text">
 				<v-spacer></v-spacer>
 				<v-flex shrink>
-					<div class="subheading">Bruian Blake</div>
-					<div class="body-1">bruianio@gmail.com</div>
+					<div class="subheading">{{computeUserInfo.username}}</div>
+					<div class="body-1">{{computeUserInfo.email}}</div>
 				</v-flex>
 			</v-layout>
 		</v-img>
@@ -113,19 +113,25 @@ export default {
 		localDrawer: this.value,
 		mini: false,
 		menus: [
-			{ header: 'Apps' },
 			{
 				title: 'Home',
 				group: 'apps',
-				icon: 'dashboard',
+				icon: 'home',
 				name: 'home',
 			},
+			{ header: 'Common' },
 			{
-				title: 'iView',
-				group: 'apps',
-				icon: 'chat_bubble',
+				title: 'Contacts',
+				group: 'Common',
+				icon: 'people',
 				//target: '_blank', переход с открытием нового окна
-				name: 'appGrid',
+				name: 'contacts',
+			},
+			{
+				title: 'Groups',
+				group: 'Common',
+				icon: 'recent_actors',
+				name: 'groups',
 			},
 			{
 				title: 'Widgets',
@@ -168,9 +174,17 @@ export default {
 		}
 	},
 	computed: {
-	  computeGroupActive () {
+	  computeGroupActive() {
       return true
-    },
+		},
+		computeUserInfo() {
+			//debugger
+			if (this.$store.state.theUser) {
+				return this.$store.state.theUser
+			} else {
+				return { username: '', email: '' }
+			}
+		}
 	},
 	methods: {
 		genChildTarget (item, subItem) {

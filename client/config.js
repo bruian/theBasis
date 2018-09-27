@@ -16,7 +16,7 @@ module.exports = Object.assign({
   apiPort: process.env.APIPORT,
   DEBUG_API: true,
   app: {
-    title: 'theBasis',
-    description: 'Simple application',
+    title: 'inTask.me',
+    description: 'Incredible taskmanager',
   }
 }, environment);

@@ -36,6 +36,7 @@ export default context => {
 
     // wait until router has resolved possible async hooks
     router.onReady(() => {
+			//debugger
       const matchedComponents = router.getMatchedComponents()
       // no matched routes
       if (!matchedComponents.length) {
@@ -44,11 +45,19 @@ export default context => {
       // Call fetchData hooks on components matched by the route.
       // A preFetch hook dispatches a store action and returns a Promise,
       // which is resolved when the action is complete and store state has been
-      // updated.
-      Promise.all(matchedComponents.map(({ asyncData }) => asyncData && asyncData({
+			// updated.
+			/*({ asyncData }) => asyncData && asyncData({
         store,
         route: router.currentRoute
-      }))).then(() => {
+      })*/
+      Promise.all(matchedComponents.map(Component => {
+				if (Component.asyncData) {
+					return Component.asyncData({
+						store,
+						route: router.currentRoute
+					})
+				}
+			})).then(() => {
         isDev && console.log(`data pre-fetch: ${Date.now() - s}ms`)
         // After all preFetch hooks are resolved, our store is now
         // filled with the state needed to render the app.

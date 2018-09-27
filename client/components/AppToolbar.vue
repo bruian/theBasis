@@ -9,7 +9,7 @@
 
 		<v-toolbar-title style="width: 300px" class="ml-0 pl-0">
 			<v-toolbar-side-icon @click="$emit('input', !value)" height="36"></v-toolbar-side-icon>
-			<span class="hidden-sm-and-down">YouStudy</span>
+			<span class="hidden-sm-and-down">inTask.me</span>
 		</v-toolbar-title>
 
 		<v-text-field

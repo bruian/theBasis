@@ -44,7 +44,10 @@ export default {
 		state.apiStatus = mTypes.USER_SUCCESS
 		state.apiError = null
 
-		state.user = user
+		state.theUser = user
+	},
+	CHANGE_APP_READY: (state, ready) => {
+		state.appReady = ready
 	},
 	//*** Other mutations */
   SET_ACTIVE_TYPE: (state, { type }) => {

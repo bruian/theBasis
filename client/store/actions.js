@@ -83,7 +83,7 @@ export default {
 			}
 
 			commit(mTypes.USER_REQUEST)
-
+			//debugger
 			//Request from server
 			//If the token is close to expiration, we will get a new token
 			//else we get the requested data
@@ -116,7 +116,7 @@ export default {
 			.catch((err) => {
 				commit(mTypes.API_ERROR, err.response.data)
 
-				//reject(err.response.data)
+				reject(err.response.data)
 			})
 		})
 	},
@@ -158,7 +158,7 @@ export default {
 				commit(mTypes.AUTH_SUCCESS, token.access_token)
 
 				//we have token, then we can log in user
-				//dispatch(mTypes.USER_REQUEST)
+				dispatch(mTypes.USER_REQUEST, token.access_token)
 				resolve(res)
 			})
 			.catch((err) => {

@@ -16,30 +16,14 @@
 					</v-flex>
 				</v-layout>
 				<v-divider light></v-divider>
-				<v-card-actions class="pa-3">
-					Estimate your chaos
-					<v-spacer></v-spacer>
-					<v-icon>star_border</v-icon>
-					<v-icon>star_border</v-icon>
-					<v-icon>star_border</v-icon>
-					<v-icon>star_border</v-icon>
-					<v-icon>star_border</v-icon>
-				</v-card-actions>
 			</v-card>
 		</v-container>
 	<!--/v-content-->
 </template>
 
 <script>
-//import AuthCheck from '../components/AuthCheck.vue'
-import mTypes from '../store/mutation-types.js'
 export default {
-	components: {
-	//	AuthCheck
-	},
-	asyncData ({ store, route }) {
-		return
-	},
+
 }
 </script>
 

@@ -3,26 +3,20 @@
 		<v-container justify-center grid-list-md>
 			<v-card>
 				<v-layout>
-					<v-flex xs6>
+					<v-flex xs12>
 						<v-card-title primary-title>
 							<div>
-								<div class="headline">Meet the incredible task manager - inTask.me</div>
-								<div>Maus.club &copy designed</div>
+								<div class="headline">Contacts</div>
+								<div>Ваши контакты</div>
 								<div>(2018)</div>
 							</div>
 						</v-card-title>
-					</v-flex>
-					<v-flex xs4>
 					</v-flex>
 				</v-layout>
 				<v-divider light></v-divider>
 				<v-card-actions class="pa-3">
 					Estimate your chaos
 					<v-spacer></v-spacer>
-					<v-icon>star_border</v-icon>
-					<v-icon>star_border</v-icon>
-					<v-icon>star_border</v-icon>
-					<v-icon>star_border</v-icon>
 					<v-icon>star_border</v-icon>
 				</v-card-actions>
 			</v-card>
@@ -31,15 +25,11 @@
 </template>
 
 <script>
-//import AuthCheck from '../components/AuthCheck.vue'
-import mTypes from '../store/mutation-types.js'
 export default {
-	components: {
-	//	AuthCheck
-	},
-	asyncData ({ store, route }) {
-		return
-	},
+	beforeRouteEnter (to, from, next) {
+		console.log('beforeRouteEnter: contacts')
+		next()
+	}
 }
 </script>
 

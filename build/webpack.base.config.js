@@ -33,19 +33,22 @@ module.exports = {
             preserveWhitespace: false
           }
         }
-      },
+			},
       {
         test: /\.js$/,
         // loader: 'babel-loader',
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['env']
+            presets: ["env"]
           }
-        },
-        exclude: /node_modules/,
-        include: [require.resolve('bootstrap-vue'),  '/node_modules/bootstrap-vue/', '/node_modules/bootstrap/']
-      },
+				},
+				exclude: /node_modules/,
+				include: [require.resolve('bootstrap-vue'),
+				require.resolve('epic-spinners'),
+				'/node_modules/bootstrap-vue/',
+				'/node_modules/bootstrap/']
+			},
       {
         test: /\.(png|jpg|gif|svg|ttf|woff2|woff|eot)$/,
         loader: 'url-loader',

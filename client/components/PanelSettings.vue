@@ -56,8 +56,8 @@ export default {
 	//name: 'panel-settings',
   data () {
     return {
-      themeColor: 'blue',
-      sideBarOption: 'light',
+      themeColor: '',
+      sideBarOption: '',
       colors: colors
     }
   },
@@ -72,14 +72,14 @@ export default {
             sideManu: 'white'
           }
         },
-        // {
-        //   key: 'lightBlue',
-        //   value: {
-        //     sideNav: 'blue',
-        //     mainNav: 'white',
-        //     sideManu: 'blue lighten-1'
-        //   }
-        // },
+        {
+          key: 'lightBlue',
+          value: {
+            sideNav: 'blue',
+            mainNav: 'white',
+            sideManu: 'blue lighten-1'
+          }
+        },
         {
           key: 'teal',
           value: {
@@ -150,7 +150,7 @@ export default {
   watch: {
     themeColor: {
       handler (val) {
-        this.$vuetify.theme.primary = this.colors[val].base
+				if (val) this.$vuetify.theme.primary = this.colors[val].base
       },
       immediate: true
     },
