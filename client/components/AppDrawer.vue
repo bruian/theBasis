@@ -57,7 +57,7 @@
 							<!--v-list-tile v-else :key="i" :to="genChildTarget(item, subItem)" :href="subItem.href" :disabled="subItem.disabled" :target="subItem.target" ripple="ripple"-->
 							<v-list-tile v-else :key="i" :to="genChildTarget(item, subItem)" :disabled="subItem.disabled" :target="subItem.target" ripple="ripple">
 								<v-list-tile-content>
-									<v-list-tile-title><span>{{ subItem.title }} Sub</span></v-list-tile-title>
+									<v-list-tile-title><span>{{ subItem.title }}</span></v-list-tile-title>
 								</v-list-tile-content>
 								<!-- <v-circle class="white--text pa-0 circle-pill" v-if="subItem.badge" color="red" disabled="disabled">{{ subItem.badge }}</v-circle> -->
 								<v-list-tile-action v-if="subItem.action">
@@ -140,7 +140,7 @@ export default {
 				icon: 'widgets',
 				items: [
 					//{ name: 'social', title: 'Social', component: 'components/social' },
-					{ name: 'statistic', title: 'Statistic', badge: 'new' },
+					//{ name: 'statistic', title: 'Statistic', badge: 'new' },
 				]
 			},
 			{ header: 'UI Elements' },
@@ -160,7 +160,8 @@ export default {
 				group: 'extra',
 				icon: 'list',
 				items: [
-					//{ name: 'UserView', title: 'Login', component: 'UserView' },
+					{ name: 'iView', title: 'iView', component: 'appGrid' },
+					{ name: 'flex-box', title: 'flex-box', component: 'flexBox' }
 				]
 			},
 		],

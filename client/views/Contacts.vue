@@ -1,31 +1,30 @@
 <template>
-	<!--v-content class="pt-0"-->
-		<v-container justify-center grid-list-md>
-			<v-card>
-				<v-layout>
-					<v-flex xs12>
-						<v-card-title primary-title>
-							<div>
-								<div class="headline">Contacts</div>
-								<div>Ваши контакты</div>
-								<div>(2018)</div>
-							</div>
-						</v-card-title>
-					</v-flex>
-				</v-layout>
-				<v-divider light></v-divider>
-				<v-card-actions class="pa-3">
-					Estimate your chaos
-					<v-spacer></v-spacer>
-					<v-icon>star_border</v-icon>
-				</v-card-actions>
-			</v-card>
-		</v-container>
-	<!--/v-content-->
+	<v-container grid-list-xl float>
+		<v-layout row wrap>
+			<v-flex lg4 sm12 xs12>
+				<profile></profile>
+			</v-flex>
+			<v-flex lg4 sm12 xs12>
+				<users-list></users-list>
+			</v-flex>
+			<v-flex lg4 sm12 xs12>
+				<groups-list></groups-list>
+			</v-flex>
+		</v-layout>
+	</v-container>
 </template>
 
 <script>
+import Profile from '../components/widgets/Profile.vue'
+import UsersList from '../components/widgets/list/UsersList.vue'
+import GroupsList from '../components/widgets/list/GroupsList.vue'
+
 export default {
+	components: {
+		Profile,
+		UsersList,
+		GroupsList
+	},
 	beforeRouteEnter (to, from, next) {
 		console.log('beforeRouteEnter: contacts')
 		next()

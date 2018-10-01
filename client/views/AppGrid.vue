@@ -1,5 +1,5 @@
 <template>
-	<v-content class="pt-0">
+	<div>
 		<!--svg viewBox="0 0 120 28">
 			<defs>
 				<path id="wave" d="M 0,10 C 30,10 30,15 60,15 90,15 90,10 120,10 150,10 150,15 180,15 210,15 210,10 240,10 v 28 h -240 z" />
@@ -84,7 +84,7 @@
 				</v-flex>
 			</v-layout>
 		</v-container>
-	</v-content>
+	</div>
 </template>
 
 <script>

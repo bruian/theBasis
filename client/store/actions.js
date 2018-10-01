@@ -162,9 +162,23 @@ export default {
 				resolve(res)
 			})
 			.catch((err) => {
-				commit(mTypes.API_ERROR, err.response.data)
+				let errorData = {}
+				if (err.response) {
+					errorData = err.response.data
+				} else {
+					errorData.name = err.name
+					switch(err.name) {
+						case 'InvalidCharacterError':
+							errorData.error_description = 'Неверный пароль. Используйте для пароля латинские символы.'
+							break
+						default:
+							errorData.error_description = 'Unknown error'
+					}
+				}
+
+				commit(mTypes.API_ERROR, errorData)
 				storage.removeItem('access_token')
-				reject(err.response.data)
+				reject(errorData)
 			})
 		})
 	},
@@ -195,9 +209,23 @@ export default {
 				resolve(res)
 			})
 			.catch((err) => {
-				commit(mTypes.API_ERROR, err.response.data)
+				let errorData = {}
+				if (err.response) {
+					errorData = err.response.data
+				} else {
+					errorData.name = err.name
+					switch(err.name) {
+						case 'InvalidCharacterError':
+							errorData.error_description = 'Неверный пароль. Используйте для пароля латинские символы.'
+							break
+						default:
+							errorData.error_description = 'Unknown error'
+					}
+				}
+
+				commit(mTypes.API_ERROR, errorData)
 				storage.removeItem('access_token')
-				reject(err.response.data)
+				reject(errorData)
 			})
 		})
 	},

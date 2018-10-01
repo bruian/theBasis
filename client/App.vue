@@ -182,9 +182,8 @@ export default {
 		messageDialog: false,
 		crumbs: [
 			{ text: "Home", disabled: false, to: '/' },
-			{ text: "iView", disabled: false, to: 'appGrid' },
-			{ text: "flex-box", disabled: false, to: 'flexBox' },
-			{ text: "css", disabled: true, to: 'css' }
+			{ text: "links", disabled: false, to: 'contacts' },
+			{ text: "tasks", disabled: true, to: 'css' }
 		],
 	}),
 	created() {
