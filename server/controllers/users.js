@@ -1,53 +1,120 @@
 const srvPath = process.cwd() + '/server/'
-const UserModel = require(srvPath + 'model/user')
 const log = require(srvPath + 'log')(module)
 
-// Create endpoint /api/client for POST
-exports.postUsers = function(req, res) {
-	// Create a new instance of the User model
-	log.debug(`🔑 postUsers with req: ${req}`)
-  var user = new UserModel()
+import pg from '../db/postgres'
 
-  // Set the client properties that came from the POST data
-  user.username = req.body.username
-  user.password = req.body.password
+function _create(condition, returning = false) {
+	return pg.pool.connect()
+	.then((client) => {
+		const retstring = returning ? 'RETURNING *' : '',
+					parametres = pg.prepareParametres(condition)
 
-  // Save the client and check for errors
-  user.save(function(err) {
-    if (err)
-      res.send(err)
+		return client.query(`INSERT INTO users (${parametres.fields}) VALUES (${parametres.anchors}) ${retstring}`, parametres.values)
+		.then((res) => {
+			client.release()
 
-		log.debug(`🔑 save user`)
-    res.json({ message: 'User added to the locker!', data: user })
-  })
+			return Promise.resolve(res)
+		})
+		.catch((err) => {
+			client.release()
+
+			throw err
+		})
+	})
+	.catch((err) => {
+		throw err
+	})
 }
 
-// Create endpoint /api/clients for GET
-exports.getUsers = function(req, res) {
-  // Use the Client model to find all clients
-  UserModel.find({ }, function(err, users) {
-    if (err) res.send(err)
+function _read(condition) {
+	return pg.pool.connect()
+	.then((client) => {
+		const parametres = pg.prepareParametres(condition)
 
-    res.json(users)
-  })
+		return client.query(`SELECT * FROM users WHERE ${parametres.condition}`, parametres.values)
+		.then((res) => {
+			client.release()
+
+			return Promise.resolve(res)
+		})
+		.catch((err) => {
+			client.release()
+
+			throw err
+		})
+	})
+	.catch((err) => {
+		throw err
+	})
 }
 
-exports.getUser = function(req, res) {
-	//debugger
-	UserModel.findOne({ _id: req.body.userId }, (err, user) => {
-    if (err) return res.send(err)
-		if (!user) return res.send({ message: 'User contained in token not found', status: 400, code: 'invalid_verification', name: 'AuthError' })
+function _update(condition, data, returning = false) {
+	return pg.pool.connect()
+	.then((client) => {
+		const retstring = returning ? 'RETURNING *' : '',
+					parametres = pg.prepareParametres(condition, data)
 
-		const data = Object.assign({}, user._doc)
-		delete data._id
-		delete data.hashedPassword
+		return client.query(`UPDATE users SET ${parametres.datastring} WHERE ${parametres.condition} ${retstring}`, parametres.values)
+		.then((res) => {
+			client.release()
+
+			return Promise.resolve(res)
+		})
+		.catch((err) => {
+			client.release()
+
+			throw err
+		})
+	})
+	.catch((err) => {
+		throw err
+	})
+}
+
+function _delete(condition) {
+	return pg.pool.connect()
+	.then((client) => {
+		const parametres = pg.prepareParametres(condition)
+
+		return client.query(`DELETE FROM users WHERE ${parametres.condition}`, parametres.values)
+		.then((res) => {
+			client.release()
+
+			return Promise.resolve(res)
+		})
+		.catch((err) => {
+			client.release()
+
+			throw err
+		})
+	})
+	.catch((err) => {
+		throw err
+	})
+}
+
+function getUser(req, res) {
+	_read({ id: req.body.userId })
+	.then((result) => {
+		if (result.rowCount === 0) return res.send({ message: 'User contained in token not found', status: 400, code: 'invalid_verification', name: 'AuthError' })
+
+		const data = Object.assign({}, result.rows[0])
+		delete data.hashedpassword
 		delete data.salt
 		delete data.verify_token
 		delete data.verify_expired
-		delete data.loged
 
-		data.id = user.id
+    return res.json(data)
+	})
+	.catch((err) => {
+		return res.send(err)
+	})
+}
 
-    res.json(data)
-  })
+module.exports = {
+	_create,
+	_read,
+	_update,
+	_delete,
+	getUser
 }

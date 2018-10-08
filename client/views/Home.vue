@@ -1,7 +1,7 @@
 <template>
 	<div id="Home">
 		<section>
-			<v-parallax src="./public/hero.jpeg" height="600">
+			<v-parallax src="./public/screen1_1920_1080.jpg" height="600">
 				<v-layout
 					column
 					align-center
@@ -90,7 +90,7 @@
 		</section>
 
 		<section>
-			<v-parallax src="./public/section.jpeg" height="380">
+			<v-parallax src="./public/screen3_1600_900.jpg" height="430">
 				<v-layout column align-center justify-center>
 					<div class="headline white--text mb-3 text-xs-center">Web development has never been easier</div>
 					<em>Kick-start your application today</em>

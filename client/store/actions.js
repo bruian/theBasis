@@ -76,7 +76,7 @@ export default {
 	[mTypes.USER_REQUEST]: ({ commit, dispatch }, token) => {
 		return new Promise((resolve, reject) => {
 			const axiosData = {
-				url: 'user',
+				url: 'auth-user',
 				method: 'GET',
 				headers: { 'content-type': 'application/x-www-form-urlencoded',
 									 'Authorization': 'Bearer ' + token }

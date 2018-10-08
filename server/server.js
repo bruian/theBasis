@@ -12,15 +12,15 @@ import { createBundleRenderer } from 'vue-server-renderer'
 import session        from 'express-session'
 import passport       from 'passport'
 import bodyParser     from 'body-parser'
-//import cookieParser   from 'cookie-parser'
 import methodOverride from 'method-override'
 
-import config from './config'
+import config 			 from './config'
 import configPrivate from './config-private'
 
-import apiOauth    from './apis/api-oauth'
-import apiArticles from './apis/api-articles'
-import apiTgmUsers from './apis/api-tgmUsers'
+import apiOauth      from './apis/api-oauth'
+import apiUsers			 from './apis/api-users'
+import pg 					 from './db/postgres'
+import mg						 from './db/mongoose'
 
 const log            = require('./log')(module);
 const resolve = file => path.resolve(__dirname, file)
@@ -121,11 +121,10 @@ if (!isProd) {
   })
 }
 
-const clientController = require('./controllers/clients')
-const userController = require('./controllers/users')
+const UsersController = require('./controllers/users')
 
 app.use('/api/oauth2', apiOauth.router)
-app.use('/api/user', express.Router().get('/', apiOauth.isAuthenticated, userController.getUser))
+app.use('/api/auth-user', express.Router().get('/', apiOauth.isAuthenticated, UsersController.getUser))
 
 /*app.use('/api/clients', express.Router()
 	.post('/', passport.authenticate(['basic'], { session : false }), clientController.postClients)

@@ -192,6 +192,9 @@ export default {
 				this.$store.dispatch('AUTH_REQUEST', { verifytoken: this.$route.query.token })
 				.then(() => {
 					this.messageDialog = true
+					return this.$router.push({ name: 'home' },
+						() => { this.$store.commit('CHANGE_APP_READY', true) },
+						() => {	this.$store.commit('CHANGE_APP_READY', true) })
 				})
 				.catch((err) => {
 					//this.message = err.error_description

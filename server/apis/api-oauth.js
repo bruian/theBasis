@@ -12,25 +12,26 @@ const BasicStrategy 		= require('passport-http').BasicStrategy
 const BearerStrategy    = require('passport-http-bearer').Strategy
 const ClientPasswordStrategy = require('passport-oauth2-client-password').Strategy
 
-import UserModel         	 from '../model/user'
-import ClientModel       	 from '../model/client'
-import GrantCodeModel			 from '../model/grantCode'
-import AccessTokenModel  	 from '../model/accessToken'
-import RefreshTokenModel 	 from '../model/refreshToken'
-//import BlacklistTokenModel from '../model/blacklistToken'
+//import UserModel         	 from '../model/user'
+//import ClientModel       	 from '../model/client'
+//import GrantCodeModel			 from '../model/grantCode'
+import AccessTokenModel  	  from '../model/accessToken'
+import RefreshTokenModel 	  from '../model/refreshToken'
+
+import UsersController	 		from '../controllers/users'
+import ClientsController 		from '../controllers/clients'
+import GrantCodesController from '../controllers/grant-codes'
 
 import jwt							from 'jsonwebtoken'
 import passportJWT			from 'passport-jwt'
 import crypto           from 'crypto'
 import oauth2orize      from 'oauth2orize'
 import { AuthError }		from '../errors'
-//import { MongoCache } 	from '../db/cachedb'
 import { BlackListCache } 	from '../db/cachedb'
 
 //*** Create OAuth 2.0 server */
 const router = express.Router()
 const server = oauth2orize.createServer()
-//const TokenError = oauth2orize.TokenError
 const accessExpiresIn = { expires_in: config.security.accessTokenExpires }
 const jwtExpiresIn = { expiresIn: config.security.jwtTokenExpires }
 const JWTStrategy = passportJWT.Strategy
@@ -64,13 +65,16 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser((id, done) => {
 	log.debug('🔑  deserializeUser atempt user.id: ${id}')
 
-	UserModel.findOne({ _id: id }, (err, user) => {
-    if (err) return done(new AuthError(err))
-    if (!user) return done(null, false)
+	UsersController._read({ 'id': id })
+	.then((result) => {
+		if (result.rowCount === 0) return done(null, false)
 
-    log.debug('🔑  deserializeUser success user.id: ${id}, user.username: ${user.username}')
-    return done(null, user)
-  })
+    log.debug('🔑  deserializeUser success user.id: ${result.rows[0].id}, user.username: ${result.rows[0].username}')
+    return done(null, result.rows[0])
+	})
+	.catch((err) => {
+		return done(new AuthError(err))
+	})
 })
 
 //*** Serialize and deserialize client session */
@@ -83,13 +87,16 @@ server.serializeClient((client, done) => {
 server.deserializeClient((id, done) => {
 	log.debug('🔑  deserializeClient atempt client.id: ${id}')
 
-	ClientModel.findOne({ _id: id }, (err, client) => {
-    if (err) return done(new AuthError(err))
-    if (!client) return done(null, false)
+	ClientsController._read({ 'id': id })
+	.then((result) => {
+		if (result.rowCount === 0) return done(null, false)
 
-    log.debug('🔑  deserializeClient success client.id: ${id}, client.name: ${client.name}')
-    return done(null, client)
-  })
+		log.debug('🔑  deserializeClient success client.id: ${id}, result.rows[0].name: ${result.rows[0].name}')
+    return done(null, result.rows[0])
+	})
+	.catch((err) => {
+		return done(new AuthError(err))
+	})
 })
 
 async function createToken(data, tokenType) {
@@ -147,19 +154,21 @@ server.grant(oauth2orize.grant.code((client, redirectUri, user, ares, done) => {
 	//const token = createToken({ sub: user.id, expires_in: config.security.codeTokenExpires })
 	const codeValue = crypto.randomBytes(16).toString('hex')
 
-	const code = new GrantCodeModel({
+	GrantCodesController._create({
 		value: codeValue,
 		redirectUri: redirectUri,
 		userId: user.id,
 		clientId: client.id,
 		scope: client.scope
-	})
-
-	code.save((err) => {
-		if (err) return done(new AuthError(err))
+	}, true)
+	.then((result) => {
+		if (result.rowCount === 0) return done(null, false)
 
 		log.debug(`🔑  grant.code.value: ${codeValue} success for client: ${client.id}=${client.name} and user: ${user.id}=${user.username}`)
 		done(null, codeValue)
+	})
+	.catch((err) => {
+		return done(new AuthError(err))
 	})
 }))
 
@@ -201,35 +210,43 @@ server.grant(oauth2orize.grant.token((client, user, ares, done) => {
 server.exchange(oauth2orize.exchange.code((client, code, redirectUri, done) => {
 	log.debug(`🔑  exchange.code atempt for client: ${client.id}=${client.name} and code: ${code}`)
 
-	GrantCodeModel.findOne({ value: code }, (err, authCode) => {
-		if (err) return done(new AuthError(err))
-		if (authCode === undefined) return done(null, false)
-		if (client.id.toString() !== authCode.clientId) return done(null, false)
-		if (redirectUri !== authCode.redirectUri) return done(null, false)
+	GrantCodesController._read({ value: code, client_id: client.id })
+	.then((result) => {
+		if (result.rowCount === 0) {
+			done(null, false)
+			return Promise.reject()
+		}
+
+		if (result.rows[0].redirecturi !== redirectUri) {
+			done(null, false)
+			return Promise.reject()
+		}
 
 		log.debug(`🔑  exchange.code found for client: ${client.id}=${client.name} and code: ${code}`)
 
-		authCode.remove((err) => {
-			if (err) return done(new AuthError(err))
+		return GrantCodesController._delete({ value: code, client_id: client.id })
+	})
+	.then((result) => {
+		createToken({
+			userId: authCode.userId,
+			clientId: authCode.clientId,
+			scope: '*'
+		}, 'both')
+		.then((tokens) => {
+			log.debug(`🔑  exchange.code token: ${tokens} created for client: ${client.id}=${client.name} and code: ${code}`)
 
-			createToken({
-				userId: authCode.userId,
-				clientId: authCode.clientId,
-				scope: '*'
-			}, 'both')
-			.then((tokens) => {
-				log.debug(`🔑  exchange.code token: ${tokens} created for client: ${client.id}=${client.name} and code: ${code}`)
-
-				if (tokens.length === 1) {
-					return done(null, tokens[0].value, null, accessExpiresIn)
-				}
-				if (tokens.length === 2) {
-					return done(null, tokens[0].value, tokens[1].value, accessExpiresIn)
-				}
-			}).catch((err) => {
-				done(new AuthError(err))
-			})
+			if (tokens.length === 1) {
+				return done(null, tokens[0].value, null, accessExpiresIn)
+			}
+			if (tokens.length === 2) {
+				return done(null, tokens[0].value, tokens[1].value, accessExpiresIn)
+			}
+		}).catch((err) => {
+			return done(new AuthError(err))
 		})
+	}, (rej) => {})
+	.catch((err) => {
+		return done(new AuthError(err))
 	})
 }))
 
@@ -243,14 +260,16 @@ server.exchange(oauth2orize.exchange.code((client, code, redirectUri, done) => {
 server.exchange(oauth2orize.exchange.password((client, username, password, scope, done) => {
 	log.debug(`🔑  exchange.password for client: ${client.id}, user: ${username} and password: ${password}`)
 
-	UserModel.findOne({ email: username })
-	.then((user) => {
-		if (!user) {
+	UsersController._read({ email: username })
+	.then((result) => {
+		if (result.rowCount === 0) {
 			done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
 			return Promise.reject()
 		}
 
-		if (!user.checkPassword(password)) {
+		const user = result.rows[0]
+		const hashedpassword = crypto.pbkdf2Sync(password, user.salt, 10000, 512, 'sha512').toString('hex')
+		if (hashedpassword !== user.hashedpassword) {
 			done(new AuthError('Wrong password', 'invalid_verification'))
 			return Promise.reject()
 		}
@@ -395,13 +414,21 @@ server.exchange(oauth2orize.exchange.refreshToken((client, refreshToken, scope, 
 const cbLocalStrategy = (username, password, done) => {
 	log.debug(`🔑  cbLocalStrategy for username: ${username} and password: ${password}`)
 
-	UserModel.findOne({ email: username }, (err, user) => {
-		if (err) return done(new AuthError(err))
-		if (!user) return done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
-		if (!user.checkPassword(password)) return done(new AuthError('Wrong password', 'invalid_verification'))
+	UsersController._read({ email: username })
+	.then((result) => {
+		if (result.rowCount === 0) return done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
+
+		const user = result.rows[0]
+		const hashedpassword = crypto.pbkdf2Sync(password, user.salt, 10000, 512, 'sha512').toString('hex')
+		if (hashedpassword !== user.hashedpassword) {
+			return done(new AuthError('Wrong password', 'invalid_verification'))
+		}
 
 		log.debug(`in cbLocalStrategy for username: ${username} and password: ${password} -> done`)
 		return done(null, user)
+	})
+	.catch((err) => {
+		return done(new AuthError(err))
 	})
 }
 
@@ -419,29 +446,39 @@ const cbLocalStrategy = (username, password, done) => {
 const cbBasicStrategy = (username, password, done) => {
 	log.debug(`🔑  cbBasicStrategy for username: ${username} and password: ${password}`)
 
-	UserModel.findOne({ email: username }, (err, user) => {
-		if (err) return done(new AuthError(err))
-		if (!user) return done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
-		if (!user.checkPassword(password)) return done(new AuthError('Wrong password', 'invalid_verification'))
+	UsersController._read({ email: username })
+	.then((result) => {
+		if (result.rowCount === 0) return done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
 
-		log.debug(`in cbBasicStrategy for username: ${username} and password: ${password} -> done`)
+		const user = result.rows[0]
+		const hashedpassword = crypto.pbkdf2Sync(password, user.salt, 10000, 512, 'sha512').toString('hex')
+		if (hashedpassword !== user.hashedpassword) {
+			return done(new AuthError('Wrong password', 'invalid_verification'))
+		}
+
+		log.debug(`in cbLocalStrategy for username: ${username} and password: ${password} -> done`)
 		return done(null, user)
+	})
+	.catch((err) => {
+		return done(new AuthError(err))
 	})
 }
 
 const cbClientBasicStrategy = (req, username, password, done) => {
 	log.debug(`🔑  cbClientBasicStrategy for user: ${username} and password: ${password}`)
 
-	UserModel.findOne({ email: username })
-	.then((user) => {
+	UsersController._read({ email: username })
+	.then((result) => {
 		log.debug(`in cbClientBasicStrategy for user: ${username} and password: ${password} -> done`)
 
-		if (!user) {
-			done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_data'))
+		if (result.rowCount === 0) {
+			done(new AuthError(`A user with this username ${username} does not exist`, 'invalid_verification'))
 			return Promise.reject()
 		}
 
-		if (!user.checkPassword(password)) {
+		const user = result.rows[0]
+		const hashedpassword = crypto.pbkdf2Sync(password, user.salt, 10000, 512, 'sha512').toString('hex')
+		if (hashedpassword !== user.hashedpassword) {
 			done(new AuthError('Wrong password', 'invalid_verification'))
 			return Promise.reject()
 		}
@@ -451,18 +488,23 @@ const cbClientBasicStrategy = (req, username, password, done) => {
 		if (!req.body.password) req.body.password = password
 
 		const client_name = (req.body.client_name) ? req.body.client_name : 'WebBrowser'
-		return ClientModel.findOne({ userId: user.id, name: client_name })
+		return ClientsController._read({ user_id: user.id, name: client_name })
 		//return Promise.resolve(user)
 	})
-	.then((client) => {
-		if (!client) return done(new AuthError('A client not found', 'invalid_data'))
-		if (!client.checkSecret(password)) return done(new AuthError('A client wrong password', 'invalid_verification'))
+	.then((result) => {
+		if (result.rowCount === 0) return done(new AuthError('A client not found', 'invalid_data'))
+
+		const client = result.rows[0]
+		const hashedpassword = crypto.pbkdf2Sync(password, client.salt, 10000, 512, 'sha512').toString('hex')
+		if (hashedpassword !== client.hashedsecret) {
+			return done(new AuthError('A client wrong password', 'invalid_verification'))
+		}
 
 		log.debug(`in cbClientBasicStrategy for client.name: ${client.name} -> done`)
-		done(null, client)
+		return done(null, client)
 	}, (rej) => {})
 	.catch((err) => {
-		done(new AuthError(err))
+		return done(new AuthError(err))
 	})
 }
 
@@ -476,14 +518,22 @@ const cbClientBasicStrategy = (req, username, password, done) => {
 const cbClientPasswordStrategy = (clientId, clientSecret, done) => {
 	log.debug(`🔑  cbClientPasswordStrategy for clientId: ${clientId} and clientSecret: ${clientSecret}`)
 
-  ClientModel.findOne({ id: clientId }, (err, client) => {
-    if (err) return done(new AuthError(err))
-    if (!client) return done(new AuthError('A client not found', 'invalid_data'))
-    if (!client.checkSecret(clientSecret)) return done(new AuthError('A client wrong password', 'invalid_verification'))
+	ClientsController._read({ id: clientId })
+	.then((result) => {
+		if (result.rowCount === 0) return done(new AuthError('A client not found', 'invalid_data'))
+
+		const client = result.rows[0]
+		const hashedpassword = crypto.pbkdf2Sync(password, client.salt, 10000, 512, 'sha512').toString('hex')
+		if (hashedpassword !== client.hashedsecret) {
+			return done(new AuthError('A client wrong password', 'invalid_verification'))
+		}
 
     log.debug(`🔑  in cbClientPasswordStrategy for clientId: ${clientId} and clientSecret: ${clientSecret} -> done`)
-    done(null, client)
-  })
+    return done(null, client)
+	})
+	.catch((err) => {
+		return done(new AuthError(err))
+	})
 }
 
 /**
@@ -521,24 +571,30 @@ const cbBearerStrategy = (bearerToken, done) => {
 const cbEmailBearerStrategy = (bearerToken, done) => {
 	log.debug(`🔑  cbEmailBearerStrategy for bearerToken: ${bearerToken}`)
 
-	UserModel.findOne({ verify_token: bearerToken }, (err, user) => {
-		if (err) return done(new AuthError(err))
-		if (!user) return done(new AuthError(`A token does not exist in db`, 'invalid_verification'))
+	UsersController._read({ verify_token: bearerToken })
+	.then((result) => {
+		if (result.rowCount === 0) return done(new AuthError(`A token does not exist in db`, 'invalid_verification'))
 
 		//TODO: user save and verify_token=null, verify=true
-		done(null, user)
+		return done(null, result.rows[0])
+	})
+	.catch((err) => {
+		return done(new AuthError(err))
 	})
 }
 
 const cbVerifyToken = (req, res, done) => {
 	const client_name = (req.body.client_name) ? req.body.client_name : 'WebBrowser'
 
-	ClientModel.findOne({ name: client_name, userId: req.user.id }, (err, foundClient) => {
-		if (err) return done(new AuthError(err))
+	ClientsController._read({ name: client_name, user_id: req.user.id })
+	.then((result) => {
+		if (result.rowCount === 0) return done(new AuthError('A client not found', 'invalid_data'))
+
+		const client = result.rows[0]
 
 		const data = {
 			userId: req.user.id,
-			clientId: foundClient.id,
+			clientId: client.id,
 			scope: '*'
 		}
 
@@ -559,9 +615,13 @@ const cbVerifyToken = (req, res, done) => {
 			res.setHeader('Cache-Control', 'no-store')
 			res.setHeader('Pragma', 'no-cache')
 			res.end(json)
-		}, (reject)=>{}).catch((err) => {
+		}, (rej)=>{})
+		.catch((err) => {
 			return res.status(401).send({ action: 'error', name: err.name, message: err.message })
 		})
+	})
+	.catch((err) => {
+		return done(new AuthError(err))
 	})
 }
 
@@ -579,21 +639,27 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 	to the worker, if the verification period has expired, then withdraw the current token and log out
 	the user */
 	if(jwtPayload.verify_expired) {
-		UserModel.findOne({ _id: jwtPayload.userId })
-		.then((user) => {
-			if (!user) done(new AuthError(`User with this id (${jwtPayload.userId}) not exists`, 'invalid_data'))
+		UsersController._read({ id: jwtPayload.userId })
+		.then((result) => {
+			if (result.rowCount === 0) return done(new AuthError(`User with this id (${jwtPayload.userId}) not exists`, 'invalid_data'))
 
+			const user = result.rows[0]
 			if (!user.verified) {
 				if (user.verify_expired > new Date()) {
-					done(null, jwtPayload)
+					req.body.userId = jwtPayload.userId
+					req.body.clientId = jwtPayload.clientId
+
+					return done(null, jwtPayload)
 				} else {
 					//log out user
-					user.loged = false
-					user.save((err) => {
-						if (err) throw new AuthError(err)
 
+					UsersController._update({ id: jwtPayload.userId }, { loged: false })
+					.then(() => {
 						req.logout()
-						done(AuthError('Session expired', 'session_expired'))
+						return done(new AuthError('Session expired', 'session_expired'))
+					})
+					.catch((err) => {
+						throw err
 					})
 				}
 			} else {
@@ -610,13 +676,13 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 					params.token_type = 'jwt'
 					params.action = 'refreshed'
 
-					done(null, tokens[0].value, params)
+					return done(null, tokens[0].value, params)
 				}).catch((err) => {
-					done(new AuthError(err))
+					throw err
 				})
 			}
 		}).catch((err) => {
-			done(new AuthError(err))
+			return done(new AuthError(err))
 		})
 		/*
 		*Получаем пользователя по его id
@@ -638,7 +704,7 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 		const expirationTime = new Date(jwtPayload.expiration) - Date.now()
 		if (expirationTime <= 0) {
 			//TODO log out
-			done(AuthError('Session expired', 'session_expired'))
+			return done(new AuthError('Session expired', 'session_expired'))
 		} else if (expirationTime <= (config.security.jwtTokenExpires *1000 * config.security.boundaryBeginExpires)) {
 			const data = {
 				userId: jwtPayload.userId,
@@ -652,15 +718,16 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 				params.token_type = 'jwt'
 				params.action = 'refreshed'
 
-				done(null, tokens[0].value, params)
-			}).catch((err) => {
-				done(new AuthError(err))
+				return done(null, tokens[0].value, params)
+			})
+			.catch((err) => {
+				return done(new AuthError(err))
 			})
 		} else {
 			req.body.userId = jwtPayload.userId
 			req.body.clientId = jwtPayload.clientId
 
-			done(null, jwtPayload)
+			return done(null, jwtPayload)
 		}
 		/*
 		Проверяем граничное значение времени для обновления токена
@@ -676,34 +743,35 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 const cbVerifyMailToken = (req, res, done) => {
 	log.debug(`🔑  cbVerifyToken for body: ${req.body}`)
 	//debugger
-	if (!req.query.token) done(null)
+	if (!req.query.token) return done(null)
 
-	UserModel.findOne({ verify_token: req.query.token, verify_expired: { $gt: Date.now() }})
-	.then((user) => {
-		if (!user) {
+	UsersController._read({ verify_token: req.query.token, verify_expired: { '$gt': new Date() }})
+	.then((result) => {
+		if (result.rowCount === 0) {
 			done(new AuthError(`User with this token (${req.body.token}) not exists`, 'invalid_data'))
 			return Promise.reject()
 		}
 
-		user.verified = true
-		//user.verify_token = null
-		return user.save().then(() => {
+		return UsersController._update({ id: result.rows[0].id }, { verified: true }, true)
+		.then((result) => {
+			const user = result.rows[0]
 			if((req.query.token_type) && (req.query.token_type === 'reset')) {
 				return req.login(user, (err) => {
-					if (err) throw new AuthError(err)
+					if (err) throw err
 					//req.body.grant_type = 'password'
 					return res.redirect(`/resetpassword?token=${user.verify_token}`)
 				})
 			} else {
-				res.redirect(`/verified?token=${user.verify_token}`)
+				return res.redirect(`/verified?token=${user.verify_token}`)
 			}
 		}).catch((err) => {
 			done(new AuthError(err))
 			return Promise.reject()
 		})
-	}).then((resolve)=>{}, (reject)=>{})
+	})
+	.then((resolve)=>{}, (reject)=>{})
 	.catch((err) => {
-		done(new AuthError(err))
+		return done(new AuthError(err))
 	})
 }
 
@@ -723,6 +791,41 @@ const cbRegistrationStrategy = function (req, res, done) {
 		if (!req.body.email) throw new AuthError('Missing required parameter: e-mail', 'invalid_request')
 		if (!utils.validateEmail(req.body.email)) throw new AuthError('Wrong parameter: e-mail', 'invalid_data')
 
+		return UsersController._read({ 'email': req.body.email })
+		.then((result) => {
+			if (result.rowCount) {
+				done(new AuthError(`User with this email (${req.body.email}) already exists`, 'invalid_data'))
+				return Promise.reject()
+			}
+
+			const salt = crypto.randomBytes(128).toString('hex')
+			let username = req.body.username.match(/^([^@]*)@/)[1]
+
+			const user = {
+				'username': (username === null) ? req.body.username : username,
+				'email': req.body.email,
+				'hashedpassword': crypto.pbkdf2Sync(req.body.password, salt, 10000, 512, 'sha512').toString('hex'),
+				'salt': salt,
+				'created': new Date(),
+			}
+
+			if (config.security.sendEmailVerification) {
+				user.verified = false
+				user.verify_token = utils.randomToken()
+				user.verify_expired = new Date(calculateExpirationDate(config.security.jwtTokenExpires))
+			} else {
+				user.verified = true
+				user.verify_token = ''
+				user.verify_expired = 0
+			}
+
+			return UsersController._create(user, true)
+		})
+		.then(onSaveUser, (rej) => {})
+		.catch((err) => {
+			done(new AuthError(err))
+		})
+
 		function onCreateClient(newUser, newClient) {
 			return req.login(newUser, (err) => {
 				if (err) throw new AuthError(err)
@@ -732,40 +835,24 @@ const cbRegistrationStrategy = function (req, res, done) {
 			})
 		}
 
-		function onSaveUser(newUser) {
-			return ClientModel.create({ name: req.body.client_name, secret: req.body.password, userId: newUser.id })
-				.then(function (newClient) {
-					return onCreateClient(newUser, newClient)
-				})
+		function onSaveUser(resultUser) {
+			const newUser = resultUser.rows[0]
+			const salt = crypto.randomBytes(128).toString('hex')
+
+			const client = {
+				'name': req.body.client_name,
+				'hashedSecret': crypto.pbkdf2Sync(req.body.password, salt, 10000, 512, 'sha512').toString('hex'),
+				'salt': salt,
+				'user_id': newUser.id
+			}
+
+			return ClientsController._create(client, true)
+			.then((resultClient) => {
+				const newClient = resultClient.rows[0]
+
+				return onCreateClient(newUser, newClient)
+			})
 		}
-
-		UserModel.findOne({ email: req.body.email })
-		.then((user) => {
-			if (user) {
-				done(new AuthError(`User with this email (${req.body.email}) already exists`, 'invalid_data'))
-				return Promise.reject()
-			}
-
-			const newUser = new UserModel()
-			newUser.username = req.body.username
-			newUser.password = req.body.password
-			newUser.email = req.body.email
-			if (config.security.sendEmailVerification) {
-				newUser.verified = false
-				newUser.verify_token = utils.randomToken()
-				newUser.verify_expired = new Date(calculateExpirationDate(config.security.jwtTokenExpires))
-			} else {
-				newUser.verified = true
-				newUser.verify_token = null
-			}
-
-			req.body.username = req.body.email
-			return newUser.save()
-		})
-		.then(onSaveUser, (rej) => {})
-		.catch((err) => {
-			done(new AuthError(err))
-		})
 	} catch (err) {
 		if (err.name === 'AuthError') {
 			return done(err)
@@ -789,11 +876,13 @@ const cbResetPassword = (req, res, done) => {
 			if (!req.body.password) throw new AuthError('Missing body param: password', 'invalid_request')
 
 			const client_name = (req.body.client_name) ? req.body.client_name : 'WebBrowser'
-			findQuery = { _id: req.user.userId }
+
+			findQuery = { id: req.user.userId }
 
 			onUpdatedClient = (user, client) => {
 				return req.login(user, (err) => {
 					if (err) throw new AuthError(err)
+
 					req.body.grant_type = 'password'
 					req.body.scope = '*'
 					req.body.client_name = client_name
@@ -803,15 +892,26 @@ const cbResetPassword = (req, res, done) => {
 				})
 			}
 
-			onSaveUser = (savedUser) => {
-				return ClientModel.findOne({ name: client_name, userId: savedUser.id })
-					.then((foundClient) => {
-						foundClient.secret = req.body.password
-						return foundClient.save()
-					})
-					.then((savedClient) => {
-						return onUpdatedClient(savedUser, savedClient)
-					})
+			onSaveUser = (result) => {
+				const updatedUser = result.rows[0]
+
+				return ClientsController._read({ name: client_name, user_id: updatedUser.id })
+				.then((result) => {
+					const foundClient = result.rows[0]
+					const salt = crypto.randomBytes(128).toString('hex')
+
+					const data = {
+						'hashedSecret': crypto.pbkdf2Sync(req.body.password, salt, 10000, 512, 'sha512').toString('hex'),
+						'salt': salt
+					}
+
+					return ClientsController._update({ id: foundClient.id }, data, true)
+				})
+				.then((result) => {
+					const updatedClient = result.rows[0]
+
+					return onUpdatedClient(updatedUser, updatedClient)
+				})
 			}
 
 			userMutation = (user) => {
@@ -825,16 +925,18 @@ const cbResetPassword = (req, res, done) => {
 
 			findQuery = { email: req.headers.email }
 
-			onSaveUser = (savedUser) => {
+			onSaveUser = (result) => {
+				const updatedUser = result.rows[0]
+
 				if (config.security.sendEmailVerification) {
 					const emailData = {
-						to: savedUser.email,
+						to: updatedUser.email,
 						from: configPrivate.email.address,
 						template: 'forgotpassword',
 						subject: 'Reset password for your account',
 						context: {
-							url: `http://192.168.1.36:8080/api/oauth2/verifytoken?token=${savedUser.verify_token}&token_type=reset`,
-							name: savedUser.username
+							url: `http://${config.host}:${config.port}/api/oauth2/verifytoken?token=${updatedUser.verify_token}&token_type=reset`,
+							name: updatedUser.username
 						}
 					}
 
@@ -865,13 +967,14 @@ const cbResetPassword = (req, res, done) => {
 			}
 		}
 
-		UserModel.findOne(findQuery)
-		.then((user) => {
-			if (!user) throw new AuthError(`User not exists`, 'invalid_data')
+		UsersController._read(findQuery)
+		.then((result) => {
+			if (result.rowCount === 0) throw new AuthError(`User not exists`, 'invalid_data')
+			const user = result.rows[0]
 
 			userMutation(user)
 
-			return user.save()
+			return UsersController._update({ id: user.id }, user, true)
 		})
 		.then(onSaveUser, (rej) => {})
 		.catch((err) => {
@@ -902,16 +1005,21 @@ const cbLogOut = (req, res) => {
 */
 const codeAuthorization = [
 	server.authorization((clientId, redirectUri, scope, done) => {
-		log.debug(`🔑  authorization`)
+		log.debug(`🔑  code authorization`)
 
-		ClientModel.findOne({ id: clientId }, (err, client) => {
-			log.debug(`🔑  authorization - client found`)
+		ClientsController._read({ id: clientId })
+		.then((result) => {
+			log.debug(`🔑 code authorization - client found`)
+			if (result.rowCount === 0) return done(new AuthError('Client not exists', 'invalid_data'))
+			const client = result.rows[0]
 
-			if (err) return done(new AuthError(err))
 			client.scope = scope
 
       return done(null, client, redirectUri)
-    })
+		})
+		.catch((err) => {
+			return done(new AuthError(err))
+		})
   }),
   function(req, res){
 		log.debug(`🔑  authorization second middleware`)

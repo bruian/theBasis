@@ -16,6 +16,13 @@ module.exports = Object.assign({
     // for example uri: 'mongodb://<userDB>:<password>@<server>:<port>/<database>'
     // try use https://mlab.com/
 	},
+	postgres: {
+		user: '',
+		host: '',
+		database: '',
+		password: '',
+		port: 5432
+	},
   security: {
 		sessionSecret: 'insert this your server session secret key'
 		// for example sessionSecret: 'fjdkajjfiajfjapfjakdfja;'

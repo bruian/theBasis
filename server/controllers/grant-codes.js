@@ -9,7 +9,7 @@ function _create(condition, returning = false) {
 		const retstring = returning ? 'RETURNING *' : '',
 					parametres = pg.prepareParametres(condition)
 
-		return client.query(`INSERT INTO clients (${parametres.fields}) VALUES (${parametres.anchors}) ${retstring}`, parametres.values)
+		return client.query(`INSERT INTO grant_codes (${parametres.fields}) VALUES (${parametres.anchors}) ${retstring}`, parametres.values)
 		.then((res) => {
 			client.release()
 
@@ -31,7 +31,7 @@ function _read(condition) {
 	.then((client) => {
 		const parametres = pg.prepareParametres(condition)
 
-		return client.query(`SELECT * FROM clients WHERE ${parametres.condition}`, parametres.values)
+		return client.query(`SELECT * FROM grant_codes WHERE ${parametres.condition}`, parametres.values)
 		.then((res) => {
 			client.release()
 
@@ -54,7 +54,7 @@ function _update(condition, data, returning = false) {
 		const retstring = returning ? 'RETURNING *' : '',
 					parametres = pg.prepareParametres(condition, data)
 
-		return client.query(`UPDATE clients SET ${parametres.datastring} WHERE ${parametres.condition} ${retstring}`, parametres.values)
+		return client.query(`UPDATE grant_codes SET ${parametres.datastring} WHERE ${parametres.condition} ${retstring}`, parametres.values)
 		.then((res) => {
 			client.release()
 
@@ -76,7 +76,7 @@ function _delete(condition) {
 	.then((client) => {
 		const parametres = pg.prepareParametres(condition)
 
-		return client.query(`DELETE FROM clients WHERE ${parametres.condition}`, parametres.values)
+		return client.query(`DELETE FROM grant_codes WHERE ${parametres.condition}`, parametres.values)
 		.then((res) => {
 			client.release()
 

@@ -29,7 +29,7 @@ router.get('/:id', passport.authenticate('bearer', { session: false }), (req, re
       log.error('❌  Telegram user with id: %s Not Found', req.params.id)
       return res.json({ error: 'Not found' })
     }
-        
+
     if (!err) {
       return res.json({ status: 'OK', tgmUser:tgmUser })
     } else {
@@ -41,7 +41,7 @@ router.get('/:id', passport.authenticate('bearer', { session: false }), (req, re
 })
 
 router.post('/', passport.authenticate('bearer', { session: false }), (req, res) => {
-  var tgmUser = new tgmUserModel({ 
+  var tgmUser = new tgmUserModel({
     username: req.body.username,
     phonenumber: req.body.phonenumber,
     api_id: req.body.api_id,
@@ -65,7 +65,7 @@ router.post('/', passport.authenticate('bearer', { session: false }), (req, res)
         res.statusCode = 500
         res.json({ error: 'Database error' })
       }
-      
+
       log.error('❌  Internal error (%d): %s', res.statusCode, err.message)
     }
   })
@@ -101,7 +101,7 @@ router.put('/:id', passport.authenticate('bearer', { session: false }), (req, re
           res.statusCode = 500
           res.json({ error: 'Database error' })
         }
-        
+
         log.error('❌  Internal error (%d): %s', res.statusCode, err.message)
       }
     })

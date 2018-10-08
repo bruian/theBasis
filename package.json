@@ -52,6 +52,7 @@
     "passport-local": "^1.0.0",
     "passport-oauth2-client-password": "^0.1.2",
     "perfect-scrollbar": "^1.4.0",
+    "pg": "^7.5.0",
     "route-cache": "^0.4.4",
     "serve-favicon": "^2.4.5",
     "vue": "^2.5.17",

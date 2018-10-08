@@ -1,15 +1,84 @@
+require('babel-core/register')
 import 'babel-polyfill'
 import chai from 'chai'
 
-import { MongoCache } from '../db/cachedb'
+import { MongoCache } 		 from '../db/cachedb'
 
 import crypto 						 from 'crypto'
+import config							 from '../config'
+import pg									 from '../db/postgres'
 import mongoose 					 from '../db/mongoose'
+import UsersController		 from '../controllers/users'
 import BlacklistTokenModel from '../model/blacklistToken'
 
+const calculateExpirationDate = (expIn) => new Date(Date.now() + (expIn * 1000))
 const should = chai.should()
+const expect = chai.expect
 
-describe('Cachedb for blacklist token', function() {
+describe('inTask.me server tests', function() {
+	describe.only('#Controllers tests', function() {
+		describe('User controller test', function() {
+			it('Attempt to create users objects', function() {
+				UsersController._create({
+					username: 'user1',
+					email: 'user1@maus.club',
+					hashedpassword: 'hhhheeeewwww',
+					created: new Date(),
+					verified: false,
+					verify_expired: new Date(calculateExpirationDate(config.security.jwtTokenExpires)),
+					verify_token: 'wwwweeeehhhh',
+					salt: 'dddjjjkkk'
+				}, true)
+				.then((result) => {
+					result.rows.should.have.length(1)
+				}, (rej) => {
+					console.log(rej)
+				})
+				.catch((err) => {
+					should.not.exist(err)
+					console.log(err)
+				})
+
+				UsersController._create({
+					username: 'user2',
+					email: 'user2@maus.club',
+					hashedpassword: 'hhhheeeewwww',
+					created: new Date(),
+					verified: false,
+					verify_expired: new Date(calculateExpirationDate(config.security.jwtTokenExpires)),
+					verify_token: 'wwwweeeehhhh',
+					salt: 'dddjjjkkk'
+				}, true)
+				.then((result) => {
+					result.rows.should.have.length(1)
+				}, (rej) => {
+					console.log(rej)
+				})
+				.catch((err) => {
+					should.not.exist(err)
+					console.log(err)
+				})
+			})
+
+			it('Attempt to read users object', function() {
+				UsersController._update({ email: 'user1@maus.club' }, { username: 'maus' }, true)
+				.then((result) => {
+					const value = result.rows[0]
+
+					//expect(value).to.have.property('username')
+					console.log(value)
+				})
+				.catch((err) => {
+					//should.not.exist(err)
+					console.log(err)
+				})
+			})
+
+			after(function() {
+				pg.pool.end()
+			})
+		})
+	}),
 	describe('#MongoCache test cache and mongodb equals', function() {
 		let mongoCache = undefined
 		const keyArray = []
