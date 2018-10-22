@@ -84,3 +84,7 @@ function getRandomInt(min, max) {
 module.exports.differentArray = (firstArr, secondArr) => {
 	return firstArr.filter(i => !secondArr.includes(i)).concat(secondArr.filter(i => !firstArr.includes(i)))
 }
+
+module.exports.isNumeric = (n) => {
+  return !isNaN(parseFloat(n)) && isFinite(n)
+}

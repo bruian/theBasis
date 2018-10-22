@@ -4,10 +4,14 @@
       "modules": false,
       "targets": {
         "node": "current",
-        "uglify": true
-      }
+        "uglify": false
+			},
+			"debug": {
+				"sourceMap": "inline",
+				"retainLines": true
+			}
     }]
-  ],
+	],
   "plugins": [
     "add-module-exports",
     "syntax-dynamic-import"

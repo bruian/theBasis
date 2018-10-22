@@ -32,7 +32,10 @@ module.exports = {
           compilerOptions: {
             preserveWhitespace: false
           }
-        }
+				},
+				//include: [require.resolve('vue-infinite-loading'), './client']
+				//path.resolve(__dirname, './node_modules/vue-infinite-loading'), path.resolve(__dirname, 'client')
+				//exclude:/node_modules\/(?!(vue-infinite-loading)\/).*/
 			},
       {
         test: /\.js$/,
@@ -98,6 +101,10 @@ module.exports = {
 				})
 				: ['style-loader', 'css-loader', 'sass-loader']
 				*/
+			},
+			{
+				test: /\.less$/,
+				use: [{ loader: 'style-loader' }, { loader: 'css-loader' }, { loader: 'less-loader' }]
 			}
     ]
   },

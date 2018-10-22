@@ -121,11 +121,11 @@ export default {
 			},
 			{ header: 'Common' },
 			{
-				title: 'Contacts',
+				title: 'Users',
 				group: 'Common',
 				icon: 'people',
 				//target: '_blank', переход с открытием нового окна
-				name: 'contacts',
+				name: 'users',
 			},
 			{
 				title: 'Groups',
@@ -180,8 +180,8 @@ export default {
 		},
 		computeUserInfo() {
 			//debugger
-			if (this.$store.state.theUser) {
-				return this.$store.state.theUser
+			if (this.$store.state.mainUser) {
+				return this.$store.state.mainUser
 			} else {
 				return { username: '', email: '' }
 			}

@@ -87,7 +87,7 @@ let self = undefined
 export default {
 	name: 'app-toolbar',
 	components: {
-		NotificationList
+		NotificationList,
 	},
 	props: {
 		value: {
@@ -136,7 +136,7 @@ export default {
 			self.$store.dispatch('AUTH_LOGOUT').then(() => {
 				self.$router.push('/')
 			})
-		}
+		},
 	},
 	watch: {
 		/*

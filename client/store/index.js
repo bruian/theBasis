@@ -9,14 +9,63 @@ Vue.use(Vuex)
 export function createStore () {
   return new Vuex.Store({
     state: {
-			apiStatus: 'success',										//ok
-			apiError: null, 												//ok
-			theUser: {
+			/* -APPLICATION STATE- */
+			appReady: false,					 //if True - appliacation loaded and ready to render
+			apiStatus: 'success',			 //last status api response (from server)
+			apiError: null, 					 //last api error (from server)
+
+			/* -AUTHENTICATED STATUS -*/
+			auth: {	token: ''	},
+
+			/* -LOGGED USERS DATAS- *//* api request: /auth-user */
+			mainUser: {
+				id: 0,
 				username:'',
+				name: '',
 				email: '',
 				verified: true,
-				phonenumber: '' },										//ok
-			appReady: false,												//ok
+				loged: false,
+				dateofbirth: '',
+				city: '',
+				country: '',
+				gender: '',
+				phone: '',
+				avatar: ''
+			},
+
+			/* -SELECTED DATAS- */
+			theUser: {},
+
+			theGroup: {
+				id: 0
+			},
+
+			/* -USERS LIST DATAS- *//* api request: /users or /users/:id */
+			activeUsersList: { text: "all", id: 0, list: 'usersListAll', visible: true, condition: [] },
+			availableUsersList: [
+				{ text: "my", id: 1, list: 'usersListMy', visible: true, condition: ['user_id'] },
+				{ text: "group", id: 2, list: 'usersListGroup', visible: false, condition: ['user_id', 'group_id'] }
+			],
+			usersListAll: {
+				list: [],
+				limit: 10,
+				offset: 0,
+				searchText: ''
+			},
+			usersListMy: {
+				list: [],
+				limit: 10,
+				offset: 0,
+				searchText: ''
+			},
+			usersListGroup: {
+				list: [],
+				limit: 10,
+				offset: 0,
+				searchText: ''
+			},
+
+			/* -OTHERS DATAS- */
       activeType: null,
       itemsPerPage: 20,
       items: {/* [id: number]: Item */},
@@ -24,17 +73,11 @@ export function createStore () {
       theItems: [/* [id: number]: Item */],
       lists: {
         tgmUsers: [],
-        top: [/* number */],
         new: [],
         show: [],
         ask: [],
         job: []
       },
-      client_id: 'webxx090518',
-			client_secret: 'abc123456',
-			auth: {
-				token: ''														//ok
-			}
     },
     actions,
     mutations,

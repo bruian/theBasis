@@ -47,7 +47,8 @@ export function createRouter (store) {
 			{ path: '/', name: 'home', component: () => import('../views/Home.vue') }, 																					//OK
 			{ path: '/resetpassword', name: 'resetpassword', component: () => import('../views/Home.vue') },										//OK
 			{ path: '/verified', name: 'verified', component: () => import('../views/Home.vue'), meta: { action: 'verified' } },//OK
-			{ path: '/contacts', name: 'contacts', component: () => import('../views/Contacts.vue'), meta: { auth: true } },					//OK
+			{ path: '/users', name: 'users', component: () => import('../views/Users.vue'), meta: { auth: true } },							//OK
+			{ path: '/users/:id', name: 'users', component: () => import('../views/Users.vue'), mets: { auth: true } },
 			{ path: '/groups', name: 'groups', component: () => import('../views/Groups.vue'), meta: { auth: true } },					//OK
 			{ path: '/appGrid', name: 'appGrid', component: () => import('../views/AppGrid.vue'), meta: { auth: true } },
       { path: '/tgmUsers', name: 'TgmUsers', component: TgmUsers, meta: { auth: true } },

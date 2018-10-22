@@ -1,50 +1,274 @@
 <template>
-	<v-card>
-		<v-toolbar card dense color="transparent">
-			<v-toolbar-title><h4>Users list</h4></v-toolbar-title>
-		</v-toolbar>
+	<v-card >
+		<v-expansion-panel class="mb-0">
+			<v-expansion-panel-content class="list-header"
+				expand
+				expand-icon="search">
+				<!-- v-model="externalOpen"
+				hide-actions> -->
+
+				<div slot="header">
+					<v-toolbar card dense color="transparent">
+						<div class="activeUsersListbox">
+							<span v-bind:class="{ opacIn: showActiveUsersList }">{{ activeUsersList.text }}</span>
+							<span style="margin-left: 5px;">users</span>
+						</div>
+
+						<v-spacer></v-spacer>
+
+						<transition-group name="list">
+							<span v-for="ulitem in availableUsersList" v-bind:key="ulitem.id">
+								<a class="activeitem"
+									v-show="ulitem.visible"
+									href=""
+									@click.prevent.stop="activeClick(ulitem.id)">{{ ulitem.text }}
+								</a>
+							</span>
+						</transition-group>
+
+						<!-- <v-btn flat icon color="grey" class="search-button" @click.stop="externalOpen = !externalOpen">
+              <v-icon>search</v-icon>
+            </v-btn> -->
+				    <!-- <v-btn flat icon color="grey" class="settings-button" @click.stop="externalOpen = !externalOpen">
+              <v-icon>settings</v-icon>
+            </v-btn> -->
+					</v-toolbar>
+				</div>
+
+				<v-card class="list-body">
+					<!--search bar-->
+					<vue-instant :suggestion-attribute="suggestionAttribute"
+						v-model="values"
+						:disabled="false"
+						@input="changed"
+						@click-input.stop="clickInput"
+						@click-button="clickButton"
+						@selected="selected"
+						@enter="enter"
+						@key-up="keyUp"
+						@key-down="keyDown"
+						@key-right="keyRight"
+						@clear="clear"
+						@escape="escape"
+						:show-autocomplete="true"
+						:autofocus="false"
+						:suggestions="suggestions"
+						name="customName"
+						placeholder="custom placeholder"
+						type="twitter">
+					</vue-instant>
+        	<!-- <v-card-text>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</v-card-text> -->
+      	</v-card>
+			</v-expansion-panel-content>
+		</v-expansion-panel>
 		<v-divider class="ma-0"></v-divider>
 		<v-card-text class="pa-0">
-			<v-list two-line class="pa-0">
-				<template v-for="(item, index) in items">
-					<v-subheader v-if="item.header" :key="item.header">{{ item.header }}</v-subheader>
-          <v-divider v-else-if="item.divider" :key="index" class="ma-0"></v-divider>
-          <v-list-tile avatar v-else :key="item.title" @click="handleClick">
-            <v-list-tile-avatar >
-              <img :src="item.avatar">
-            </v-list-tile-avatar>
-            <v-list-tile-content>
-              <v-list-tile-title v-html="item.title"></v-list-tile-title>
-              <v-list-tile-sub-title v-html="item.subtitle"></v-list-tile-sub-title>
-            </v-list-tile-content>
-          </v-list-tile>
-				</template>
-			</v-list>
+			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="usrbox">
+				<v-list two-line class="pa-0" dense>
+					<template v-for="(item, index) in items">
+						<v-subheader v-if="item.header" :key="item.id">{{ item.header }}</v-subheader>
+						<!-- <v-divider v-else-if="item.divider" :key="index" class="ma-0"></v-divider> -->
+						<v-list-tile avatar v-else :key="item.username" @click="handleClick">
+							<v-list-tile-avatar >
+								<img :src="item.avatar">
+							</v-list-tile-avatar>
+							<v-list-tile-content>
+								<v-list-tile-title v-html="item.username"></v-list-tile-title>
+								<v-list-tile-sub-title v-html="item.id"></v-list-tile-sub-title>
+							</v-list-tile-content>
+						</v-list-tile>
+					</template>
+				</v-list>
+				<infinite-loading @infinite="infiniteHandler" ref="infLoadingUsersList"></infinite-loading>
+			</vue-perfect-scrollbar>
 		</v-card-text>
 	</v-card>
 </template>
 
 <script>
+import VuePerfectScrollbar from '../perfect-scrollbar.vue'
+import InfiniteLoading from '../../InfiniteLoading'
+//import InfiniteLoading from 'vue-infinite-loading/src/components/InfiniteLoading.vue'
+import axios from 'axios'
+
 export default {
+	name: 'users-list',
+	components: {
+		VuePerfectScrollbar,
+		InfiniteLoading,
+	},
 	data: () => ({
-		items: [
-			{ avatar: 'https://randomuser.me/api/portraits/men/1.jpg', title: 'Brunch this weekend?', subtitle: "<span class='text--primary'>Ali Connors</span> &mdash; I'll be in your neighborhood ?" },
-			{ divider: true, inset: true },
-			{ avatar: 'https://randomuser.me/api/portraits/men/2.jpg', title: 'Summer BBQ <span class="grey--text text--lighten-1">4</span>', subtitle: "<span class='text--primary'>to Alex, Scott, Jennifer</span> &mdash; Wish I could come, but I'm out of town this weekend." },
-			{ divider: true, inset: true },
-			{ avatar: 'https://randomuser.me/api/portraits/men/3.jpg', title: 'Oui oui', subtitle: "<span class='text--primary'>Sandra Adams</span> &mdash; Do you have Paris recommendations? Have you ever been?" },
-			{ divider: true, inset: true },
-			{ avatar: 'https://randomuser.me/api/portraits/men/1.jpg', title: 'Dash', subtitle: "<span class='text--primary'>Sandra Adams</span> &mdash; Do you have Paris recommendations? Have you ever been?" },
-		]
+		values: '',
+		suggestionAttribute: 'original_title',
+		suggestions: [],
+		selectedEvent: "",
+		scrollSettings: {
+			maxScrollLength: 10
+		},
+		countEl: 1,
+		showActiveUsersList: false,
+		//externalOpen: false
 	}),
+	beforeMount () {
+		if (this.$root._isMounted) {
+			//this.loadItems()
+			//this.$route.params.id
+		}
+	},
+	computed: {
+		items() {	return this.$store.getters.usersList },
+		activeUsersList() { return this.$store.state.activeUsersList },
+		availableUsersList() { return this.$store.state.availableUsersList }
+	},
   methods: {
     handleClick: (e) => {
       console.log(e);
-    }
+		},
+		infiniteHandler($state) {
+			if (this.$store.getters.isAuth && this.countEl > 0) {
+				console.log('loadItems')
+				return this.$store.dispatch('FETCH_USERS_LIST').then((count) => {
+					this.countEl = count
+					$state.loaded();
+					console.log(`Getting from srv: ${count} elements`)
+				})
+				.catch((err) => {
+					console.log(err)
+				})
+			} else {
+				$state.complete();
+				console.log('loaded off')
+			}
+		},
+   	activeClick: function(activeID) {
+			this.countEl = 1
+			this.$store.commit('SET_ACTIVE_USERS_LIST', activeID)
+			this.$nextTick(() => {
+        this.$refs.infLoadingUsersList.$emit('$InfiniteLoading:reset')
+      });
+
+			this.showActiveUsersList = !this.showActiveUsersList
+      setTimeout(() => {
+        this.showActiveUsersList = !this.showActiveUsersList
+      }, 500)
+		},
+		getHref(condition) {
+			//v-bind:href="getHref(ulitem.condition)"
+			//let values = this.$store.getters.conditionValues(condition) deprecated
+			//return 'users' + ((values === undefined) ? '' : `/${values}`)
+		},
+		clickInput: function() {
+				this.selectedEvent = 'click input'
+		},
+		clickButton: function() {
+				this.selectedEvent = 'click button'
+		},
+		selected: function() {
+				this.selectedEvent = 'selection changed'
+		},
+		enter: function() {
+				this.selectedEvent = 'enter'
+		},
+		keyUp: function() {
+				this.selectedEvent = 'keyup pressed'
+		},
+		keyDown: function() {
+				this.selectedEvent = 'keyDown pressed'
+		},
+		keyRight: function() {
+				this.selectedEvent = 'keyRight pressed'
+		},
+		clear: function() {
+				this.selectedEvent = 'clear input'
+		},
+		escape: function() {
+				this.selectedEvent = 'escape'
+		},
+		changed: function() {
+			var that = this
+			this.suggestions = []
+			axios.get('https://api.themoviedb.org/3/search/movie?api_key=342d3061b70d2747a1e159ae9a7e9a36&query=' + this.value)
+			.then(function(response) {
+				response.data.results.forEach(function(a) {
+					that.suggestions.push(a)
+				})
+			})
+		}
   },
 }
 </script>
 
-<style>
+<style lang="css">
+.list-header .v-expansion-panel__header {
+  padding: 0px;
+}
 
+.list-header .v-expansion-panel__header__icon {
+	padding-top: 4px;
+	padding-right: 5px;
+}
+
+.list-header .search-button {
+	padding-top: 4px;
+	margin-left: 0px;
+	margin-right: 0px;
+}
+
+/* .list-header .search-button:hover:before, .search-button:focus {
+	background-color: white;
+	outline:none;
+} */
+
+.list-header .v-toolbar__content {
+	padding-right: 5px;
+}
+
+.list-body .sbx-twitter {
+	width: 100%;
+}
+
+.list-body .main {
+	margin-left: 5px;
+	margin-right: 5px;
+	margin-bottom: 5px;
+}
+
+.activebox {
+  white-space: nowrap;
+  display: flex;
+  justify-content: space-between;
+}
+
+.activeUsersListbox {
+  display: flex;
+}
+
+.opacIn {
+  animation-name: fadeIn;
+  animation-duration: .5s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.activeitem {
+	margin-right: 5px;
+	color: blue;
+}
+
+.list-enter-active, .list-leave-active {
+  transition: all 1s;
+}
+.list-enter, .list-leave-to /* .list-leave-active до версии 2.1.8 */ {
+  opacity: 0;
+  transform: translateY(30px);
+}
+</style>
+
+<style lang="stylus">
+	.drawer-menu--scroll
+		height: calc(70vh)
+		overflow: auto
 </style>

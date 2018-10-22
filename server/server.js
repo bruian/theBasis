@@ -18,7 +18,7 @@ import config 			 from './config'
 import configPrivate from './config-private'
 
 import apiOauth      from './apis/api-oauth'
-import apiUsers			 from './apis/api-users'
+import api					 from './apis/api'
 import pg 					 from './db/postgres'
 import mg						 from './db/mongoose'
 
@@ -124,16 +124,8 @@ if (!isProd) {
 const UsersController = require('./controllers/users')
 
 app.use('/api/oauth2', apiOauth.router)
-app.use('/api/auth-user', express.Router().get('/', apiOauth.isAuthenticated, UsersController.getUser))
-
-/*app.use('/api/clients', express.Router()
-	.post('/', passport.authenticate(['basic'], { session : false }), clientController.postClients)
-	.get('/', passport.authenticate(['basic', 'bearer'], { session : false }), clientController.getClients))
-*/
-//app.use('/api/clients', express.Router().get('/', apiOauth.isAuthenticated, userController.getUsers))
-//app.use('/api/users', express.Router().post('/', userController.postUsers).get('/', userController.getUsers))
-//app.use('/api/articles', apiArticles)
-//app.use('/api/tgmUsers', apiTgmUsers)
+//app.use('/api/auth-user', express.Router().get('/', apiOauth.isAuthenticated, UsersController.getUser))
+app.use('/api', apiOauth.isAuthenticated, api)
 
 // since this app has no user-specific content, every page is micro-cacheable.
 // if your app involves user-specific content, you need to implement custom

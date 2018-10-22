@@ -194,7 +194,6 @@
 
 <script>
 //import AuthCheck from '../components/AuthCheck.vue'
-import mTypes from '../store/mutation-types.js'
 export default {
 	components: {
 	//	AuthCheck

@@ -12,10 +12,15 @@ function AuthError(data, code, uri, status) {
 		}
 	}
 
+	this.message = ''
+	this.status = status
+
 	if (typeof(data) === 'object') {
 		log.error(data)
 
-		this.errorObj = data
+		this.nativeError = data
+		if (data.message) this.message = data.message
+		if(data.status) this.status = data.status
 	} else {
 		log.debug(data)
 
@@ -32,13 +37,36 @@ function MongoCacheError(message) {
 	Error.call(this)
 
 	if (typeof(message) === 'object') {
+		log.error(message)
+
+		this.nativeError = message
 		this.message = message.message
+		this.status = 500
 	} else {
 		this.message = message
+		this.status = 400
 	}
 	this.name = 'MongoCacheError'
 }
 MongoCacheError.prototype = Object.create(Error.prototype)
 
+function PgError(message) {
+	Error.call(this)
+
+	if (typeof(message) === 'object') {
+		log.error(message)
+
+		this.nativeError = message
+		this.message = message.message
+		this.status = 500
+	} else {
+		this.message = message
+		this.status = 400
+	}
+	this.name = 'PgError'
+}
+PgError.prototype = Object.create(Error.prototype)
+
 exports.AuthError = AuthError
 exports.MongoCacheError = MongoCacheError
+exports.PgError = PgError

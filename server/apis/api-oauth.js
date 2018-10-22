@@ -794,8 +794,7 @@ const cbRegistrationStrategy = function (req, res, done) {
 		return UsersController._read({ 'email': req.body.email })
 		.then((result) => {
 			if (result.rowCount) {
-				done(new AuthError(`User with this email (${req.body.email}) already exists`, 'invalid_data'))
-				return Promise.reject()
+				return Promise.reject(`User with this email (${req.body.email}) already exists`, 'invalid_data')
 			}
 
 			const salt = crypto.randomBytes(128).toString('hex')
@@ -816,12 +815,14 @@ const cbRegistrationStrategy = function (req, res, done) {
 			} else {
 				user.verified = true
 				user.verify_token = ''
-				user.verify_expired = 0
+				user.verify_expired = new Date()
 			}
 
-			return UsersController._create(user, true)
+			return UsersController.newUser(user)
 		})
-		.then(onSaveUser, (rej) => {})
+		.then(onSaveUser, (rej) => {
+			done(new AuthError(rej))
+		})
 		.catch((err) => {
 			done(new AuthError(err))
 		})

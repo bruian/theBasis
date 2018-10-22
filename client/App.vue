@@ -134,7 +134,6 @@
 </template>
 
 <script>
-import mTypes from './store/mutation-types'
 import AppDrawer from './components/AppDrawer.vue'
 import AppToolbar from './components/AppToolbar.vue'
 import PanelSettings from './components/PanelSettings.vue'
@@ -147,9 +146,7 @@ function getUserByToken(store, done) {
 	//debugger
 	const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
 	if (storage && storage.getItem('access_token')) {
-		const token = storage.getItem('access_token')
-
-		store.dispatch(mTypes.USER_REQUEST, token)
+		store.dispatch('MAINUSER_REQUEST')
 		.then(() => {
 			console.log('user get from server')
 			done()
@@ -182,7 +179,7 @@ export default {
 		messageDialog: false,
 		crumbs: [
 			{ text: "Home", disabled: false, to: '/' },
-			{ text: "links", disabled: false, to: 'contacts' },
+			{ text: "Users", disabled: false, to: 'users' },
 			{ text: "tasks", disabled: true, to: 'css' }
 		],
 	}),

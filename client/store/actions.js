@@ -1,5 +1,4 @@
 import config from '../config'
-import mTypes from './mutation-types'
 import Vue from 'vue'
 //import querystring from 'querystring'
 
@@ -71,58 +70,129 @@ function fetchTgmItems(ids) {
   return Promise.all(ids.map(id => fetchTgmItem(id)))
 }
 
+function getTokensFromSessionStorage() {
+	const tokens = { access_token: '', refresh_token: '' }
+	if (storage && storage.getItem('access_token')) {
+		tokens.access_token = storage.getItem('access_token')
+	}
+
+	if (storage && storage.getItem('refresh_token')) {
+		tokens.refresh_token = storage.getItem('refresh_token')
+	}
+
+	return tokens
+}
+
+async function fetchSrv(query) {
+	const headers = { 'content-type': 'application/x-www-form-urlencoded',
+										'Authorization': 'Bearer ' + getTokensFromSessionStorage().access_token }
+	let axiosData = Object.assign({}, query)
+	if (axiosData.headers) {
+		axiosData.headers = Object.assign(axiosData.headers, headers)
+	} else {
+		axiosData.headers = headers
+	}
+
+	try {
+		let dataFromSrv = await Vue.axios(axiosData)
+		if (dataFromSrv.data.action && dataFromSrv.data.action === 'token') {
+			storage.setItem('access_token', dataFromSrv.data.access_token)
+			commit('AUTH_SUCCESS', dataFromSrv.data.access_token)
+
+			//have received a new token and do it again for our data
+			axiosData.headers.Authorization = 'Bearer ' + dataFromSrv.data.access_token
+			dataFromSrv = await Vue.axios(axiosData)
+		}
+
+		return Promise.resolve(dataFromSrv.data)
+	} catch (err) {
+		throw err
+	}
+}
+
 export default {
-	//*** User actions */
-	[mTypes.USER_REQUEST]: ({ commit, dispatch }, token) => {
-		return new Promise((resolve, reject) => {
-			const axiosData = {
-				url: 'auth-user',
-				method: 'GET',
-				headers: { 'content-type': 'application/x-www-form-urlencoded',
-									 'Authorization': 'Bearer ' + token }
+	FETCH_USERS_LIST: ({ commit, state }) => {
+		const fetchQuery = {
+			url: 'users',
+			method: 'GET',
+			headers: { limit: state[state.activeUsersList.list].limit, offset: state[state.activeUsersList.list].offset }
+		}
+
+		let params = {}
+		const condition = state.activeUsersList.condition
+		for (let i = 0; i < condition.length; i++) {
+			switch (condition[i]) {
+				case 'user_id':
+					fetchQuery.url += '/' + state.theUser.id
+					//params.id = state.theUser.id
+					break
+				case 'group_id':
+					params.group_id = state.theGroup.id
+					break
 			}
+		}
 
-			commit(mTypes.USER_REQUEST)
-			//debugger
-			//Request from server
-			//If the token is close to expiration, we will get a new token
-			//else we get the requested data
-			Vue.axios(axiosData)
-			.then((res) => {
-				//debugger
-				const data = res.data
-				if (data.action && data.action === 'refreshed') {
-					storage.setItem('access_token', data.access_token)
-					commit(mTypes.AUTH_SUCCESS, data.access_token)
+		if (condition.length) {
+			fetchQuery.params = params
+		}
 
-					//have received a new token and do it again for our data
-					axiosData.headers.Authorization = 'Bearer ' + data.access_token
-					return Vue.axios(axiosData)
-				} else {
-					//if you did not receive an update token, then we will pass the
-					//server response to the next handler
-					commit(mTypes.AUTH_SUCCESS, token)
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			/*
+			var ids = []
+			dataFromSrv.map((currentValue) => {
+				ids.push(currentValue)
+				ids.push({ divider: true, inset: true })
+			})
+			*/
 
-					return Promise.resolve(res)
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(0)
+			} else {
+				commit('SET_USERS_LIST', dataFromSrv)
+				return Promise.resolve(dataFromSrv.length)
+			}
+		})
+		.catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+
+	//*** User actions */
+	MAINUSER_REQUEST: ({ commit, state }) => {
+		const fetchQuery = {
+			url: 'main-user',
+			method: 'GET'
+		}
+
+		commit('MAINUSER_REQUEST')
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(0)
+			} else {
+				if (!state.auth.token) {
+					//if need refressh token in store
+					commit('AUTH_SUCCESS', getTokensFromSessionStorage().access_token)
 				}
-			})
-			.then((res) => {
-				//debugger
-				const data = res.data
-				commit(mTypes.USER_SUCCESS, data)
 
-				resolve(res)
-			})
-			.catch((err) => {
-				commit(mTypes.API_ERROR, err.response.data)
+				commit('MAINUSER_SUCCESS', dataFromSrv)
+				commit('THEUSER_SUCCESS', dataFromSrv)
 
-				reject(err.response.data)
-			})
+				return Promise.resolve(1)
+			}
+		})
+		.catch((err) => {
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
 		})
 	},
 
 	//*** Authentication actions */
-	[mTypes.AUTH_REQUEST]: ({ commit, dispatch }, user) => {
+	AUTH_REQUEST: ({ commit, dispatch }, user) => {
 		return new Promise((resolve, reject) => {
 			let axiosData = {}
 
@@ -148,17 +218,17 @@ export default {
 				}
 			}
 
-			commit(mTypes.AUTH_REQUEST)
+			commit('AUTH_REQUEST')
 
 			Vue.axios(axiosData)
 			.then((res) => {
 				const token = res.data
 
 				storage.setItem('access_token', token.access_token)
-				commit(mTypes.AUTH_SUCCESS, token.access_token)
+				commit('AUTH_SUCCESS', token.access_token)
 
 				//we have token, then we can log in user
-				dispatch(mTypes.USER_REQUEST, token.access_token)
+				dispatch('MAINUSER_REQUEST')
 				resolve(res)
 			})
 			.catch((err) => {
@@ -176,7 +246,7 @@ export default {
 					}
 				}
 
-				commit(mTypes.API_ERROR, errorData)
+				commit('API_ERROR', errorData)
 				storage.removeItem('access_token')
 				reject(errorData)
 			})
@@ -184,7 +254,7 @@ export default {
 	},
 
 	//*** Registration actions */
-	[mTypes.REG_REQUEST]: ({ commit, dispatch }, userData) => {
+	REG_REQUEST: ({ commit, dispatch }, userData) => {
 		return new Promise((resolve, reject) => {
 			const payload = {
 				username: '',
@@ -198,14 +268,14 @@ export default {
 				method: 'POST'
 			}
 
-			commit(mTypes.REG_REQUEST)
+			commit('REG_REQUEST')
 
 			Vue.axios(axiosData)
 			.then((res) => {
 				const token = res.data
 
 				storage.setItem('access_token', token.access_token)
-				commit(mTypes.REG_SUCCESS, token.access_token)
+				commit('REG_SUCCESS', token.access_token)
 				resolve(res)
 			})
 			.catch((err) => {
@@ -223,7 +293,7 @@ export default {
 					}
 				}
 
-				commit(mTypes.API_ERROR, errorData)
+				commit('API_ERROR', errorData)
 				storage.removeItem('access_token')
 				reject(errorData)
 			})
@@ -231,7 +301,7 @@ export default {
 	},
 
 	//*** LogOut actions */
-	[mTypes.AUTH_LOGOUT]: ({ commit, state }) => {
+	AUTH_LOGOUT: ({ commit, state }) => {
 		return new Promise((resolve, reject) => {
 			const axiosData = {
 				url: 'oauth2/logout',
@@ -240,19 +310,18 @@ export default {
 									 'Authorization': 'Bearer ' + state.auth.token }
 			}
 
-			commit(mTypes.AUTH_REQUEST)
+			commit('AUTH_REQUEST')
 
 			Vue.axios(axiosData)
 			.then((res) => {
 				storage.removeItem('access_token')
-				commit(mTypes.AUTH_LOGOUT)
+				commit('AUTH_LOGOUT')
 
 				//we have token, then we can log in user
-				//dispatch(mTypes.USER_REQUEST)
 				resolve(res)
 			})
 			.catch((err) => {
-				commit(mTypes.API_ERROR, err.response.data)
+				commit('API_ERROR', err.response.data)
 
 				storage.removeItem('access_token')
 				reject(err.response.data)

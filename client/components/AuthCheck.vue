@@ -1,5 +1,4 @@
 <script>
-import mTypes from '../store/mutation-types.js'
 export default {
 	name: 'AuthCheck',
 	beforeMount() {
@@ -25,7 +24,7 @@ export default {
 			const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
 			if (storage && storage.getItem('access_token')) {
 				const token = storage.getItem('access_token')
-				return store.dispatch(mTypes.USER_REQUEST, token)
+				return store.dispatch('MAINUSER_REQUEST')
 			} else {
 				return Promise.resolve()
 			}

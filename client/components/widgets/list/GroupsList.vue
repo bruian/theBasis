@@ -2,7 +2,6 @@
 	<v-card>
 		<v-toolbar card flat dense color="transparent" v-if="enableHeader">
 			<v-toolbar-title><h4>Groups list</h4></v-toolbar-title>
-
 		</v-toolbar>
 		<v-divider class="ma-0" v-if="enableHeader"></v-divider>
 		<v-card-text>

@@ -3,9 +3,33 @@ export default {
 	isAuth: state => !!state.auth.token,
 	apiStatus: state => state.apiStatus,
 	token: state => state.auth.token,
-	user: state => state.user,
+	user: state => state.theUser,
 
-  // ids of the items that should be currently displayed based on
+	usersList (state) {
+		return state[state.activeUsersList.list].list
+	},
+
+	// conditionValues: state => condition => {
+	// 	let values
+
+	// 	if (condition) {
+	// 		switch (condition) {
+	// 			case 'id':
+	// 				values = state.mainUser.id
+	// 				break
+	// 			case 'user_id':
+	// 				values = state.user.id
+	// 				break
+	// 			case 'group_id':
+	// 				values = state.group.id
+	// 				break
+	// 		}
+	// 	}
+
+	// 	return values
+	// },
+
+	// ids of the items that should be currently displayed based on
   // current list type and current pagination
   activeIds (state) {
     const { activeType, itemsPerPage, lists } = state

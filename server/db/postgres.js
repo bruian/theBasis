@@ -49,7 +49,10 @@ function prepareParametres(obj, data=undefined) {
     lBracket = ''
     rBracket = ''
 
-		if ((typeof obj[prop] === 'object') && (obj[prop] instanceof Date)) {
+		if (obj[prop] === null) {
+      value = obj[prop]
+      operator = '='
+		} else if ((typeof obj[prop] === 'object') && (obj[prop] instanceof Date)) {
       value = obj[prop]
       operator = '='
     }	else if (typeof obj[prop] === 'object') {

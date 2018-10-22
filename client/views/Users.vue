@@ -1,6 +1,6 @@
 <template>
-	<v-container grid-list-xl float>
-		<v-layout row wrap>
+	<v-container grid-list-xl >
+		<v-layout row wrap >
 			<v-flex lg4 sm12 xs12>
 				<profile></profile>
 			</v-flex>
