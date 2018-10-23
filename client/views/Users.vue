@@ -2,10 +2,10 @@
 	<v-container grid-list-xl >
 		<v-layout row wrap >
 			<v-flex lg4 sm12 xs12>
-				<profile></profile>
+				<users-list></users-list>
 			</v-flex>
 			<v-flex lg4 sm12 xs12>
-				<users-list></users-list>
+				<profile></profile>
 			</v-flex>
 			<v-flex lg4 sm12 xs12>
 				<groups-list></groups-list>
@@ -26,7 +26,7 @@ export default {
 		GroupsList
 	},
 	beforeRouteEnter (to, from, next) {
-		console.log('beforeRouteEnter: contacts')
+		//console.log('beforeRouteEnter: contacts')
 		next()
 	}
 }

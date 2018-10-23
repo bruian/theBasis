@@ -23,6 +23,20 @@ export default {
 		state.apiError = null
 
 		state.auth.token = null
+		state.mainUser = Object.assign({}, state.default.mainUser)
+		state.theUser = {}
+		state.theGroup = {}
+		state.activeUsersList = { text: "all", id: 0, list: 'usersListAll', visible: true, condition: [] }
+		state.availableUsersList = [
+			{ text: "my", id: 1, list: 'usersListMy', visible: true, condition: ['user_id'] },
+			{ text: "group", id: 2, list: 'usersListGroup', visible: false, condition: ['user_id', 'group_id'] }
+		]
+		state.usersListAll.list = []
+		state.usersListAll.offset = 0
+		state.usersListMy.list = []
+		state.usersListMy.offset = 0
+		state.usersListGroup.list = []
+		state.usersListGroup.offset = 0
 	},
 
 	//*** Registration mutations */
@@ -72,34 +86,16 @@ export default {
 
 	//*** Users list mutations */
 	SET_USERS_LIST: (state, data) => {
-		//debugger
-		state[state.activeUsersList.list].list = state[state.activeUsersList.list].list.concat(data)
+		// if (state[state.activeUsersList.list].offset === state[state.activeUsersList.list].limit) {
+		// 	state[state.activeUsersList.list].list = data
+		// } else {
+			state[state.activeUsersList.list].list = state[state.activeUsersList.list].list.concat(data)
+		// }
+
 		state[state.activeUsersList.list].offset = state[state.activeUsersList.list].offset + data.length
 	},
 	SET_ACTIVE_USERS_LIST: (state, activeID) => {
 		let temp = state.activeUsersList
-
-		/*
-		let item = state.availableUsersList.find(el => el.id == activeID)
-		if (item.condition) {
-			for (const key in item.condition) {
-				if (item.condition.hasOwnProperty(key)) {
-					//const element = item.condition[key];
-					switch (key) {
-						case 'id':
-							item.condition[key] = state.mainUser.id
-							break
-						case 'user_id':
-							item.condition[key] = state.user.id
-							break
-						case 'group_id':
-							item.condition[key] = state.group.id
-							break
-					}
-				}
-			}
-		}
-		*/
 
 		state.activeUsersList = state.availableUsersList.splice(state.availableUsersList.findIndex(el => el.id == activeID), 1)[0]
 		if (temp.id > -1) {
@@ -114,6 +110,22 @@ export default {
 				}
 			}
 		}
+	},
+	SET_PARAMS_USERS_LIST: (state, params) => {
+		const ul = state[state.activeUsersList.list]
+
+		for (const key in params) {
+			if (ul.hasOwnProperty(key)) {
+				ul[key] = params[key]
+			}
+		}
+	},
+	RESET_USERS_LIST: (state) => {
+		const ul = state[state.activeUsersList.list]
+		ul.list = []
+		ul.offset = 0
+		ul.limit = 10
+		ul.searchText = ''
 	},
 
 	//*** Other mutations */
@@ -152,3 +164,25 @@ export default {
     Vue.set(state.users, id, user || false) /* false means user not found */
   }
 }
+
+		/*
+		let item = state.availableUsersList.find(el => el.id == activeID)
+		if (item.condition) {
+			for (const key in item.condition) {
+				if (item.condition.hasOwnProperty(key)) {
+					//const element = item.condition[key];
+					switch (key) {
+						case 'id':
+							item.condition[key] = state.mainUser.id
+							break
+						case 'user_id':
+							item.condition[key] = state.user.id
+							break
+						case 'group_id':
+							item.condition[key] = state.group.id
+							break
+					}
+				}
+			}
+		}
+		*/

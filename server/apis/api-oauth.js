@@ -631,9 +631,6 @@ const cbVerifyToken = (req, res, done) => {
  * the user in a session on the server and creating a cookie
 */
 const cbJWTStrategy = (req, jwtPayload, done) => {
-	log.debug(`🔑  cbJWTStrategy for jwtPayload: ${jwtPayload}`)
-	//debugger
-
 	/* If the token has an "verify_expired" label, then it is necessary to check the verification
 	of the user and the expiry date of verification, if the user is verified, then update the token
 	to the worker, if the verification period has expired, then withdraw the current token and log out
@@ -649,6 +646,7 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 					req.body.userId = jwtPayload.userId
 					req.body.clientId = jwtPayload.clientId
 
+					log.debug(`🔑  cbJWTStrategy for NOT verified userId: ${jwtPayload.userId} - token is OK`)
 					return done(null, jwtPayload)
 				} else {
 					//log out user
@@ -656,6 +654,8 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 					UsersController._update({ id: jwtPayload.userId }, { loged: false })
 					.then(() => {
 						req.logout()
+
+						log.debug(`🔑  cbJWTStrategy for NOT verified userId: ${jwtPayload.userId} - session expired`)
 						return done(new AuthError('Session expired', 'session_expired'))
 					})
 					.catch((err) => {
@@ -676,6 +676,7 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 					params.token_type = 'jwt'
 					params.action = 'refreshed'
 
+					log.debug(`🔑  cbJWTStrategy for verified userId: ${jwtPayload.userId} - token refreshed`)
 					return done(null, tokens[0].value, params)
 				}).catch((err) => {
 					throw err
@@ -696,6 +697,8 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 		let token = ExtractJWT.fromAuthHeaderAsBearerToken()(req)
 		if (BlackListCache.get(token)) {
 			//token in black list, reject
+
+			log.debug(`🔑  cbJWTStrategy for verified userId: ${jwtPayload.userId} - token in black list. Auth rejected`)
 			return done(new AuthError('The token is withdraw', 'invalid_verification'))
 		} else {
 			jwtPayload.token = token
@@ -704,6 +707,9 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 		const expirationTime = new Date(jwtPayload.expiration) - Date.now()
 		if (expirationTime <= 0) {
 			//TODO log out
+			req.logout()
+
+			log.debug(`🔑  cbJWTStrategy for verified userId: ${jwtPayload.userId} - session expired`)
 			return done(new AuthError('Session expired', 'session_expired'))
 		} else if (expirationTime <= (config.security.jwtTokenExpires *1000 * config.security.boundaryBeginExpires)) {
 			const data = {
@@ -718,6 +724,7 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 				params.token_type = 'jwt'
 				params.action = 'refreshed'
 
+				log.debug(`🔑  cbJWTStrategy for verified userId: ${jwtPayload.userId} - token is refreshed`)
 				return done(null, tokens[0].value, params)
 			})
 			.catch((err) => {
@@ -727,6 +734,7 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 			req.body.userId = jwtPayload.userId
 			req.body.clientId = jwtPayload.clientId
 
+			log.debug(`🔑  cbJWTStrategy for verified userId: ${jwtPayload.userId} - token is OK`)
 			return done(null, jwtPayload)
 		}
 		/*

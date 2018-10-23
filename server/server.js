@@ -113,9 +113,9 @@ app.use((req, res, next) => {
 if (!isProd) {
   app.use((req, res, next) => {
     log.debug('🐰  FROM client= METHOD:%s URL:%s', req.method, req.url)
-    log.debug(req.body)
-		log.debug(req.headers)
-		log.debug(req.session)
+    //log.debug(req.body)
+		//log.debug(req.headers)
+		//log.debug(req.session)
 
     next()
   })

@@ -6,9 +6,26 @@ import getters from './getters'
 
 Vue.use(Vuex)
 
+const def = {
+	mainUser: {
+		id: 0,
+		username: '',
+		name: '',
+		email: '',
+		verified: true,
+		loged: false,
+		city: '',
+		country: '',
+		gender: '',
+		phone: '',
+		avatar: ''
+	}
+}
+
 export function createStore () {
   return new Vuex.Store({
     state: {
+			default: { mainUser: def.mainUser },
 			/* -APPLICATION STATE- */
 			appReady: false,					 //if True - appliacation loaded and ready to render
 			apiStatus: 'success',			 //last status api response (from server)
@@ -18,20 +35,7 @@ export function createStore () {
 			auth: {	token: ''	},
 
 			/* -LOGGED USERS DATAS- *//* api request: /auth-user */
-			mainUser: {
-				id: 0,
-				username:'',
-				name: '',
-				email: '',
-				verified: true,
-				loged: false,
-				dateofbirth: '',
-				city: '',
-				country: '',
-				gender: '',
-				phone: '',
-				avatar: ''
-			},
+			mainUser: Object.assign({}, def.mainUser),
 
 			/* -SELECTED DATAS- */
 			theUser: {},

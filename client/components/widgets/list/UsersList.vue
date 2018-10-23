@@ -37,8 +37,15 @@
 
 				<v-card class="list-body">
 					<!--search bar-->
-					<vue-instant :suggestion-attribute="suggestionAttribute"
-						v-model="values"
+
+          <v-text-field class=""
+            label="Solo"
+            solo
+						hide-details
+						@input="onChange"
+          ></v-text-field>
+					<!-- <vue-instant :suggestion-attribute="suggestionAttribute"
+						v-model="searchText"
 						:disabled="false"
 						@input="changed"
 						@click-input.stop="clickInput"
@@ -56,7 +63,7 @@
 						name="customName"
 						placeholder="custom placeholder"
 						type="twitter">
-					</vue-instant>
+					</vue-instant> -->
         	<!-- <v-card-text>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</v-card-text> -->
       	</v-card>
 			</v-expansion-panel-content>
@@ -89,7 +96,7 @@
 import VuePerfectScrollbar from '../perfect-scrollbar.vue'
 import InfiniteLoading from '../../InfiniteLoading'
 //import InfiniteLoading from 'vue-infinite-loading/src/components/InfiniteLoading.vue'
-import axios from 'axios'
+//import axios from 'axios'
 
 export default {
 	name: 'users-list',
@@ -98,15 +105,16 @@ export default {
 		InfiniteLoading,
 	},
 	data: () => ({
-		values: '',
+		searchText: '',
 		suggestionAttribute: 'original_title',
 		suggestions: [],
 		selectedEvent: "",
 		scrollSettings: {
 			maxScrollLength: 10
 		},
-		countEl: 1,
-		showActiveUsersList: false,
+		countEl: 0, //pass to load data
+		blocked: false,
+		showActiveUsersList: false, //shows selected user list, my or all. Its for animation
 		//externalOpen: false
 	}),
 	beforeMount () {
@@ -121,31 +129,76 @@ export default {
 		availableUsersList() { return this.$store.state.availableUsersList }
 	},
   methods: {
+		onChange: function(value) {
+			console.log('changed searchText: ' + value)
+			this.searchText = value
+			let that = this
+
+			function que(params) {
+				//this.$nextTick(() => {
+					//this.countEl = 1
+					if (that.countEl == 0) {
+						that.$store.commit('RESET_USERS_LIST')
+						that.$store.commit('SET_PARAMS_USERS_LIST', { searchText: that.searchText })
+						that.$refs.infLoadingUsersList.$emit('$InfiniteLoading:reset')
+						that.blocked = false
+						console.log('ask')
+
+						return
+					} else {
+						that.blocked = true
+						console.log('wait')
+						setTimeout(que, 400)
+					}
+				//})
+			}
+
+			if (!this.blocked) que()
+		},
     handleClick: (e) => {
-      console.log(e);
+      console.log(e)
 		},
 		infiniteHandler($state) {
-			if (this.$store.getters.isAuth && this.countEl > 0) {
-				console.log('loadItems')
+			if (this.countEl == 0) {
+				this.countEl++
+				console.log(`1** infiniteHandler fetch offset: ${this.$store.state[this.$store.state.activeUsersList.list].offset} CNT: ${this.countEl}`)
 				return this.$store.dispatch('FETCH_USERS_LIST').then((count) => {
-					this.countEl = count
-					$state.loaded();
-					console.log(`Getting from srv: ${count} elements`)
+					this.countEl--
+					if (count) {
+						$state.loaded()
+						console.log(`2** infiniteHandler fetched from srv: ${count} elements CNT: ${this.countEl}`)
+					} else {
+						$state.complete()
+						console.log(`3** infiniteHandler loaded off CNT: ${this.countEl}`)
+					}
 				})
 				.catch((err) => {
+					this.countEl = 0
 					console.log(err)
 				})
-			} else {
-				$state.complete();
-				console.log('loaded off')
 			}
+
+			// if (this.$store.getters.isAuth && this.countEl > 0) {
+			// 	console.log(`infiniteHandler *1* fetch offset: ${this.$store.state[this.$store.state.activeUsersList.list].offset}`)
+			// 	return this.$store.dispatch('FETCH_USERS_LIST').then((count) => {
+			// 		this.countEl = count
+			// 		$state.loaded()
+			// 		console.log(`infiniteHandler *2* fetched from srv: ${count} elements`)
+			// 	})
+			// 	.catch((err) => {
+			// 		console.log(err)
+			// 	})
+			// } else {
+			// 	$state.complete()
+			// 	console.log('infiniteHandler *3* loaded off')
+			// }
 		},
    	activeClick: function(activeID) {
-			this.countEl = 1
+			this.countEl = 0
 			this.$store.commit('SET_ACTIVE_USERS_LIST', activeID)
 			this.$nextTick(() => {
         this.$refs.infLoadingUsersList.$emit('$InfiniteLoading:reset')
-      });
+      })
 
 			this.showActiveUsersList = !this.showActiveUsersList
       setTimeout(() => {
@@ -157,43 +210,45 @@ export default {
 			//let values = this.$store.getters.conditionValues(condition) deprecated
 			//return 'users' + ((values === undefined) ? '' : `/${values}`)
 		},
-		clickInput: function() {
-				this.selectedEvent = 'click input'
-		},
-		clickButton: function() {
-				this.selectedEvent = 'click button'
-		},
-		selected: function() {
-				this.selectedEvent = 'selection changed'
-		},
-		enter: function() {
-				this.selectedEvent = 'enter'
-		},
-		keyUp: function() {
-				this.selectedEvent = 'keyup pressed'
-		},
-		keyDown: function() {
-				this.selectedEvent = 'keyDown pressed'
-		},
-		keyRight: function() {
-				this.selectedEvent = 'keyRight pressed'
-		},
-		clear: function() {
-				this.selectedEvent = 'clear input'
-		},
-		escape: function() {
-				this.selectedEvent = 'escape'
-		},
-		changed: function() {
-			var that = this
-			this.suggestions = []
-			axios.get('https://api.themoviedb.org/3/search/movie?api_key=342d3061b70d2747a1e159ae9a7e9a36&query=' + this.value)
-			.then(function(response) {
-				response.data.results.forEach(function(a) {
-					that.suggestions.push(a)
-				})
-			})
-		}
+		// clickInput: function() {
+		// 	this.selectedEvent = 'click input'
+		// 	console.log(this.selectedEvent)
+		// },
+		// clickButton: function() {
+		// 	this.selectedEvent = 'click button'
+		// 	console.log(this.selectedEvent)
+		// },
+		// selected: function() {
+		// 		this.selectedEvent = 'selection changed'
+		// },
+		// enter: function() {
+		// 		this.selectedEvent = 'enter'
+		// },
+		// keyUp: function() {
+		// 		this.selectedEvent = 'keyup pressed'
+		// },
+		// keyDown: function() {
+		// 		this.selectedEvent = 'keyDown pressed'
+		// },
+		// keyRight: function() {
+		// 		this.selectedEvent = 'keyRight pressed'
+		// },
+		// clear: function() {
+		// 		this.selectedEvent = 'clear input'
+		// },
+		// escape: function() {
+		// 		this.selectedEvent = 'escape'
+		// },
+		// changed: function() {
+		// 	console.log('changed searchText: ' + this.searchText)
+
+		// 	this.$store.commit('RESET_USERS_LIST')
+		// 	this.$store.commit('SET_PARAMS_USERS_LIST', { searchText: this.searchText })
+		// 	this.$nextTick(() => {
+		// 		this.countEl = 1
+    //     this.$refs.infLoadingUsersList.$emit('$InfiniteLoading:reset')
+    //   })
+		// }
   },
 }
 </script>
@@ -213,11 +268,6 @@ export default {
 	margin-left: 0px;
 	margin-right: 0px;
 }
-
-/* .list-header .search-button:hover:before, .search-button:focus {
-	background-color: white;
-	outline:none;
-} */
 
 .list-header .v-toolbar__content {
 	padding-right: 5px;

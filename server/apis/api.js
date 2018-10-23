@@ -26,26 +26,36 @@ router.get('/users/:id', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
 		user_id: req.params.id,
+		like: req.query.like,
 		limit: (req.headers.limit) ? req.headers.limit : null,
 		offset: (req.headers.offset) ? req.headers.offset : null
 	}
 
 	UserController.getUsers(condition, (err, data) => {
 		if (err) return res.send(err)
-		return res.json(data)
+
+		return res.json({ data: data, partid: req.headers.partid })
 	})
 })
 
 router.get('/users', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
+		like: req.query.like,
 		limit: (req.headers.limit) ? req.headers.limit : null,
 		offset: (req.headers.offset) ? req.headers.offset : null
 	}
 
 	UserController.getUsers(condition, (err, data) => {
-		if (err) return res.send(err)
-		return res.json(data)
+		if (err) {
+			console.log(`/users:end |-> like: ${condition.like} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
+			return res.send(err)
+		}
+
+		console.log(`/users:return |-> like: ${condition.like} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
+		const ids = data.map((el) => el.id).toString()
+		console.log(ids)
+		return res.json({ data: data, partid: req.headers.partid })
 	})
 })
 

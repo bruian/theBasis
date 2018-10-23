@@ -204,6 +204,12 @@ async function getUsers(condition, done) {
 					offset = condition[key]
 				}
 				break
+			case 'like':
+				if (condition[key]) {
+					condition1 = condition1 + ` AND usr.username LIKE '%${condition[key]}%'`
+					condition2 = condition2 + ` AND usr.username LIKE '%${condition[key]}%'`
+				}
+				break
 		}
 	}
 

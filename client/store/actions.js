@@ -106,16 +106,29 @@ async function fetchSrv(query) {
 
 		return Promise.resolve(dataFromSrv.data)
 	} catch (err) {
+		if (Array.isArray(err.response.data) && err.response.data.length > 0) {
+			commit('API_ERROR', err.response.data)
+
+			if (err.response.data[0].action && err.response.data[0].action === 'error') {
+				if (err.response.data[0].name === 'TokenExpiredError') {
+					storage.removeItem('access_token')
+					commit('AUTH_LOGOUT')
+				}
+			}
+		}
+
 		throw err
 	}
 }
+
+let partID = 0, tempData
 
 export default {
 	FETCH_USERS_LIST: ({ commit, state }) => {
 		const fetchQuery = {
 			url: 'users',
 			method: 'GET',
-			headers: { limit: state[state.activeUsersList.list].limit, offset: state[state.activeUsersList.list].offset }
+			headers: { limit: state[state.activeUsersList.list].limit, offset: state[state.activeUsersList.list].offset, partid: ++partID }
 		}
 
 		let params = {}
@@ -132,25 +145,33 @@ export default {
 			}
 		}
 
-		if (condition.length) {
+		const searchText = state[state.activeUsersList.list].searchText
+		if (searchText) {
+			params.like = searchText
+		}
+
+		if (condition.length || searchText) {
 			fetchQuery.params = params
 		}
 
 		return fetchSrv(fetchQuery)
 		.then((dataFromSrv) => {
-			/*
-			var ids = []
-			dataFromSrv.map((currentValue) => {
-				ids.push(currentValue)
-				ids.push({ divider: true, inset: true })
-			})
-			*/
-
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(0)
 			} else {
-				commit('SET_USERS_LIST', dataFromSrv)
-				return Promise.resolve(dataFromSrv.length)
+				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${partID}`)
+				// if (dataFromSrv.partid == partID) {
+				// 	if (Array.isArray(tempData)) {
+				// 		debugger
+				// 	}
+					// console.log('actions partID loading')
+					commit('SET_USERS_LIST', dataFromSrv.data)
+					return Promise.resolve(dataFromSrv.data.length)
+				// } else if (dataFromSrv.partid < partID) {
+				// 	debugger
+				// 	tempData = dataFromSrv.data.slice()
+				// 	return Promise.resolve(dataFromSrv.data.length)
+				// }
 			}
 		})
 		.catch((err) => {
