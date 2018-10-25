@@ -95,7 +95,7 @@ async function fetchSrv(query) {
 
 	try {
 		let dataFromSrv = await Vue.axios(axiosData)
-		if (dataFromSrv.data.action && dataFromSrv.data.action === 'token') {
+		if (dataFromSrv.data.action && (dataFromSrv.data.action === 'token' || dataFromSrv.data.action === 'refreshed')) {
 			storage.setItem('access_token', dataFromSrv.data.access_token)
 			commit('AUTH_SUCCESS', dataFromSrv.data.access_token)
 
@@ -121,17 +121,22 @@ async function fetchSrv(query) {
 	}
 }
 
-let partID = 0, tempData
+let partID = 0
 
 export default {
 	FETCH_USERS_LIST: ({ commit, state }) => {
+		const activeList = state.activeUsersList.list
+		const searchText = state[activeList].searchText
 		const fetchQuery = {
 			url: 'users',
 			method: 'GET',
-			headers: { limit: state[state.activeUsersList.list].limit, offset: state[state.activeUsersList.list].offset, partid: ++partID }
+			params: {
+				like: (searchText) ? searchText : '',
+				whose: state.activeUsersList.whoose
+			},
+			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++partID }
 		}
 
-		let params = {}
 		const condition = state.activeUsersList.condition
 		for (let i = 0; i < condition.length; i++) {
 			switch (condition[i]) {
@@ -140,18 +145,9 @@ export default {
 					//params.id = state.theUser.id
 					break
 				case 'group_id':
-					params.group_id = state.theGroup.id
+					fetchQuery.params.group_id = state.theGroup.id
 					break
 			}
-		}
-
-		const searchText = state[state.activeUsersList.list].searchText
-		if (searchText) {
-			params.like = searchText
-		}
-
-		if (condition.length || searchText) {
-			fetchQuery.params = params
 		}
 
 		return fetchSrv(fetchQuery)
@@ -160,21 +156,61 @@ export default {
 				return Promise.resolve(0)
 			} else {
 				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${partID}`)
-				// if (dataFromSrv.partid == partID) {
-				// 	if (Array.isArray(tempData)) {
-				// 		debugger
-				// 	}
-					// console.log('actions partID loading')
-					commit('SET_USERS_LIST', dataFromSrv.data)
-					return Promise.resolve(dataFromSrv.data.length)
-				// } else if (dataFromSrv.partid < partID) {
-				// 	debugger
-				// 	tempData = dataFromSrv.data.slice()
-				// 	return Promise.resolve(dataFromSrv.data.length)
-				// }
+				commit('SET_USERS_LIST', dataFromSrv.data)
+				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
 		.catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+	LINK_USERS_LIST: ({ commit, state }, id) => {
+		const fetchQuery = {
+			url: 'users',
+			method: 'POST',
+			params: {
+				user_id: id,
+			}
+		}
+
+		commit('UPDATE_VALUES_USERS_LIST', { id, loadingButton: true })
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'rejected_addusers') {
+				return Promise.resolve(0)
+			} else {
+				console.log('user linked')
+				commit('UPDATE_VALUES_USERS_LIST', { id, friend: 1, loadingButton: false })
+				commit('RESET_INACTIVE_USERS_LIST')
+			}
+		}).catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+	UNLINK_USERS_LIST: ({ commit, state }, id) => {
+		const fetchQuery = {
+			url: 'users',
+			method: 'DELETE',
+			params: {
+				user_id: id
+			}
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'rejected_deleteusers') {
+				return Promise.resolve(0)
+			} else {
+				console.log('user unlinked')
+				commit('REMOVE_VALUES_USERS_LIST', { id })
+				commit('RESET_INACTIVE_USERS_LIST')
+			}
+		}).catch((err) => {
 			debugger
 			commit('API_ERROR', err.response.data)
 			return Promise.reject(err.response.data)

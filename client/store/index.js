@@ -18,7 +18,8 @@ const def = {
 		country: '',
 		gender: '',
 		phone: '',
-		avatar: ''
+		avatar: '',
+		friend: 0
 	}
 }
 
@@ -45,10 +46,10 @@ export function createStore () {
 			},
 
 			/* -USERS LIST DATAS- *//* api request: /users or /users/:id */
-			activeUsersList: { text: "all", id: 0, list: 'usersListAll', visible: true, condition: [] },
+			activeUsersList: { text: "all", whoose:'all', id: 0, list: 'usersListAll', visible: true, condition: [] },
 			availableUsersList: [
-				{ text: "my", id: 1, list: 'usersListMy', visible: true, condition: ['user_id'] },
-				{ text: "group", id: 2, list: 'usersListGroup', visible: false, condition: ['user_id', 'group_id'] }
+				{ text: "my", whoose: 'user', id: 1, list: 'usersListMy', visible: true, condition: ['user_id'] },
+				{ text: "group", whoose: 'group', id: 2, list: 'usersListGroup', visible: false, condition: ['user_id', 'group_id'] }
 			],
 			usersListAll: {
 				list: [],

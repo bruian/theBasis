@@ -5,10 +5,10 @@
 				<users-list></users-list>
 			</v-flex>
 			<v-flex lg4 sm12 xs12>
-				<profile></profile>
+				<groups-list></groups-list>
 			</v-flex>
 			<v-flex lg4 sm12 xs12>
-				<groups-list></groups-list>
+				<profile></profile>
 			</v-flex>
 		</v-layout>
 	</v-container>

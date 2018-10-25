@@ -76,13 +76,18 @@
 						<v-subheader v-if="item.header" :key="item.id">{{ item.header }}</v-subheader>
 						<!-- <v-divider v-else-if="item.divider" :key="index" class="ma-0"></v-divider> -->
 						<v-list-tile avatar v-else :key="item.username" @click="handleClick">
-							<v-list-tile-avatar >
+							<v-list-tile-avatar>
 								<img :src="item.avatar">
 							</v-list-tile-avatar>
 							<v-list-tile-content>
 								<v-list-tile-title v-html="item.username"></v-list-tile-title>
 								<v-list-tile-sub-title v-html="item.id"></v-list-tile-sub-title>
 							</v-list-tile-content>
+							<v-spacer></v-spacer>
+							<v-list-tile-action>
+								<v-btn v-if="item.friend == 0" :loading="item.loadingButton" flat small @click.stop="onLink(item.id)">Link</v-btn>
+								<v-btn v-else flat small color="error" @click.stop="onUnLink(item.id)">Unlink</v-btn>
+							</v-list-tile-action>
 						</v-list-tile>
 					</template>
 				</v-list>
@@ -155,6 +160,21 @@ export default {
 
 			if (!this.blocked) que()
 		},
+		onLink: function(id) {
+			return this.$store.dispatch('LINK_USERS_LIST', id).then((res) => {
+			})
+			.catch((err) => {
+				console.log(err)
+			})
+		},
+		onUnLink: function(id) {
+			return this.$store.dispatch('UNLINK_USERS_LIST', id).then((res) => {
+				if (res) {}
+			})
+			.catch((err) => {
+				console.log(err)
+			})
+		},
     handleClick: (e) => {
       console.log(e)
 		},
@@ -177,21 +197,6 @@ export default {
 					console.log(err)
 				})
 			}
-
-			// if (this.$store.getters.isAuth && this.countEl > 0) {
-			// 	console.log(`infiniteHandler *1* fetch offset: ${this.$store.state[this.$store.state.activeUsersList.list].offset}`)
-			// 	return this.$store.dispatch('FETCH_USERS_LIST').then((count) => {
-			// 		this.countEl = count
-			// 		$state.loaded()
-			// 		console.log(`infiniteHandler *2* fetched from srv: ${count} elements`)
-			// 	})
-			// 	.catch((err) => {
-			// 		console.log(err)
-			// 	})
-			// } else {
-			// 	$state.complete()
-			// 	console.log('infiniteHandler *3* loaded off')
-			// }
 		},
    	activeClick: function(activeID) {
 			this.countEl = 0

@@ -26,7 +26,8 @@ router.get('/users/:id', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
 		user_id: req.params.id,
-		like: req.query.like,
+		like: (req.query.like) ? req.query.like : null,
+		whose: (req.query.whose) ? req.query.whose : null,
 		limit: (req.headers.limit) ? req.headers.limit : null,
 		offset: (req.headers.offset) ? req.headers.offset : null
 	}
@@ -34,6 +35,7 @@ router.get('/users/:id', (req, res) => {
 	UserController.getUsers(condition, (err, data) => {
 		if (err) return res.send(err)
 
+		log.debug(`/users:return |-> like: ${condition.like} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
 		return res.json({ data: data, partid: req.headers.partid })
 	})
 })
@@ -41,21 +43,47 @@ router.get('/users/:id', (req, res) => {
 router.get('/users', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
-		like: req.query.like,
+		user_id: null,
+		like: (req.query.like) ? req.query.like : null,
+		whose: (req.query.whose) ? req.query.whose : null,
 		limit: (req.headers.limit) ? req.headers.limit : null,
 		offset: (req.headers.offset) ? req.headers.offset : null
 	}
 
 	UserController.getUsers(condition, (err, data) => {
-		if (err) {
-			console.log(`/users:end |-> like: ${condition.like} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
-			return res.send(err)
-		}
+		if (err) return res.json(err)
 
-		console.log(`/users:return |-> like: ${condition.like} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
+		log.debug(`/users:return |-> like: ${condition.like} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
 		const ids = data.map((el) => el.id).toString()
 		console.log(ids)
+
 		return res.json({ data: data, partid: req.headers.partid })
+	})
+})
+
+router.post('/users', (req, res) => {
+	const condition = {
+		mainUser_id: req.body.userId,
+		user_id: (req.query.user_id) ? req.query.user_id : null
+	}
+
+	UserController.addUsers(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		return res.send(data)
+	})
+})
+
+router.delete('/users', (req, res) => {
+	const condition = {
+		mainUser_id: req.body.userId,
+		user_id: (req.query.user_id) ? req.query.user_id : null
+	}
+
+	UserController.removeUsers(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		return res.send(data)
 	})
 })
 

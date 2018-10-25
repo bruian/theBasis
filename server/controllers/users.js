@@ -2,7 +2,7 @@ const srvPath = process.cwd() + '/server/'
 const log = require(srvPath + 'log')(module)
 
 import { isNumeric } from '../utils'
-import { PgError } from '../errors'
+import { PgError, SrvError } from '../errors'
 import pg from '../db/postgres'
 
 async function _create(condition, client) {
@@ -13,7 +13,7 @@ async function _create(condition, client) {
 		const { rowCount: userCount, rows: user } = await tempClient.query(`INSERT INTO users (${parametres.fields}) VALUES (${parametres.anchors}) RETURNING *`, parametres.values)
 
 		if (userCount === 1) {
-			return Promise.resolve({ rowCount: userCount, rows: group })
+			return Promise.resolve({ rowCount: userCount, rows: user })
 		} else {
 			return Promise.reject(new PgError('Do not execute query in users._create function'))
 		}
@@ -140,7 +140,7 @@ async function getUser(condition, done) {
 	let client
 
 	if (!condition.mainUser_id) {
-		return done(PgError(`The condition must contain the <user_id> field that sets the current user relatively,
+		return done(new PgError(`The condition must contain the <user_id> field that sets the current user relatively,
 			because regarding his rights there will be a request for information from the database`))
 	}
 
@@ -168,68 +168,85 @@ async function getUser(condition, done) {
 }
 
 async function getUsers(condition, done) {
-	let haveID = false,
+	let client,
 		condition1 = '',
 		condition2 = '',
-		client,
-		visible = '= 2',
-		limit = 'null', offset = 'null'
+		limit = 'null', offset = 'null',
+		queryText = ''
 
-	for (let key in condition) {
-		switch (key) {
-			case 'mainUser_id':
-				if (isNumeric(condition[key])) {
-					haveID = true
-					condition2 = condition2 + ` AND ul.user_id = ${condition[key]}`
-				} else {
-					return done(PgError('The condition field <user_id> must be number and > 0'))
-				}
-				break
-			case 'user_id':
-				if (isNumeric(condition[key])) {
-					condition1 = condition1 + ` AND usr.id = ${condition[key]}`
-					condition2 = condition2 + ` AND ul.friend_id = ${condition[key]}`
-					visible = condition.mainUser_id == condition.user_id ? '> 0' : '= 2'
-				} else {
-					return done(PgError('The condition field <id> must be number and > 0'))
-				}
-				break
-			case 'limit':
-				if (isNumeric(condition[key])) {
-					limit = condition[key]
-				}
-				break
-			case 'offset':
-				if (isNumeric(condition[key])) {
-					offset = condition[key]
-				}
-				break
-			case 'like':
-				if (condition[key]) {
-					condition1 = condition1 + ` AND usr.username LIKE '%${condition[key]}%'`
-					condition2 = condition2 + ` AND usr.username LIKE '%${condition[key]}%'`
-				}
-				break
-		}
-	}
-
-	if (!haveID) {
-		return done(PgError(`The condition must contain the <user_id> field that sets the current user relatively,
+	try {
+		if (isNumeric(condition.mainUser_id)) {
+			condition2 = condition2 + ` AND ul.user_id = ${condition.mainUser_id}`
+		} else {
+			return done(new PgError(`The condition must contain the <user_id> field that sets the current user relatively,
 			because regarding his rights there will be a request for information from the database`))
-	}
+		}
 
-	const queryText = `
-	SELECT id, username, name, email, verified, loged, dateofbirth, city, country, gender, phone, url as avatar FROM users AS usr
-		RIGHT JOIN users_personality AS usr_p ON usr.id = usr_p.user_id
-		RIGHT JOIN users_photo AS usr_ph ON usr.id = usr_ph.user_id AND usr_ph.isAvatar = true
-		WHERE usr.visible ${visible} ${condition1}
-	UNION
-	SELECT id, username, name, email, verified, loged, dateofbirth, city, country, gender, phone, url as avatar FROM users_list AS ul
-		RIGHT JOIN users AS usr ON ul.friend_id = usr.id AND usr.visible = 1
-		RIGHT JOIN users_personality AS usr_p ON ul.friend_id = usr_p.user_id
-		RIGHT JOIN users_photo AS usr_ph ON ul.friend_id = usr_ph.user_id AND usr_ph.isAvatar = true
-		WHERE ul.visible > 0 ${condition2}
-	LIMIT ${limit} OFFSET ${offset};`
+		if (isNumeric(condition.user_id)) {
+			condition1 = condition1 + ` AND usr.id = ${condition.user_id}`
+			//condition2 = condition2 + ` AND ul.friend_id = ${condition.user_id}`
+			//visible = condition.mainUser_id == condition.user_id ? '> 0' : '= 2'
+		}
+
+		if (isNumeric(condition.limit)) {
+			limit = condition.limit
+		}
+
+		if (isNumeric(condition.offset)) {
+			offset = condition.offset
+		}
+
+		if (condition.like) {
+			condition1 = condition1 + ` AND usr.username ILIKE '%${condition.like}%'`
+			condition2 = condition2 + ` AND usr.username ILIKE '%${condition.like}%'`
+		}
+
+		/* users.visible: 0 - not visible, 1 - only from user list, 2 - visible for all */
+		/* users_list.visible: 0 - not visible for cpecific user, 1 - visible for specific invited user and friend user,
+			2 - visible for specific friend user */
+		if (condition.whose === '' || condition.whose === 'all') {
+			/* query for get all visible users form me (I see all users and my friends, if they visible) */
+			queryText = `WITH users_table AS (
+			SELECT id, username, name, email, verified, loged, dateofbirth, city, country, gender, phone, url as avatar, 0 as friend FROM users AS usr
+				RIGHT JOIN users_personality AS usr_p ON usr.id = usr_p.user_id
+				RIGHT JOIN users_photo AS usr_ph ON usr.id = usr_ph.user_id AND usr_ph.isAvatar = true
+				WHERE usr.visible = 2 ${condition1}
+			UNION
+			SELECT id, username, name, email, verified, loged, dateofbirth, city, country, gender, phone, url as avatar, 1 as friend FROM users_list AS ul
+				RIGHT JOIN users AS usr ON ul.friend_id = usr.id AND usr.visible > 0
+				RIGHT JOIN users_personality AS usr_p ON ul.friend_id = usr_p.user_id
+				RIGHT JOIN users_photo AS usr_ph ON ul.friend_id = usr_ph.user_id AND usr_ph.isAvatar = true
+				WHERE ul.visible > 0 ${condition2})
+			SELECT id, username, name, email, verified, loged, dateofbirth, city, country, gender, phone, avatar, sum(friend) as friend FROM users_table
+			GROUP BY id, username, name, email, verified, loged, dateofbirth, city, country, gender, phone, avatar
+			LIMIT ${limit} OFFSET ${offset};`
+		} else if (condition.whose === 'user') {
+			if (condition.mainUser_id == condition.user_id) {
+				/* query for get my visible form me friends (I see only my friends, if they visible) */
+				queryText = `
+				SELECT id, username, name, email, verified, loged, dateofbirth, city, country, gender, phone, url as avatar, 1 as friend FROM users_list AS ul
+					RIGHT JOIN users AS usr ON ul.friend_id = usr.id AND usr.visible > 0
+					RIGHT JOIN users_personality AS usr_p ON ul.friend_id = usr_p.user_id
+					RIGHT JOIN users_photo AS usr_ph ON ul.friend_id = usr_ph.user_id AND usr_ph.isAvatar = true
+					WHERE ul.visible = 2 ${condition2}
+				LIMIT ${limit} OFFSET ${offset};`
+			} else {
+				/* query for get visible friends my friend (I see his/her friends, if i'm his/her friend and if they visible) */
+				queryText = `
+				WITH main_ul AS (
+					SELECT * FROM users_list AS ul
+					WHERE ul.visible = 2 AND ul.user_id = ${condition.mainUser_id} AND ul.friend_id = ${condition.user_id}
+				)
+				SELECT id, username, name, email, verified, loged, dateofbirth, city, country, gender, phone, url as avatar FROM users_list AS ul
+					RIGHT JOIN users AS usr ON ul.friend_id = usr.id AND usr.visible = 1
+					RIGHT JOIN users_personality AS usr_p ON ul.friend_id = usr_p.user_id
+					RIGHT JOIN users_photo AS usr_ph ON ul.friend_id = usr_ph.user_id AND usr_ph.isAvatar = true
+					WHERE ul.visible > 0 AND (SELECT COUNT(user_id) FROM main_ul) > 0 ${condition2};`
+			}
+		}
+	} catch (error) {
+		return done(error)
+	}
 
 	try {
 		client = await pg.pool.connect()
@@ -248,6 +265,78 @@ async function getUsers(condition, done) {
 	}
 }
 
+/* Add user to my user list */
+async function addUsers(condition, done) {
+	let client, queryText
+
+	try {
+		if (!isNumeric(condition.mainUser_id)) {
+			return done(new PgError(`The condition must contain the <user_id> field that sets the current user relatively,
+			because regarding his rights there will be a request for information from the database`))
+		}
+
+		if (isNumeric(condition.user_id)) {
+			queryText = `INSERT INTO users_list (user_id, friend_id, visible) VALUES (${condition.mainUser_id}, ${condition.user_id}, 2) RETURNING *`
+		} else {
+			return done(new PgError(`The condition must contain the <user_id> field`))
+		}
+	} catch (error) {
+		return done(error)
+	}
+
+	try {
+		client = await pg.pool.connect()
+
+		const { rowCount } = await client.query(queryText)
+
+		if (rowCount === 0) {
+			return done({ message: `Can't add user to users-list`, status: 400, code: 'rejected_addusers', name: 'ApiMessage' })
+		} else {
+			return done(null, true)
+		}
+	} catch (error) {
+		return done(new PgError(error))
+	} finally {
+		client.release()
+	}
+}
+
+/* Remove user from my user list */
+async function removeUsers(condition, done) {
+	let client, queryText
+
+	try {
+		if (!isNumeric(condition.mainUser_id)) {
+			return done(new PgError(`The condition must contain the <user_id> field that sets the current user relatively,
+			because regarding his rights there will be a request for information from the database`))
+		}
+
+		if (isNumeric(condition.user_id)) {
+			queryText = `DELETE FROM users_list WHERE user_id = ${condition.mainUser_id} AND friend_id = ${condition.user_id} RETURNING *`
+		} else {
+			return done(new PgError('The condition must contain the <user_id> field'))
+		}
+	} catch (error) {
+		return done(error)
+	}
+
+	try {
+		client = await pg.pool.connect()
+
+		const { rowCount } = await client.query(queryText)
+
+		if (rowCount === 0) {
+			return done({ message: `Can't remove user from users-list`, status: 400, code: 'rejected_deleteusers', name: 'ApiMessage' })
+		} else {
+			return done(null, true)
+		}
+	} catch (error) {
+		return done(new PgError(error))
+	} finally {
+		client.release()
+	}
+}
+
 module.exports = {
 	_create,
 	_read,
@@ -255,30 +344,7 @@ module.exports = {
 	_delete,
 	newUser,
 	getUsers,
-	getUser
+	getUser,
+	addUsers,
+	removeUsers
 }
-
-/*
-function _create1(condition, returning = false) {
-	return pg.pool.connect()
-	.then((client) => {
-		const retstring = returning ? 'RETURNING *' : '',
-					parametres = pg.prepareParametres(condition)
-
-		return client.query(`INSERT INTO users (${parametres.fields}) VALUES (${parametres.anchors}) ${retstring}`, parametres.values)
-		.then((res) => {
-			client.release()
-
-			return Promise.resolve(res)
-		})
-		.catch((err) => {
-			client.release()
-
-			throw err
-		})
-	})
-	.catch((err) => {
-		throw err
-	})
-}
-*/

@@ -67,6 +67,22 @@ function PgError(message) {
 }
 PgError.prototype = Object.create(Error.prototype)
 
+function SrvError(message) {
+	Error.call(this)
+
+	this.status = 500
+	log.error(message)
+	if (typeof(message) === 'object') {
+		this.nativeError = message
+		this.message = message.message
+	} else {
+		this.message = message
+	}
+	this.name = 'SrvError'
+}
+SrvError.prototype = Object.create(Error.prototype)
+
 exports.AuthError = AuthError
 exports.MongoCacheError = MongoCacheError
 exports.PgError = PgError
+exports.SrvError = SrvError

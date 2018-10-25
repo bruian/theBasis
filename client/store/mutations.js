@@ -68,7 +68,6 @@ export default {
 	},
 
 	//*** TheUser mutations */
-
 	THEUSER_REQUEST: (state) => {
 		state.apiStatus = 'THEUSER_REQUEST'
 		state.apiError = null
@@ -86,12 +85,8 @@ export default {
 
 	//*** Users list mutations */
 	SET_USERS_LIST: (state, data) => {
-		// if (state[state.activeUsersList.list].offset === state[state.activeUsersList.list].limit) {
-		// 	state[state.activeUsersList.list].list = data
-		// } else {
-			state[state.activeUsersList.list].list = state[state.activeUsersList.list].list.concat(data)
-		// }
-
+		data.forEach(el => el.loadingButton = false)
+		state[state.activeUsersList.list].list = state[state.activeUsersList.list].list.concat(data)
 		state[state.activeUsersList.list].offset = state[state.activeUsersList.list].offset + data.length
 	},
 	SET_ACTIVE_USERS_LIST: (state, activeID) => {
@@ -126,6 +121,34 @@ export default {
 		ul.offset = 0
 		ul.limit = 10
 		ul.searchText = ''
+	},
+	RESET_INACTIVE_USERS_LIST: (state) => {
+		let ul
+		for (let i = 0; i < state.availableUsersList.length; i++) {
+			ul = state[state.availableUsersList[i].list]
+			ul.list = []
+			ul.offset = 0
+			ul.limit = 10
+			ul.searchText = ''
+		}
+	},
+	UPDATE_VALUES_USERS_LIST: (state, values) => {
+		const ul = state[state.activeUsersList.list]
+		const idx = ul.list.findIndex(el => el.id == values.id)
+		const element = ul.list[idx]
+		for (const key in values) {
+			if (key === 'id') continue
+
+			if (element.hasOwnProperty(key)) {
+				element[key] = values[key]
+				//Vue.set(ul.list, idx, element)
+			}
+		}
+	},
+	REMOVE_VALUES_USERS_LIST: (state, values) => {
+		const ul = state[state.activeUsersList.list]
+		const idx = ul.list.findIndex(el => el.id == values.id)
+		ul.list.splice(idx, 1)
 	},
 
 	//*** Other mutations */
