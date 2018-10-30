@@ -1,5 +1,6 @@
 import express from 'express'
 import UserController from '../controllers/users'
+import GroupController from '../controllers/groups'
 import faker from 'faker'
 import crypto from 'crypto'
 import pg from '../db/postgres'
@@ -21,7 +22,7 @@ router.get('/main-user', (req, res) => {
 	})
 })
 
-//get all users visible by this user
+/*** -USERS API- */
 router.get('/users/:id', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
@@ -87,6 +88,76 @@ router.delete('/users', (req, res) => {
 	})
 })
 
+
+/*** -GROUPS API- */
+router.get('/groups/:id', (req, res) => {
+	const condition = {
+		mainUser_id: req.body.userId,
+		group_id: req.params.id,
+		user_id: (req.query.user_id) ? req.query.user_id : null,
+		like: (req.query.like) ? req.query.like : null,
+		whose: (req.query.whose) ? req.query.whose : null,
+		limit: (req.headers.limit) ? req.headers.limit : null,
+		offset: (req.headers.offset) ? req.headers.offset : null
+	}
+
+	GroupController.getGroups(condition, (err, data) => {
+		if (err) return res.send(err)
+
+		log.debug(`/groups:return |-> like: ${condition.like} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
+		return res.json({ data: data, partid: req.headers.partid })
+	})
+})
+
+router.get('/groups', (req, res) => {
+	const condition = {
+		mainUser_id: req.body.userId,
+		group_id: null,
+		user_id: (req.query.user_id) ? req.query.user_id : null,
+		like: (req.query.like) ? req.query.like : null,
+		whose: (req.query.whose) ? req.query.whose : null,
+		limit: (req.headers.limit) ? req.headers.limit : null,
+		offset: (req.headers.offset) ? req.headers.offset : null
+	}
+
+	GroupController.getGroups(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		log.debug(`/groups:return |-> like: ${condition.like} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
+		const ids = data.map((el) => el.id).toString()
+		console.log(ids)
+
+		return res.json({ data: data, partid: req.headers.partid })
+	})
+})
+
+router.post('/groups', (req, res) => {
+	const condition = {
+		mainUser_id: req.body.userId,
+		group_id: (req.query.group_id) ? req.query.group_id : null
+	}
+
+	GroupController.addGroup(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		return res.send(data)
+	})
+})
+
+router.delete('/groups', (req, res) => {
+	const condition = {
+		mainUser_id: req.body.userId,
+		group_id: (req.query.group_id) ? req.query.group_id : null
+	}
+
+	GroupController.removeGroup(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		return res.send(data)
+	})
+})
+
+/*** -OTHER API- */
 router.get('/fakeSet', (req, res) => {
 	return res.end('Can not generates fake datas')
 

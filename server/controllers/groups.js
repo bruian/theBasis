@@ -1,8 +1,9 @@
 const srvPath = process.cwd() + '/server/'
 const log = require(srvPath + 'log')(module)
 
+import { isNumeric } from '../utils'
+import { PgError, SrvError } from '../errors'
 import pg from '../db/postgres'
-
 
 async function _create(condition, client) {
 	const parametres = pg.prepareParametres(condition)
@@ -90,22 +91,83 @@ function _delete(condition) {
 	})
 }
 
-function getGroups(req, res) {
-	_read({ user_id: req.body.userId })
-	.then((result) => {
-		if (result.rowCount === 0) return res.send({ message: 'User contained in token not found', status: 400, code: 'invalid_verification', name: 'AuthError' })
+async function getGroups(condition, done) {
+	let client,
+		condition1 = '',
+		condition2 = '',
+		limit = 'null', offset = 'null',
+		queryText = ''
 
-		const data = Object.assign({}, result.rows[0])
-		delete data.hashedpassword
-		delete data.salt
-		delete data.verify_token
-		delete data.verify_expired
+	try {
+		if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
+			return done(new PgError(`The condition must contain the <user_id> field that sets the current user relatively,
+				because regarding his rights there will be a request for information from the database`))
+		}
 
-    return res.json(data)
-	})
-	.catch((err) => {
-		return res.send(err)
-	})
+		if (isNumeric(condition.user_id)) {
+
+		}
+
+		if (isNumeric(condition.group_id)) {
+
+		}
+
+		if (isNumeric(condition.limit)) {
+			limit = condition.limit
+		}
+
+		if (isNumeric(condition.offset)) {
+			offset = condition.offset
+		}
+
+		if (condition.like) {
+			condition1 = condition1 + ` AND grp.username ILIKE '%${condition.like}%'`
+		}
+
+		let whose
+		if (condition.whose === '' || condition.whose === 'all') {
+			whose = `AND grp.owner != ${condition.mainUser_id}`
+		} else if (condition.whose === 'user') {
+			whose = ''
+		}
+
+		queryText = `SELECT group_id AS id, user_type, name, parent, creating, reading, updating, deleting, task_creating,
+				task_reading, task_updating, task_deleting, group_type, 0 AS haveChild, owner FROM groups_list AS gl
+			RIGHT JOIN groups AS grp ON gl.group_id = grp.id ${whose}
+			WHERE grp.parent IS null
+				AND gl.group_id NOT IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent)
+				AND grp.reading >= gl.user_type
+				AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
+				${condition1}
+		UNION
+		SELECT group_id AS id, user_type, name, parent, creating, reading, updating, deleting, task_creating,
+				task_reading, task_updating, task_deleting, group_type, 1 AS haveChild, owner FROM groups_list AS gl
+			RIGHT JOIN groups AS grp ON gl.group_id = grp.id ${whose}
+			WHERE grp.parent IS null
+				AND gl.group_id IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent)
+				AND grp.reading >= gl.user_type
+				AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
+				${condition1}
+		LIMIT ${limit} OFFSET ${offset};`
+	} catch (error) {
+		return done(error)
+	}
+
+	try {
+		client = await pg.pool.connect()
+
+		const { rowCount, rows } = await client.query(queryText)
+
+		if (rowCount === 0) {
+			return done({ message: `No datas with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
+		} else {
+			return done(null, rows)
+		}
+	} catch (error) {
+		return done(new PgError(error))
+	} finally {
+		client.release()
+	}
 }
 
 module.exports = {

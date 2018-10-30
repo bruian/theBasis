@@ -9,6 +9,10 @@ export default {
 		return state[state.activeUsersList.list].list
 	},
 
+	groupsList (state) {
+		return state[state.activeGroupsList.list].list
+	},
+
 	// conditionValues: state => condition => {
 	// 	let values
 

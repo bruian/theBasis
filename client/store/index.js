@@ -20,6 +20,22 @@ const def = {
 		phone: '',
 		avatar: '',
 		friend: 0
+	},
+	maunGroup: {
+		group_id: 0,
+		user_type: 1,
+		name: 'personal',
+		parent: null,
+		creating: 1,
+		reading: 1,
+		updating: 1,
+		deleting: 1,
+		task_creating: 1,
+		task_reading:1 ,
+		task_updating: 1,
+		task_deleting: 1,
+		group_type: 2,
+		haveChild: 0
 	}
 }
 
@@ -46,10 +62,10 @@ export function createStore () {
 			},
 
 			/* -USERS LIST DATAS- *//* api request: /users or /users/:id */
-			activeUsersList: { text: "all", whoose:'all', id: 0, list: 'usersListAll', visible: true, condition: [] },
+			activeUsersList: { text: 'all', whose: 'all', id: 0, list: 'usersListAll', visible: true, condition: [] },
 			availableUsersList: [
-				{ text: "my", whoose: 'user', id: 1, list: 'usersListMy', visible: true, condition: ['user_id'] },
-				{ text: "group", whoose: 'group', id: 2, list: 'usersListGroup', visible: false, condition: ['user_id', 'group_id'] }
+				{ text: 'my', whose: 'user', id: 1, list: 'usersListMy', visible: true, condition: ['user_id'] },
+				{ text: 'group', whose: 'group', id: 2, list: 'usersListGroup', visible: false, condition: ['user_id', 'group_id'] }
 			],
 			usersListAll: {
 				list: [],
@@ -64,6 +80,24 @@ export function createStore () {
 				searchText: ''
 			},
 			usersListGroup: {
+				list: [],
+				limit: 10,
+				offset: 0,
+				searchText: ''
+			},
+
+			/* -GROUPS LIST DATAS- *//* api request: /groups or /groups/:id */
+			activeGroupsList: { text: 'all', whose: 'all', id: 0, list: 'groupsListAll', visible: true, condition: [] },
+			availableGroupsList: [
+				{ text: 'my', whose: 'user', id: 1, list: 'groupsListMy', visible: true, condition: ['user_id'] }
+			],
+			groupsListAll: {
+				list: [],
+				limit: 10,
+				offset: 0,
+				searchText: ''
+			},
+			groupsListMy: {
 				list: [],
 				limit: 10,
 				offset: 0,

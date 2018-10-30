@@ -2,10 +2,10 @@
 	<v-container grid-list-xl >
 		<v-layout row wrap >
 			<v-flex lg4 sm12 xs12>
-				<users-list></users-list>
+				<groups-list></groups-list>
 			</v-flex>
 			<v-flex lg4 sm12 xs12>
-				<groups-list></groups-list>
+				<users-list></users-list>
 			</v-flex>
 			<v-flex lg4 sm12 xs12>
 				<profile></profile>

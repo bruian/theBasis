@@ -124,6 +124,7 @@ async function fetchSrv(query) {
 let partID = 0
 
 export default {
+	/*** USERS LIST actions */
 	FETCH_USERS_LIST: ({ commit, state }) => {
 		const activeList = state.activeUsersList.list
 		const searchText = state[activeList].searchText
@@ -132,7 +133,7 @@ export default {
 			method: 'GET',
 			params: {
 				like: (searchText) ? searchText : '',
-				whose: state.activeUsersList.whoose
+				whose: state.activeUsersList.whose
 			},
 			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++partID }
 		}
@@ -209,6 +210,100 @@ export default {
 				console.log('user unlinked')
 				commit('REMOVE_VALUES_USERS_LIST', { id })
 				commit('RESET_INACTIVE_USERS_LIST')
+			}
+		}).catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+
+	/*** GROUPS LIST actions */
+	FETCH_GROUPS_LIST: ({ commit, state }) => {
+		//debugger
+		const activeList = state.activeGroupsList.list
+		const searchText = state[activeList].searchText
+		const fetchQuery = {
+			url: 'groups',
+			method: 'GET',
+			params: {
+				like: (searchText) ? searchText : '',
+				whose: state.activeGroupsList.whose
+			},
+			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++partID }
+		}
+
+		const condition = state.activeGroupsList.condition
+		for (let i = 0; i < condition.length; i++) {
+			switch (condition[i]) {
+				case 'user_id':
+					fetchQuery.params.user_id = state.theUser.id
+					break
+				case 'group_id':
+					fetchQuery.url += '/' + state.theGroup.id
+					break
+			}
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(0)
+			} else {
+				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${partID}`)
+				commit('SET_GROUPS_LIST', dataFromSrv.data)
+				return Promise.resolve(dataFromSrv.data.length)
+			}
+		})
+		.catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+	LINK_GROUPS_LIST: ({ commit, state }, id) => {
+		const fetchQuery = {
+			url: 'groups',
+			method: 'POST',
+			params: {
+				group_id: id,
+			}
+		}
+
+		commit('UPDATE_VALUES_GROUPS_LIST', { id, loadingButton: true })
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'rejected_linkgroups') {
+				return Promise.resolve(0)
+			} else {
+				console.log('group linked')
+				commit('UPDATE_VALUES_GROUPS_LIST', { id, friend: 1, loadingButton: false })
+				commit('RESET_INACTIVE_GROUPS_LIST')
+			}
+		}).catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+	UNLINK_GROUPS_LIST: ({ commit, state }, id) => {
+		const fetchQuery = {
+			url: 'groups',
+			method: 'DELETE',
+			params: {
+				group_id: id
+			}
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'rejected_unlinkgroups') {
+				return Promise.resolve(0)
+			} else {
+				console.log('group unlinked')
+				commit('REMOVE_VALUES_GROUPS_LIST', { id })
+				commit('RESET_INACTIVE_GROUPS_LIST')
 			}
 		}).catch((err) => {
 			debugger
