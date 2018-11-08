@@ -153,7 +153,6 @@ export default {
 
 	//*** Groups list mutations */
 	SET_GROUPS_LIST: (state, data) => {
-		//data.forEach(el => el.loadingButton = false)
 		state[state.activeGroupsList.list].list = state[state.activeGroupsList.list].list.concat(data)
 		state[state.activeGroupsList.list].offset = state[state.activeGroupsList.list].offset + data.length
 	},
@@ -174,36 +173,54 @@ export default {
 			}
 		}
 	},
+	SET_SUBGROUPS: (state, data) => {
+		const gl = state[state.activeGroupsList.list]
+		let fIndex = -1
+
+		for (let i = 0; i < data.length; i++) {
+			/*
+			fIndex = state.subgroupsCache.findIndex(el => el.id === data[i].id)
+			if (fIndex === -1) {
+				state.subgroupsCache.push(data[i])
+			}
+			*/
+
+			fIndex = gl.list.findIndex(el => el.id === data[i].id)
+			if (fIndex > -1) {
+				gl.list[fIndex].children = data[i].children
+			}
+		}
+	},
 	SET_PARAMS_GROUPS_LIST: (state, params) => {
-		const ul = state[state.activeGroupsList.list]
+		const gl = state[state.activeGroupsList.list]
 
 		for (const key in params) {
-			if (ul.hasOwnProperty(key)) {
-				ul[key] = params[key]
+			if (gl.hasOwnProperty(key)) {
+				gl[key] = params[key]
 			}
 		}
 	},
 	RESET_GROUPS_LIST: (state) => {
-		const ul = state[state.activeGroupsList.list]
-		ul.list = []
-		ul.offset = 0
-		ul.limit = 10
-		ul.searchText = ''
+		const gl = state[state.activeGroupsList.list]
+		gl.list = []
+		gl.offset = 0
+		gl.limit = 10
+		gl.searchText = ''
 	},
 	RESET_INACTIVE_GROUPS_LIST: (state) => {
-		let ul
+		let gl
 		for (let i = 0; i < state.availableGroupsList.length; i++) {
-			ul = state[state.availableGroupsList[i].list]
-			ul.list = []
-			ul.offset = 0
-			ul.limit = 10
-			ul.searchText = ''
+			gl = state[state.availableGroupsList[i].list]
+			gl.list = []
+			gl.offset = 0
+			gl.limit = 10
+			gl.searchText = ''
 		}
 	},
 	UPDATE_VALUES_GROUPS_LIST: (state, values) => {
-		const ul = state[state.activeGroupsList.list]
-		const idx = ul.list.findIndex(el => el.id == values.id)
-		const element = ul.list[idx]
+		const gl = state[state.activeGroupsList.list]
+		const idx = gl.list.findIndex(el => el.id == values.id)
+		const element = gl.list[idx]
 		for (const key in values) {
 			if (key === 'id') continue
 
@@ -213,9 +230,9 @@ export default {
 		}
 	},
 	REMOVE_VALUES_GROUPS_LIST: (state, values) => {
-		const ul = state[state.activeGroupsList.list]
-		const idx = ul.list.findIndex(el => el.id == values.id)
-		ul.list.splice(idx, 1)
+		const gl = state[state.activeGroupsList.list]
+		const idx = gl.list.findIndex(el => el.id == values.id)
+		gl.list.splice(idx, 1)
 	},
 
 	//*** Other mutations */

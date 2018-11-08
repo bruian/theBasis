@@ -61,6 +61,8 @@ export function createStore () {
 				id: 0
 			},
 
+			subgroupsCache: [],
+
 			/* -USERS LIST DATAS- *//* api request: /users or /users/:id */
 			activeUsersList: { text: 'all', whose: 'all', id: 0, list: 'usersListAll', visible: true, condition: [] },
 			availableUsersList: [

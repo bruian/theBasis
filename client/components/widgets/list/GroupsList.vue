@@ -45,7 +45,7 @@
 				<v-treeview
           :active.sync="active"
           :items="items"
-          :load-children="fetchUsers"
+          :load-children="fetchSubgroups"
           :open.sync="open"
           activatable
           active-class="primary--text"
@@ -60,20 +60,6 @@
 						mdi-account
 					</v-icon>
         </v-treeview>
-				<!-- <v-list two-line class="pa-0" dense>
-					<template v-for="(item, index) in items">
-						<v-subheader v-if="item.header" :key="item.id">{{ item.header }}</v-subheader>
-						<v-list-tile avatar v-else :key="item.groupname" @click="handleClick">
-							<v-list-tile-avatar>
-								<v-icon medium>inbox</v-icon>
-							</v-list-tile-avatar>
-							<v-list-tile-content>
-								<v-list-tile-title v-html="item.name"></v-list-tile-title>
-								<v-list-tile-sub-title v-html="item.id"></v-list-tile-sub-title>
-							</v-list-tile-content>
-						</v-list-tile>
-					</template>
-				</v-list> -->
 				<infinite-loading @infinite="infiniteHandler" ref="infLoadingGroupsList"></infinite-loading>
 			</vue-perfect-scrollbar>
 		</v-card-text>
@@ -112,15 +98,7 @@ export default {
 		}
 	},
 	computed: {
-		//items() {	return this.$store.getters.groupsList },
-		items() {
-			return [
-				{
-					name: 'Users',
-					children: this.users
-				}
-			]
-		},
+		items() {	return this.$store.getters.groupsList },
 		selected() {
 			if (!this.active.length) return undefined
 
@@ -186,7 +164,7 @@ export default {
 				})
 				.catch((err) => {
 					this.countEl = 0
-					console.log(err)
+					console.warn(err)
 				})
 			}
 		},
@@ -202,13 +180,14 @@ export default {
         this.showActiveGroupsList = !this.showActiveGroupsList
       }, 500)
 		},
-		async fetchUsers (item) {
-			await pause(1500)
-
-			return fetch('https://jsonplaceholder.typicode.com/users')
-				.then(res => res.json())
-				.then(json => (item.children.push(...json)))
-				.catch(err => console.warn(err))
+		async fetchSubgroups (item) {
+			console.log(`1**SGR fetch`)
+			return this.$store.dispatch('FETCH_SUBGROUPS', item.id).then((count) => {
+				console.log(`2**SGR fetched`)
+			})
+			.catch((err) => {
+				console.warn(err)
+			})
 		}
   },
 }

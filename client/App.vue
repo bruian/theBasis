@@ -8,18 +8,12 @@
 				<v-content>
 					<!-- Page Header -->
 					<!--page-header v-if="$route.meta.breadcrumb"></page-header-->
-					<v-breadcrumbs class="mt-0 pb-1">
-						<v-icon slot="divider">link</v-icon>
 
-						<v-breadcrumbs-item
-							v-for="item in crumbs"
-							:disabled="item.disabled"
-							:key="item.text"
-							:to="item.to"
-						>
-							{{ item.text }}
-						</v-breadcrumbs-item>
-					</v-breadcrumbs>
+					<div class="mt-0 pb-0">
+						<v-breadcrumbs :items="crumbs">
+							<v-icon slot="divider">link</v-icon>
+						</v-breadcrumbs>
+					</div>
 
 					<transition name='fade' mode='out-in'>
 						<div class="page-wrapper">
@@ -180,7 +174,7 @@ export default {
 		crumbs: [
 			{ text: "Home", disabled: false, to: '/' },
 			{ text: "Users", disabled: false, to: 'users' },
-			{ text: "tasks", disabled: true, to: 'css' }
+			{ text: "Tasks", disabled: true, to: 'css' }
 		],
 	}),
 	created() {

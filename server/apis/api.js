@@ -88,7 +88,6 @@ router.delete('/users', (req, res) => {
 	})
 })
 
-
 /*** -GROUPS API- */
 router.get('/groups/:id', (req, res) => {
 	const condition = {

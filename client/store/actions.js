@@ -261,6 +261,35 @@ export default {
 			return Promise.reject(err.response.data)
 		})
 	},
+	FETCH_SUBGROUPS: ({ commit, state }, group_id) => {
+		const activeList = state.activeGroupsList.list
+		const searchText = state[activeList].searchText
+		const fetchQuery = {
+			url: 'groups',
+			method: 'GET',
+			params: {
+				like: (searchText) ? searchText : '',
+				whose: state.activeGroupsList.whose
+			}
+		}
+
+		fetchQuery.url += '/' + group_id
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(0)
+			} else {
+				commit('SET_SUBGROUPS', dataFromSrv.data)
+				return Promise.resolve(dataFromSrv.data.length)
+			}
+		})
+		.catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
 	LINK_GROUPS_LIST: ({ commit, state }, id) => {
 		const fetchQuery = {
 			url: 'groups',

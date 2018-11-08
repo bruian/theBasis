@@ -94,9 +94,9 @@ function _delete(condition) {
 async function getGroups(condition, done) {
 	let client,
 		condition1 = '',
-		condition2 = '',
 		limit = 'null', offset = 'null',
-		queryText = ''
+		queryText = '',
+		selectGroup = false
 
 	try {
 		if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
@@ -104,12 +104,10 @@ async function getGroups(condition, done) {
 				because regarding his rights there will be a request for information from the database`))
 		}
 
-		if (isNumeric(condition.user_id)) {
+		//if (isNumeric(condition.user_id)) {}
 
-		}
-
-		if (isNumeric(condition.group_id)) {
-
+		if (isNumeric(condition.group_id) && condition.group_id > 0) {
+			selectGroup = true
 		}
 
 		if (isNumeric(condition.limit)) {
@@ -121,7 +119,7 @@ async function getGroups(condition, done) {
 		}
 
 		if (condition.like) {
-			condition1 = condition1 + ` AND grp.username ILIKE '%${condition.like}%'`
+			condition1 = condition1 + ` AND grp.name ILIKE '%${condition.like}%'`
 		}
 
 		let whose
@@ -131,24 +129,43 @@ async function getGroups(condition, done) {
 			whose = ''
 		}
 
-		queryText = `SELECT group_id AS id, user_type, name, parent, creating, reading, updating, deleting, task_creating,
-				task_reading, task_updating, task_deleting, group_type, 0 AS haveChild, owner FROM groups_list AS gl
-			RIGHT JOIN groups AS grp ON gl.group_id = grp.id ${whose}
-			WHERE grp.parent IS null
-				AND gl.group_id NOT IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent)
-				AND grp.reading >= gl.user_type
-				AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
-				${condition1}
-		UNION
-		SELECT group_id AS id, user_type, name, parent, creating, reading, updating, deleting, task_creating,
-				task_reading, task_updating, task_deleting, group_type, 1 AS haveChild, owner FROM groups_list AS gl
-			RIGHT JOIN groups AS grp ON gl.group_id = grp.id ${whose}
-			WHERE grp.parent IS null
-				AND gl.group_id IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent)
-				AND grp.reading >= gl.user_type
-				AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
-				${condition1}
-		LIMIT ${limit} OFFSET ${offset};`
+		if (selectGroup) {
+			queryText = `WITH RECURSIVE recursive_tree (id, parent, path, user_type, level) AS (
+				SELECT T1g.id, T1g.parent, CAST (T1g.id AS VARCHAR (50)) AS path, T1gl.user_type, 1
+					FROM groups_list AS T1gl
+				RIGHT JOIN groups AS T1g ON (T1gl.group_id = T1g.id)
+				WHERE T1g.parent IS NULL AND T1gl.group_id = ${condition.group_id}
+					UNION
+				SELECT T2g.id, T2g.parent, CAST (recursive_tree.PATH ||'->'|| T2g.id AS VARCHAR(50)), T2gl.user_type, level + 1
+					FROM groups_list AS T2gl
+				RIGHT JOIN groups AS T2g ON (T2gl.group_id = T2g.id)
+				INNER JOIN recursive_tree ON (recursive_tree.id = T2g.parent)
+			)
+			SELECT recursive_tree.id, recursive_tree.user_type, grp.name, recursive_tree.parent, recursive_tree.level, recursive_tree.path,
+					grp.creating, grp.reading, grp.updating, grp.deleting, grp.task_creating,
+					grp.task_reading, grp.task_updating, grp.task_deleting, grp.group_type FROM recursive_tree
+			LEFT JOIN groups AS grp ON recursive_tree.id = grp.id
+			ORDER BY path;`
+		} else {
+			queryText = `SELECT group_id AS id, user_type, name, parent, creating, reading, updating, deleting, task_creating,
+					task_reading, task_updating, task_deleting, group_type, 0 AS haveChild, owner FROM groups_list AS gl
+				RIGHT JOIN groups AS grp ON gl.group_id = grp.id ${whose}
+				WHERE grp.parent IS null
+					AND gl.group_id NOT IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent)
+					AND grp.reading >= gl.user_type
+					AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
+					${condition1}
+			UNION
+			SELECT group_id AS id, user_type, name, parent, creating, reading, updating, deleting, task_creating,
+					task_reading, task_updating, task_deleting, group_type, 1 AS haveChild, owner FROM groups_list AS gl
+				RIGHT JOIN groups AS grp ON gl.group_id = grp.id ${whose}
+				WHERE grp.parent IS null
+					AND gl.group_id IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent)
+					AND grp.reading >= gl.user_type
+					AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
+					${condition1}
+			LIMIT ${limit} OFFSET ${offset};`
+		}
 	} catch (error) {
 		return done(error)
 	}
@@ -161,7 +178,39 @@ async function getGroups(condition, done) {
 		if (rowCount === 0) {
 			return done({ message: `No datas with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
 		} else {
-			return done(null, rows)
+			if (selectGroup) {
+				let hierarchicalRows = []
+
+				function constructHierarchy (rows, parentId) {
+					let hRows = []
+
+					for (let i = 0; i < rows.length; i++) {
+						let record = Object.assign({}, rows[i])
+						if ((parentId === null && record.parent === null) || (record.parent === parentId)) {
+							const innerRows = constructHierarchy(rows, record.id)
+							if (innerRows.length > 0) {
+								record.children = innerRows
+								record.havechild = 1
+							} else {
+								record.havechild = 0
+							}
+
+							hRows.push(record)
+						}
+					}
+
+					return hRows
+				}
+				hierarchicalRows = constructHierarchy(rows, null)
+
+				return done(null, hierarchicalRows)
+			} else {
+				rows.forEach(el => {
+					if (el.havechild) el.children = []
+				})
+
+				return done(null, rows)
+			}
 		}
 	} catch (error) {
 		return done(new PgError(error))
