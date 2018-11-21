@@ -121,17 +121,17 @@ export default {
 			},
 			{ header: 'Common' },
 			{
-				title: 'Users',
+				title: 'Main',
 				group: 'Common',
 				icon: 'people',
 				//target: '_blank', переход с открытием нового окна
 				name: 'users',
 			},
 			{
-				title: 'Groups',
+				title: 'Tasks',
 				group: 'Common',
-				icon: 'recent_actors',
-				name: 'groups',
+				icon: 'list',
+				name: 'tasks',
 			},
 			{
 				title: 'Widgets',
@@ -161,7 +161,7 @@ export default {
 				icon: 'list',
 				items: [
 					{ name: 'iView', title: 'iView', component: 'appGrid' },
-					{ name: 'flex-box', title: 'flex-box', component: 'flexBox' }
+					{ name: 'info', title: 'info', component: 'info' }
 				]
 			},
 		],

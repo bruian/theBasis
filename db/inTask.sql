@@ -101,7 +101,7 @@ INSERT INTO groups_list (user_id, group_id, user_type)
 SELECT * FROM groups_list ORDER BY user_id, group_id;
 */
 
-/* Запрос всей иерархии группы */
+/* Запрос всей иерархии группы 
 WITH RECURSIVE recursive_tree (id, parent, path, user_type, level) AS (
 	SELECT T1g.id, T1g.parent, CAST (T1g.id AS VARCHAR (50)) AS path, T1gl.user_type, 1
     FROM groups_list AS T1gl
@@ -118,6 +118,7 @@ SELECT recursive_tree.id, recursive_tree.user_type, grp.name, recursive_tree.par
 	   grp.task_reading, grp.task_updating, grp.task_deleting, grp.group_type FROM recursive_tree
 LEFT JOIN groups AS grp ON recursive_tree.id = grp.id
 ORDER BY path;
+*/
 
 /* Запрос всех групп первого уровня не принадлежащие main user. Ограничение по: видимости main user */
 /* AND grp.reading >= gl.user_type ограничение видимости группы по типу пользователя
@@ -134,6 +135,26 @@ SELECT group_id, user_type, name, parent, creating, reading, updating, deleting,
 	WHERE grp.parent IS null AND gl.group_id IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent) AND grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = 1)
 LIMIT 10 OFFSET 0
 */
+
+/* Main groups tree
+WITH RECURSIVE recursive_tree (id, parent, path, user_type, level) AS (
+	SELECT T1g.id, T1g.parent, CAST (T1g.id AS VARCHAR (50)) AS path, T1gl.user_type, 1
+    FROM groups_list AS T1gl
+	RIGHT JOIN groups AS T1g ON (T1gl.group_id = T1g.id)
+	WHERE T1g.parent IS NULL AND T1gl.user_id = 1
+		UNION
+	SELECT T2g.id, T2g.parent, CAST (recursive_tree.PATH ||'->'|| T2g.id AS VARCHAR(50)), T2gl.user_type, level + 1
+    FROM groups_list AS T2gl
+	RIGHT JOIN groups AS T2g ON (T2gl.group_id = T2g.id)
+	INNER JOIN recursive_tree ON (recursive_tree.id = T2g.parent)
+)
+SELECT recursive_tree.id, recursive_tree.user_type, grp.name, recursive_tree.parent, recursive_tree.level, recursive_tree.path,
+	   grp.creating, grp.reading, grp.updating, grp.deleting, grp.task_creating, 
+	   grp.task_reading, grp.task_updating, grp.task_deleting, grp.group_type FROM recursive_tree
+LEFT JOIN groups AS grp ON recursive_tree.id = grp.id
+ORDER BY path;
+*/
+
 
 /*
 SELECT user_id, group_id, owner, user_type, name, parent, creating, reading, updating, deleting, task_creating, task_reading, task_updating, task_deleting, group_type FROM groups_list AS gl
@@ -179,17 +200,67 @@ SELECT * FROM users_personality;
 SELECT * FROM users_photo ORDER BY user_id;
 */
 --UPDATE users_photo SET user_id = 2 WHERE photo_id = 2;
+
 /*
-ALTER TABLE groups
-    ADD COLUMN owner integer;
+ALTER TABLE tasks
+    ADD COLUMN ends timestamp;
 */
 
---ALTER TABLE users_list RENAME COLUMN visble TO visible;
+--ALTER TABLE context_list RENAME COLUMN id_user TO id_task;
+
 /*
 SELECT * FROM groups_list, groups WHERE 
 		(groups_list.group_id = groups.id) 
 	AND (groups_list.user_id = 3) 
 	AND (groups_list.user_type >= groups.reading);
 */
---SELECT * FROM tasks_list;
 
+--CREATE TABLE context (id serial, value varchar(1024));
+--CREATE TABLE context_list (id_user int, id_context int);
+--CREATE TABLE context_setting (id_context int, id_user int, id_inherited int, active bool, note varchar(2000), activity_type smallint)
+
+/*
+ALTER TABLE public.tasks
+    ALTER COLUMN ends TYPE timestamp with time zone ;
+*/
+
+/*
+INSERT INTO tasks (tid, name, owner, status, duration, note) 
+	VALUES (2, 'Китайский язык - повторение материала', 1, 2, 2400000, '');
+INSERT INTO tasks_list (group_id, task_id) VALUES (1, 3);
+INSERT INTO context (value) VALUES ('Китайский язык');
+INSERT INTO context_list (id_task, id_context) VALUES (3, 3);
+INSERT INTO context_setting (id_context, id_user, id_inherited, active, note, activity_type) VALUES (3, 1, 0, true, 'Изучение языков', 1);
+*/
+
+/* AND grp.reading >= gl.user_type ограничение видимости группы по типу пользователя
+ user_type: 1-owner, 2-curator, 3-member, 4-all (все группы с таким типом имеют id = 0)
+ reading->enum_reading: 0-not readable, 1-owner reading, 2-curator reading, 3-member reading, 4-reading by all
+CREATE VIEW main_visible_groups AS
+SELECT group_id, user_type, name, parent, creating, reading, updating, deleting, task_creating, task_reading, task_updating, task_deleting, group_type, owner FROM groups_list AS gl
+	RIGHT JOIN groups AS grp ON gl.group_id = grp.id
+	WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = 1);
+*/
+
+/* Выбрать все задачи пользователя 
+выбираются группы пользователя, 
+по списку групп формируется список задач
+список задач присоединяет к себе смежные данные по задаче
+отдельно выбираются многострочные части типа список контекстов
+*/
+
+/* view:main_visible_groups: group_id, user_type, name, parent, creating, reading, updating, deleting, task_creating, task_reading, task_updating, task_deleting, group_type, owner */
+/* tasks_list: group_id, task_id */
+WITH main_visible_groups AS (
+SELECT group_id, user_type, name, parent, creating, reading, updating, deleting, task_creating, task_reading, task_updating, task_deleting, group_type, owner FROM groups_list AS gl
+	RIGHT JOIN groups AS grp ON gl.group_id = grp.id
+	WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = 1)
+)
+SELECT tl.task_id, tsk.tid, tsk.name, tsk.owner AS tskowner, tsk.status, tsk.duration, tsk.note, mvg.group_id, mvg.owner AS growner FROM main_visible_groups AS mvg
+	  JOIN tasks_list AS tl ON mvg.group_id = tl.group_id
+	  LEFT JOIN tasks AS tsk ON tl.task_id = tsk.id
+
+--UPDATE tasks_list SET group_id = 50 WHERE task_id = 3
+--SELECT * FROM context_list WHERE owner = 1
+--SELECT * FROM groups_list WHERE user_id = 1
+--SELECT * FROM tasks_list;

@@ -1,26 +1,29 @@
 import Vue from 'vue'
 
+/* use only for api srv mutations */
+function setApiStatus(state, status, error) {
+	if (state.logStatus) {
+		state.apiStatus.push({ status, error })
+	}
+}
+
 export default {
 	//*** API Status mutation */
 	API_ERROR: (state, error) => {
-		state.apiStatus = 'error'
-		state.apiError = error
+		setApiStatus(state, 'error', error)
 	},
 
 	//*** Authentication mutations */
 	AUTH_REQUEST: (state) => {
-		state.apiStatus = 'AUTH_REQUEST'
-		state.apiError = null
+		setApiStatus(state, 'AUTH_REQUEST', null)
 	},
 	AUTH_SUCCESS: (state, token) => {
-		state.apiStatus = 'AUTH_SUCCESS'
-		state.apiError = null
+		setApiStatus(state, 'AUTH_SUCCESS', null)
 
 		state.auth.token = token
 	},
 	AUTH_LOGOUT: (state) => {
-		state.apiStatus = 'AUTH_LOGOUT'
-		state.apiError = null
+		setApiStatus(state, 'AUTH_LOGOUT', null)
 
 		state.auth.token = null
 		state.mainUser = Object.assign({}, state.default.mainUser)
@@ -41,26 +44,63 @@ export default {
 
 	//*** Registration mutations */
 	REG_REQUEST: (state) => {
-		state.apiStatus = 'REG_REQUEST'
-		state.apiError = null
+		setApiStatus(state, 'REG_REQUEST', null)
 	},
 	REG_SUCCESS: (state, token) => {
-		state.apiStatus = 'REG_SUCCESS'
-		state.apiError = null
+		setApiStatus(state, 'REG_SUCCESS', null)
 
 		state.auth.token = token
 	},
 
-	//*** MainUser mutations */
+	//*** Main mutations */
 	MAINUSER_REQUEST: (state) => {
-		state.apiStatus = 'MAINUSER_REQUEST'
-		state.apiError = null
+		setApiStatus(state, 'MAINUSER_REQUEST', null)
 	},
 	MAINUSER_SUCCESS: (state, user) => {
-		state.apiStatus = 'MAINUSER_SUCCESS'
-		state.apiError = null
+		setApiStatus(state, 'MAINUSER_SUCCESS', null)
 
 		state.mainUser = Object.assign({}, user)
+	},
+	MAINGROUPS_SUCCESS: (state, groups) => {
+		setApiStatus(state, 'MAINGROUPS_SUCCESS', null)
+
+		//debugger
+		state.mainGroups = groups
+
+		let hierarchicalRows = []
+		function constructHierarchy (rows, parentId) {
+			let hRows = [], record
+
+			for (let i = 0; i < rows.length; i++) {
+				record = {
+					id: rows[i].id,
+					name: rows[i].name,
+					label: rows[i].name,
+					parent: rows[i].parent,
+					level: rows[i].level,
+					group_type: rows[i].group_type,
+					user_type: rows[i].user_type,
+					children: rows[i].children
+				}
+				//Object.assign({}, rows[i])
+
+				if ((parentId === null && record.parent === null) || (record.parent === parentId)) {
+					if (record.children) {
+						const innerRows = constructHierarchy(record.children, record.id)
+						if (innerRows.length > 0) {
+							record.children = innerRows
+						}
+					}
+
+					hRows.push(record)
+				}
+			}
+
+			return hRows
+		}
+		hierarchicalRows = constructHierarchy(groups, null)
+
+		state.mainGroupsMini = hierarchicalRows
 	},
 
 	CHANGE_APP_READY: (state, ready) => {
@@ -69,12 +109,10 @@ export default {
 
 	//*** TheUser mutations */
 	THEUSER_REQUEST: (state) => {
-		state.apiStatus = 'THEUSER_REQUEST'
-		state.apiError = null
+		setApiStatus(state, 'THEUSER_REQUEST', null)
 	},
 	THEUSER_SUCCESS: (state, user) => {
-		state.apiStatus = 'THEUSER_SUCCESS'
-		state.apiError = null
+		setApiStatus(state, 'THEUSER_SUCCESS', null)
 		//debugger
 		if (state.mainUser.id === user.id) {
 			state.theUser = state.mainUser
@@ -85,6 +123,8 @@ export default {
 
 	//*** Users list mutations */
 	SET_USERS_LIST: (state, data) => {
+		setApiStatus(state, 'SET_USERS_LIST', null)
+
 		data.forEach(el => el.loadingButton = false)
 		state[state.activeUsersList.list].list = state[state.activeUsersList.list].list.concat(data)
 		state[state.activeUsersList.list].offset = state[state.activeUsersList.list].offset + data.length
@@ -133,6 +173,8 @@ export default {
 		}
 	},
 	UPDATE_VALUES_USERS_LIST: (state, values) => {
+		setApiStatus(state, 'UPDATE_VALUES_USERS_LIST', null)
+
 		const ul = state[state.activeUsersList.list]
 		const idx = ul.list.findIndex(el => el.id == values.id)
 		const element = ul.list[idx]
@@ -146,6 +188,8 @@ export default {
 		}
 	},
 	REMOVE_VALUES_USERS_LIST: (state, values) => {
+		setApiStatus(state, 'REMOVE_VALUES_USERS_LIST', null)
+
 		const ul = state[state.activeUsersList.list]
 		const idx = ul.list.findIndex(el => el.id == values.id)
 		ul.list.splice(idx, 1)
@@ -153,6 +197,8 @@ export default {
 
 	//*** Groups list mutations */
 	SET_GROUPS_LIST: (state, data) => {
+		setApiStatus(state, 'SET_GROUPS_LIST', null)
+
 		state[state.activeGroupsList.list].list = state[state.activeGroupsList.list].list.concat(data)
 		state[state.activeGroupsList.list].offset = state[state.activeGroupsList.list].offset + data.length
 	},
@@ -174,6 +220,8 @@ export default {
 		}
 	},
 	SET_SUBGROUPS: (state, data) => {
+		setApiStatus(state, 'SET_SUBGROUPS', null)
+
 		const gl = state[state.activeGroupsList.list]
 		let fIndex = -1
 
@@ -208,6 +256,8 @@ export default {
 		gl.searchText = ''
 	},
 	RESET_INACTIVE_GROUPS_LIST: (state) => {
+		setApiStatus(state, 'RESET_INACTIVE_GROUPS_LIST', null)
+
 		let gl
 		for (let i = 0; i < state.availableGroupsList.length; i++) {
 			gl = state[state.availableGroupsList[i].list]
@@ -218,6 +268,8 @@ export default {
 		}
 	},
 	UPDATE_VALUES_GROUPS_LIST: (state, values) => {
+		setApiStatus(state, 'UPDATE_VALUES_GROUPS_LIST', null)
+
 		const gl = state[state.activeGroupsList.list]
 		const idx = gl.list.findIndex(el => el.id == values.id)
 		const element = gl.list[idx]
@@ -230,9 +282,36 @@ export default {
 		}
 	},
 	REMOVE_VALUES_GROUPS_LIST: (state, values) => {
+		setApiStatus(state, 'REMOVE_VALUES_GROUPS_LIST', null)
+
 		const gl = state[state.activeGroupsList.list]
 		const idx = gl.list.findIndex(el => el.id == values.id)
 		gl.list.splice(idx, 1)
+	},
+
+	//*** Tasks mutations */
+	SET_TASKS_LIST: (state, data) => {
+		setApiStatus(state, 'SET_TASKS_LIST', null)
+
+		state[state.activeTasksList.list].list = state[state.activeTasksList.list].list.concat(data)
+		state[state.activeTasksList.list].offset = state[state.activeTasksList.list].offset + data.length
+	},
+	SET_ACTIVE_TASKS_LIST: (state, activeID) => {
+		let temp = state.activeTasksList
+
+		state.activeTasksList = state.availableTasksList.splice(state.availableTasksList.findIndex(el => el.id == activeID), 1)[0]
+		if (temp.id > -1) {
+			if (temp.id === 0) {
+				state.availableTasksList.unshift(temp)
+			} else {
+				let fIndex = state.availableTasksList.findIndex(el => el.id > temp.id)
+				if (fIndex > -1) {
+					state.availableTasksList.splice(fIndex, 0, temp)
+				} else {
+					state.availableTasksList.push(temp)
+				}
+			}
+		}
 	},
 
 	//*** Other mutations */

@@ -13,25 +13,20 @@ export default {
 		return state[state.activeGroupsList.list].list
 	},
 
-	// conditionValues: state => condition => {
-	// 	let values
+	tasksList (state) {
+		return state[state.activeTasksList.list].list
+	},
 
-	// 	if (condition) {
-	// 		switch (condition) {
-	// 			case 'id':
-	// 				values = state.mainUser.id
-	// 				break
-	// 			case 'user_id':
-	// 				values = state.user.id
-	// 				break
-	// 			case 'group_id':
-	// 				values = state.group.id
-	// 				break
-	// 		}
-	// 	}
-
-	// 	return values
-	// },
+	context: state => id => {
+		//debugger
+		const context = state[state.activeTasksList.list].context
+		const foundContext = context.find(el => el.id === id)
+		if (foundContext) {
+			return foundContext.tags
+		} else {
+			return []
+		}
+	},
 
 	// ids of the items that should be currently displayed based on
   // current list type and current pagination

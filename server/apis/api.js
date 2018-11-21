@@ -1,6 +1,7 @@
 import express from 'express'
 import UserController from '../controllers/users'
 import GroupController from '../controllers/groups'
+import TaskController from '../controllers/tasks'
 import faker from 'faker'
 import crypto from 'crypto'
 import pg from '../db/postgres'
@@ -15,10 +16,19 @@ router.get('/hello', (req, res) => {
 
 //get authenticated user
 router.get('/main-user', (req, res) => {
-	const condition = { mainUser_id: req.body.userId }
+	const condition = {
+		mainUser_id: req.body.userId,
+		packet: (req.headers.packet) ? req.headers.packet : null
+	}
+
 	UserController.getUser(condition, (err, data) => {
 		if (err) return res.send(err)
-		return res.json(data)
+
+		if (condition.packet === null) {
+			return res.json(data)
+		} else {
+			return res.json({ data: data, packet: condition.packet })
+		}
 	})
 })
 
@@ -116,7 +126,8 @@ router.get('/groups', (req, res) => {
 		like: (req.query.like) ? req.query.like : null,
 		whose: (req.query.whose) ? req.query.whose : null,
 		limit: (req.headers.limit) ? req.headers.limit : null,
-		offset: (req.headers.offset) ? req.headers.offset : null
+		offset: (req.headers.offset) ? req.headers.offset : null,
+		packet: (req.headers.packet) ? req.headers.packet : null
 	}
 
 	GroupController.getGroups(condition, (err, data) => {
@@ -126,7 +137,7 @@ router.get('/groups', (req, res) => {
 		const ids = data.map((el) => el.id).toString()
 		console.log(ids)
 
-		return res.json({ data: data, partid: req.headers.partid })
+		return res.json({ data: data, partid: req.headers.partid, packet: condition.packet })
 	})
 })
 
@@ -153,6 +164,30 @@ router.delete('/groups', (req, res) => {
 		if (err) return res.json(err)
 
 		return res.send(data)
+	})
+})
+
+/*** -TASKS API- */
+router.get('/tasks', (req, res) => {
+	const condition = {
+		mainUser_id: req.body.userId,
+		group_id: (req.query.group_id) ? req.query.group_id : null,
+		user_id: (req.query.user_id) ? req.query.user_id : null,
+		task_id: null,
+		like: (req.query.like) ? req.query.like : null,
+		whose: (req.query.whose) ? req.query.whose : null,
+		limit: (req.headers.limit) ? req.headers.limit : null,
+		offset: (req.headers.offset) ? req.headers.offset : null
+	}
+
+	TaskController.getTasks(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		log.debug(`/tasks:return |-> like: ${condition.like} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
+		const ids = data.map((el) => el.id).toString()
+		console.log(ids)
+
+		return res.json({ data: data, partid: req.headers.partid })
 	})
 })
 

@@ -5,29 +5,37 @@
 		color="primary"
 		dark
 		app
-		fixed>
+		fixed
+		dense>
 
-		<v-toolbar-title style="width: 300px" class="ml-0 pl-0">
+		<!-- <v-toolbar-title style="width: 300px" class="ml-0 pl-0"> -->
+		<v-toolbar-title class="ml-0 pl-0">
 			<v-toolbar-side-icon @click="$emit('input', !value)" height="36"></v-toolbar-side-icon>
-			<span class="hidden-sm-and-down">inTask.me</span>
+			<a class="hidden-sm-and-down white--text" href="/">inTask.me</a>
 		</v-toolbar-title>
 
-		<v-text-field
+		<!-- <v-text-field
 			flat
 			solo-inverted
 			hide-details
 			prepend-inner-icon="search"
 			label="Search"
 			class="hidden-sm-and-down">
-		</v-text-field>
+		</v-text-field> -->
 
+		<v-spacer></v-spacer>
+			<v-toolbar-items class="hidden-sm-and-down" v-if="isAuth">
+				<v-btn flat to="info">info</v-btn>
+				<v-btn flat to="users">main</v-btn>
+				<v-btn flat to="tasks">Tasks</v-btn>
+			</v-toolbar-items>
 		<v-spacer></v-spacer>
 
 		<v-menu
 			offset-y
 			origin="center center"
 			:nudge-bottom="14"
-			transition="scale-transition">
+			transition="scale-transition" v-if="isAuth">
 
 			<v-btn icon flat slot="activator">
 				<v-badge color="red" overlap>
@@ -151,6 +159,8 @@ export default {
 }
 </script>
 
-<style lang="stylus">
-
+<style lang="css">
+	.myHeader {
+		font-size: 16px;
+	}
 </style>

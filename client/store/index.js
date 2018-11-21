@@ -21,7 +21,7 @@ const def = {
 		avatar: '',
 		friend: 0
 	},
-	maunGroup: {
+	mainGroup: {
 		group_id: 0,
 		user_type: 1,
 		name: 'personal',
@@ -42,23 +42,33 @@ const def = {
 export function createStore () {
   return new Vuex.Store({
     state: {
-			default: { mainUser: def.mainUser },
+			default: { mainUser: def.mainUser }, //?
 			/* -APPLICATION STATE- */
-			appReady: false,					 //if True - appliacation loaded and ready to render
-			apiStatus: 'success',			 //last status api response (from server)
-			apiError: null, 					 //last api error (from server)
+			appReady: false,				//if True - appliacation loaded and ready to render
+			logStatus: true,				//ON/OFF api status logging
+			apiStatus: [],			 		//log api status
+			//apiError: [], 			  //log api error (from server)
 
 			/* -AUTHENTICATED STATUS -*/
 			auth: {	token: ''	},
 
 			/* -LOGGED USERS DATAS- *//* api request: /auth-user */
 			mainUser: Object.assign({}, def.mainUser),
+			mainUsers: [],
+			mainUsersMini: [],
+			mainGroups: [],
+			mainGroupsMini: [],
+			mainContext: [],
 
 			/* -SELECTED DATAS- */
 			theUser: {},
 
 			theGroup: {
 				id: 0
+			},
+
+			theTask: {
+				id: null
 			},
 
 			subgroupsCache: [],
@@ -106,6 +116,25 @@ export function createStore () {
 				searchText: ''
 			},
 
+			/* -TASKS LIST DATAS- *//* api request: /tasks */
+			activeTasksList: { text: 'all', whose: 'user', id: 0, list: 'tasksList', visible: true, condition: [] },
+			availableTasksList: [
+				{ text: 'complete', whose: 'user', id: 0, list: 'tasksList', visible: true, condition: [] }
+			],
+			tasksList: {
+				list: [],
+				context: [{
+					id: 1,
+					tags: ['maus', 'santa']
+				},{
+					id: 3,
+					tags: ['klaus', 'ganta']
+				}],
+				limit: 10,
+				offset: 0,
+				searchText: ''
+			},
+
 			/* -OTHERS DATAS- */
       activeType: null,
       itemsPerPage: 20,
@@ -118,7 +147,7 @@ export function createStore () {
         show: [],
         ask: [],
         job: []
-      },
+			},
     },
     actions,
     mutations,

@@ -96,18 +96,13 @@ async function getGroups(condition, done) {
 		condition1 = '',
 		limit = 'null', offset = 'null',
 		queryText = '',
-		selectGroup = false
+		selectGroup = false,
+		whose = ''
 
 	try {
 		if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
 			return done(new PgError(`The condition must contain the <user_id> field that sets the current user relatively,
 				because regarding his rights there will be a request for information from the database`))
-		}
-
-		//if (isNumeric(condition.user_id)) {}
-
-		if (isNumeric(condition.group_id) && condition.group_id > 0) {
-			selectGroup = true
 		}
 
 		if (isNumeric(condition.limit)) {
@@ -122,11 +117,17 @@ async function getGroups(condition, done) {
 			condition1 = condition1 + ` AND grp.name ILIKE '%${condition.like}%'`
 		}
 
-		let whose
 		if (condition.whose === '' || condition.whose === 'all') {
 			whose = `AND grp.owner != ${condition.mainUser_id}`
 		} else if (condition.whose === 'user') {
-			whose = ''
+		} else if (condition.whose === 'group') {
+			if (isNumeric(condition.group_id) && condition.group_id > 0) {
+				selectGroup = true
+				whose = `T1gl.group_id = ${condition.group_id}`
+			}
+		} else if (condition.whose === 'main') {
+			selectGroup = true
+			whose = `T1gl.user_id = ${condition.mainUser_id}`
 		}
 
 		if (selectGroup) {
@@ -134,7 +135,7 @@ async function getGroups(condition, done) {
 				SELECT T1g.id, T1g.parent, CAST (T1g.id AS VARCHAR (50)) AS path, T1gl.user_type, 1
 					FROM groups_list AS T1gl
 				RIGHT JOIN groups AS T1g ON (T1gl.group_id = T1g.id)
-				WHERE T1g.parent IS NULL AND T1gl.group_id = ${condition.group_id}
+				WHERE T1g.parent IS NULL AND ${whose}
 					UNION
 				SELECT T2g.id, T2g.parent, CAST (recursive_tree.PATH ||'->'|| T2g.id AS VARCHAR(50)), T2gl.user_type, level + 1
 					FROM groups_list AS T2gl

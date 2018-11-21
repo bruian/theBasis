@@ -36,14 +36,14 @@
 				<v-btn small fab dark falt fixed top="top" right="right" class="setting-fab" color="red" @click="settingsDrawer = !settingsDrawer">
 					<v-icon>settings</v-icon>
 				</v-btn>
+
 				<v-navigation-drawer
 					class="setting-drawer"
 					temporary
 					right
 					v-model="settingsDrawer"
 					hide-overlay
-					fixed
-					>
+					fixed>
 					<panel-settings></panel-settings>
 				</v-navigation-drawer>
 

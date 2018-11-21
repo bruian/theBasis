@@ -21,6 +21,8 @@
     "npm": ">=4.0"
   },
   "dependencies": {
+    "@riophae/vue-treeselect": "0.0.37",
+    "@voerro/vue-tagsinput": "^1.10.0",
     "axios": "^0.18.0",
     "body-parser": "^1.18.2",
     "bootstrap": "^4.1.3",

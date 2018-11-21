@@ -5,70 +5,22 @@ import Vue from 'vue'
 const logRequests = !!config.DEBUG_API
 const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
 
-const zeroTgmUsers = {
-  id: '0',
-  username: 'Add telegram user',
-  phonenumber: '',
-  api_id: '',
-  api_hash: '',
-  app_title: '',
-  testConfiguration: '',
-  prodConfiguration: '',
-  rsaPublicKey: '',
-  publicKeys: ''
-}
-
-function fetchTgmItem(id) {
-  return new Promise((resolve, reject) => {
-    if (id == '0') {
-      zeroTgmUsers.__lastUpdated = Date.now()
-      return resolve(zeroTgmUsers)
-    }
-
-    logRequests && console.log(`fetching ${id}...`)
-    Vue.axios.get(`/tgmUsers/${id}`)
-    .then(function (response) {
-      //debugger
-      if (response.data.tgmUser) {
-        var tgmUser = response.data.tgmUser
-        tgmUser.__lastUpdated = Date.now()
-        tgmUser.id = tgmUser._id
-        delete tgmUser._id
-
-        logRequests && console.log(`fetched ${id}.`)
-        resolve(tgmUser)
-      }
-    })
-    .catch(function (error) {
-      //debugger
-      console.error('in fetchTgmItem', error)
-      reject(error)
-    })
-  })
-}
-
-function fetchTgmUserIds() {
-  return new Promise((resolve, reject) => {
-    Vue.axios.get('/tgmUsers')
-    .then(function(response) {
-      //debugger
-      var ids = ['0']
-      response.data.map((currentValue) => {
-        ids.push(currentValue._id)
-      })
-
-      resolve(ids)
-    })
-    .catch(function(error) {
-      console.error('In fetchTgmUserIds', error)
-      reject(error)
-    })
-  })
-}
-
-function fetchTgmItems(ids) {
-  return Promise.all(ids.map(id => fetchTgmItem(id)))
-}
+const mainPacket = [{
+	fetchQuery: {
+		url: 'main-user',
+		method: 'GET',
+		headers: { packet: 0 }
+	},
+	mutations: ['MAINUSER_SUCCESS', 'THEUSER_SUCCESS']
+},{
+	fetchQuery: {
+		url: 'groups',
+		method: 'GET',
+		params: { whose: 'main' },
+		headers: { packet: 1 }
+	},
+	mutations: ['MAINGROUPS_SUCCESS']
+}]
 
 function getTokensFromSessionStorage() {
 	const tokens = { access_token: '', refresh_token: '' }
@@ -121,7 +73,7 @@ async function fetchSrv(query) {
 	}
 }
 
-let partID = 0
+let userPartID = 0, groupPartID = 0, taskPartID = 0
 
 export default {
 	/*** USERS LIST actions */
@@ -135,7 +87,7 @@ export default {
 				like: (searchText) ? searchText : '',
 				whose: state.activeUsersList.whose
 			},
-			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++partID }
+			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++userPartID }
 		}
 
 		const condition = state.activeUsersList.condition
@@ -156,7 +108,7 @@ export default {
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(0)
 			} else {
-				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${partID}`)
+				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${userPartID}`)
 				commit('SET_USERS_LIST', dataFromSrv.data)
 				return Promise.resolve(dataFromSrv.data.length)
 			}
@@ -230,7 +182,7 @@ export default {
 				like: (searchText) ? searchText : '',
 				whose: state.activeGroupsList.whose
 			},
-			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++partID }
+			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++groupPartID }
 		}
 
 		const condition = state.activeGroupsList.condition
@@ -250,7 +202,7 @@ export default {
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(0)
 			} else {
-				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${partID}`)
+				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${groupPartID}`)
 				commit('SET_GROUPS_LIST', dataFromSrv.data)
 				return Promise.resolve(dataFromSrv.data.length)
 			}
@@ -269,7 +221,7 @@ export default {
 			method: 'GET',
 			params: {
 				like: (searchText) ? searchText : '',
-				whose: state.activeGroupsList.whose
+				whose: 'group'
 			}
 		}
 
@@ -341,8 +293,52 @@ export default {
 		})
 	},
 
+	//*** TASKS LIST actions */
+	FETCH_TASKS_LIST: ({ commit, state }) => {
+		//debugger
+		const activeList = state.activeTasksList.list
+		const searchText = state[activeList].searchText
+		const fetchQuery = {
+			url: 'tasks',
+			method: 'GET',
+			params: {
+				like: (searchText) ? searchText : '',
+				whose: state.activeTasksList.whose
+			},
+			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++taskPartID }
+		}
+
+		const condition = state.activeTasksList.condition
+		for (let i = 0; i < condition.length; i++) {
+			switch (condition[i]) {
+				case 'user_id':
+					fetchQuery.params.user_id = state.theUser.id
+					break
+				case 'group_id':
+					fetchQuery.url += '/' + state.theGroup.id
+					break
+			}
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(0)
+			} else {
+				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${taskPartID}`)
+				commit('SET_TASKS_LIST', dataFromSrv.data)
+				return Promise.resolve(dataFromSrv.data.length)
+			}
+		})
+		.catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+
 	//*** User actions */
-	MAINUSER_REQUEST: ({ commit, state }) => {
+	MAINUSER_REQUEST1: ({ commit, state }) => {
 		const fetchQuery = {
 			url: 'main-user',
 			method: 'GET'
@@ -364,6 +360,37 @@ export default {
 				commit('THEUSER_SUCCESS', dataFromSrv)
 
 				return Promise.resolve(1)
+			}
+		})
+		.catch((err) => {
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+
+	MAINUSER_REQUEST: ({ commit, state }) => {
+		commit('MAINUSER_REQUEST')
+
+		return Promise.all([
+			fetchSrv(mainPacket[0].fetchQuery),
+			fetchSrv(mainPacket[1].fetchQuery)
+		]).then(datasFromSrv => {
+			//debugger
+			for (const dataFromSrv of datasFromSrv) {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(0)
+				} else {
+					if (!state.auth.token) {
+						//if need refressh token in store
+						commit('AUTH_SUCCESS', getTokensFromSessionStorage().access_token)
+					}
+
+					for (let mutation of mainPacket[dataFromSrv.packet].mutations) {
+						commit(mutation, dataFromSrv.data)
+					}
+
+					Promise.resolve(1)
+				}
 			}
 		})
 		.catch((err) => {
@@ -606,6 +633,71 @@ export default {
     }
   },
 /*
+const zeroTgmUsers = {
+  id: '0',
+  username: 'Add telegram user',
+  phonenumber: '',
+  api_id: '',
+  api_hash: '',
+  app_title: '',
+  testConfiguration: '',
+  prodConfiguration: '',
+  rsaPublicKey: '',
+  publicKeys: ''
+}
+
+function fetchTgmItem(id) {
+  return new Promise((resolve, reject) => {
+    if (id == '0') {
+      zeroTgmUsers.__lastUpdated = Date.now()
+      return resolve(zeroTgmUsers)
+    }
+
+    logRequests && console.log(`fetching ${id}...`)
+    Vue.axios.get(`/tgmUsers/${id}`)
+    .then(function (response) {
+      //debugger
+      if (response.data.tgmUser) {
+        var tgmUser = response.data.tgmUser
+        tgmUser.__lastUpdated = Date.now()
+        tgmUser.id = tgmUser._id
+        delete tgmUser._id
+
+        logRequests && console.log(`fetched ${id}.`)
+        resolve(tgmUser)
+      }
+    })
+    .catch(function (error) {
+      //debugger
+      console.error('in fetchTgmItem', error)
+      reject(error)
+    })
+  })
+}
+
+function fetchTgmUserIds() {
+  return new Promise((resolve, reject) => {
+    Vue.axios.get('/tgmUsers')
+    .then(function(response) {
+      //debugger
+      var ids = ['0']
+      response.data.map((currentValue) => {
+        ids.push(currentValue._id)
+      })
+
+      resolve(ids)
+    })
+    .catch(function(error) {
+      console.error('In fetchTgmUserIds', error)
+      reject(error)
+    })
+  })
+}
+
+function fetchTgmItems(ids) {
+  return Promise.all(ids.map(id => fetchTgmItem(id)))
+}
+
   // ensure all active items are fetched
   ENSURE_ACTIVE_ITEMS: ({ dispatch, getters }) => {
     return dispatch('FETCH_ITEMS', {
