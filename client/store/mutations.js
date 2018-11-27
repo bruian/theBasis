@@ -293,6 +293,10 @@ export default {
 	SET_TASKS_LIST: (state, data) => {
 		setApiStatus(state, 'SET_TASKS_LIST', null)
 
+		data.forEach((element) => {
+			element.iExpanded = false
+		})
+
 		state[state.activeTasksList.list].list = state[state.activeTasksList.list].list.concat(data)
 		state[state.activeTasksList.list].offset = state[state.activeTasksList.list].offset + data.length
 	},

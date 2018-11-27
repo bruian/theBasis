@@ -387,7 +387,7 @@ export default {
 
 .tags-input span {
 	margin-right: 0.3rem;
-	margin-bottom: 0.2rem;
+	/* margin-bottom: 0.2rem; */
 }
 
 .typeahead > span {
@@ -395,6 +395,9 @@ export default {
 	margin-right: 0.3rem;
 }
 
+.typeahead {
+	margin-bottom: 1px;
+}
 
 .badge {
 	display: inline-block;
@@ -431,7 +434,8 @@ export default {
 
 .badge-light {
 	color: #212529;
-	background-color: #f8f9fa;
+	background-color: #e9ecef;
+	/* background-color: #f8f9fa; */
 }
 
 .badge-light[href]:focus, .badge-light[href]:hover {
@@ -453,13 +457,12 @@ export default {
 
 .tags-input-default-class {
 	/* padding: .5rem .25rem; -initial*/
-	padding: 1px 1px;
-
-	background: #fff;
-
-	border: 1px solid transparent;
-	border-radius: .25rem;
-	border-color: #dbdbdb;
+	/* background: #fff; */
+	/* border: 1px solid transparent; */
+	/* border-radius: .25rem; */
+	/* border-color: #dbdbdb; */
+	padding: 1px;
+	min-height: 23px;
 }
 
 .tags-input-remove {
@@ -496,5 +499,6 @@ export default {
 
 .tags-input input[type="text"] {
 	color: #495057;
+	font-size: 12px;
 }
 </style>

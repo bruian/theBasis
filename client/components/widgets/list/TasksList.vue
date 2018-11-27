@@ -40,95 +40,133 @@
 		<div class="tasks-list-body">
 			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="tskbox">
 				<div class="task-container" v-for="(item, index) in items">
-					<div class="task-clmn1">
-						<v-speed-dial
-							:direction="direction"
-							:open-on-hover="hover"
-							:transition="transition">
-							<v-btn
-								slot="activator"
-								color="blue darken-2"
-								dark
-								fab
-								small>
-								<v-icon>playlist_add_check</v-icon>
-								<v-icon>close</v-icon>
-							</v-btn>
-							<v-btn
-								fab
-								dark
-								small
-								color="green">
-								<v-icon>play_arrow</v-icon>
-							</v-btn>
-							<v-btn
-								fab
-								dark
-								small
-								color="green">
-								<v-icon>not_interested</v-icon>
-							</v-btn>
-							<v-btn
-								fab
-								dark
-								small
-								color="green">
-								<v-icon>delete_forever</v-icon>
-							</v-btn>
-						</v-speed-dial>
-					</div>
+					<div class="task-body">
+						<div class="task-clmn1">
+							<v-speed-dial
+								:direction="direction"
+								:open-on-hover="hover"
+								:transition="transition">
+								<v-btn
+									slot="activator"
+									color="blue darken-2"
+									dark
+									fab
+									small>
+									<v-icon>playlist_add_check</v-icon>
+									<v-icon>close</v-icon>
+								</v-btn>
+								<v-btn
+									fab
+									dark
+									small
+									color="green">
+									<v-icon>play_arrow</v-icon>
+								</v-btn>
+								<v-btn
+									fab
+									dark
+									small
+									color="green">
+									<v-icon>not_interested</v-icon>
+								</v-btn>
+								<v-btn
+									fab
+									dark
+									small
+									color="green">
+									<v-icon>delete_forever</v-icon>
+								</v-btn>
+							</v-speed-dial>
+						</div>
 
-					<div class="task-clmn2">
-						<v-flex class="task-status ma-0" style="padding:1px;" text-xs-center>
-							<v-tooltip bottom>
+						<div class="task-clmn2">
+							<v-tooltip bottom class="task-status">
 								<v-icon
 									slot="activator"
-									color="primary"
-									dark
 								>play_arrow</v-icon>
 								<span>Начато</span>
 							</v-tooltip>
-						</v-flex>
-						<v-flex class="task-id ma-0" style="padding:1px;">
-							<div>id: {{item.tid}}</div>
-						</v-flex>
-					</div>
 
-					<div class="task-clmn3">
-						<!-- <v-flex class="ma-0" style="padding:1px;"> -->
-							<ItmTextArea
-								placeholder="Task name"
-								v-model="item.name"
-								:min-height="21"
-								:max-height="84"
-							></ItmTextArea>
-						<!-- </v-flex> -->
-						<v-flex class="ma-0" style="padding:1px;">
-							<TagsInput element-id="item.task_id"
-								:tag-input="context(item.task_id)"
-								:existing-tags="{
-									'web-development': 'Web Development',
-									'php': 'PHP',
-									'javascript': 'JavaScript',
-								}"
-								:typeahead="true"
-								:placeholder="'Add a context'">
-							</TagsInput>
-						</v-flex>
-					</div>
+							<v-menu
+								bottom
+								origin="center center"
+								transition="scale-transition"
+							>
+								<v-icon
+									slot="activator"
+									color="primary"
+								>more_horiz</v-icon>
+								<v-list>
+									<v-list-tile
+										v-for="(mmitem, i) in moreMenu"
+										:key="i"
+										@click=""
+									>
+										<v-list-tile-title>{{ mmitem.title }}</v-list-tile-title>
+									</v-list-tile>
+								</v-list>
+							</v-menu>
 
-					<div class="task-clmn4">
-						<v-flex class="ma-0" style="padding:1px;">
-							<div>{{getDuration(item.duration)}}</div>
-						</v-flex>
-						<v-flex class="ma-0" style="padding:1px;">
+							<!-- <a style="margin-bottom: 2px">more</a> -->
+						</div>
+
+						<div class="task-clmn3">
+							<!-- <v-flex class="ma-0" style="padding:1px;"> -->
+								<ItmTextArea
+									placeholder="Task name"
+									v-model="item.name"
+									:min-height="21"
+									:max-height="84"
+								></ItmTextArea>
+							<!-- </v-flex> -->
+							<v-flex class="ma-0" style="padding:1px;">
+								<TagsInput element-id="item.task_id"
+									:tag-input="context(item.task_id)"
+									:existing-tags="{
+										'web-development': 'Web Development',
+										'php': 'PHP',
+										'javascript': 'JavaScript',
+									}"
+									:typeahead="true"
+									:placeholder="'Add a context'">
+								</TagsInput>
+							</v-flex>
+						</div>
+
+						<div class="task-clmn4">
+							<v-tooltip bottom >
+								<div slot="activator" class="task-duration">{{ getDuration(item.duration) }}</div>
+								<span>Время затрачено</span>
+							</v-tooltip>
+
+							<div class="task-id">id: {{ item.tid }}</div>
+
+							<v-icon @click="expandIcoClick(item)" class="expand-ico"
+								slot="activator"
+								color="primary"
+								dark
+							>{{ (item.iExpanded) ? "keyboard_arrow_up" : "keyboard_arrow_down" }}</v-icon>
+
 							<treeselect v-model="item.group_id"
 								placeholder="Group"
+								:clearable="false"
 								:multiple="false"
 								:options="mainGroupsMini" />
-						</v-flex>
+						</div>
+					</div> <!-- task-body -->
+
+					<div class="task-expander" v-show="item.iExpanded">
+						<v-textarea style="padding-left: 6px; padding-right: 6px; margin-bottom: 2px;"
+							hide-details
+							no-resize
+							clearable
+							rows="3"
+							counter
+							name="input-7-1"
+							label="Примечание"
+							v-model="item.note"
+							placeholder="Введите сюда любую сопутствующую задаче текстовую информацию"></v-textarea>
 					</div>
-					<!--</div>  task-container -->
 				</div> <!-- task-container -->
 
 				<infinite-loading @infinite="infiniteHandler" ref="infLoadingTasksList"></infinite-loading>
@@ -179,6 +217,10 @@ export default {
 		countEl: 0, //pass to load data
 		blocked: false,
 		showActiveTasksList: false, //shows selected user list, my or all. Its for animation
+		moreMenu: [
+			{ title: 'Add subtask' },
+			{ title: 'Collapse subtask' }
+		]
 	}),
 	beforeMount () {
 		if (this.$root._isMounted) {
@@ -286,6 +328,10 @@ export default {
 			hours = hours + (timeDiff * 24)
 
 			return `${hours>9 ? '' : '0'}${hours}:${minutes>9 ? '' : '0'}${minutes}:${seconds>9 ? '' : '0'}${seconds}`
+		},
+		expandIcoClick(id) {
+			id.iExpanded = !id.iExpanded
+			//TODO set task property
 		}
   }
 }
@@ -311,7 +357,7 @@ export default {
 	/* padding: 1em; */
 	/* width: 100%; */
 	display: flex;
-	flex-flow: row nowrap;
+	flex-direction: column;
 	max-width: 100%;
 
   margin: 0.3em;
@@ -319,10 +365,17 @@ export default {
 	box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, .2);
 }
 
-.task-container:hover, .task-container:focus, .task-container:active {
+.task-body {
+	display: flex;
+	flex-flow: row nowrap;
+}
+
+.task-container:hover,
+.task-container:focus,
+.task-container:active {
 	box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, .2),
-	-13px 0 15px -15px rgba(0, 0, 0, .7),
-	13px 0 15px -15px rgba(0, 0, 0, .7),
+	/*-13px 0 15px -15px rgba(0, 0, 0, .7),
+	13px 0 15px -15px rgba(0, 0, 0, .7),*/
 	0 0 40px rgba(0, 0, 0, .1) inset
 }
 
@@ -331,7 +384,7 @@ export default {
 	/* justify-content: space-between; */
 	/* padding: 1px; */
 	/* margin: 0px; */
-	align-self: center;
+	align-self: flex-start;
 	width: 50px;
 	min-height: 47px;
 }
@@ -349,8 +402,23 @@ export default {
 .task-clmn2 {
 	display: flex;
   flex-direction: column;
-  justify-content: space-around;
-  align-items: stretch;
+  justify-content: space-between;
+	align-items: center;
+
+	margin: 2px 2px 2px 0px;
+}
+
+.task-clmn3 {
+  flex: 1 1 auto;
+	margin: 2px 1px 1px 1px;
+}
+
+.task-clmn4 {
+	width: 120px;
+	margin: 1px 2px 2px 1px;
+	display: flex;
+	flex-flow: row wrap;
+	align-content: space-between;
 }
 
 /* .task-clmn2-row1 {
@@ -364,45 +432,57 @@ export default {
   border: 1px solid black;
 } */
 
+.task-duration {
+	font-size: 12px;
+	padding-top: 2px;
+	padding-left: 1px;
+}
+
 .task-status .v-icon {
-	color: #007bff;
+	/* color: #007bff; */
+	color: #5dc282;
 	font-size: 1.1rem;
 }
 
-.task-id div {
+.task-id {
+	flex: 2;
 	font-size: 0.9rem;
+	font-size: 12px;
+	padding-top: 2px;
+	padding-left: 3px;
+	text-align: center;
 }
 
-.task-clmn3 {
-  flex: 1 1 auto;
-  /* border: 1px solid red; */
+.expand-ico {
+	flex: 1;
+	text-align: right;
 }
 
-.task-clmn4 {
-	width: 100px;
-  /* border: 1px solid orange; */
-}
-
-.list-header .v-expansion-panel__header {
+.list-header
+.v-expansion-panel__header {
   padding: 0px;
 }
 
-.list-header .v-expansion-panel__header__icon {
+.list-header
+.v-expansion-panel__header__icon {
 	padding-top: 4px;
 	padding-right: 5px;
 }
 
-.list-header .search-button {
+.list-header
+.search-button {
 	padding-top: 4px;
 	margin-left: 0px;
 	margin-right: 0px;
 }
 
-.list-header .v-toolbar__content {
+.list-header
+.v-toolbar__content {
 	padding-right: 5px;
 }
 
-.list-body .sbx-twitter {
+.list-body
+.sbx-twitter {
 	width: 100%;
 }
 
@@ -451,7 +531,25 @@ export default {
 }
 
 .vue-treeselect__control {
-	height: 30px;
+	height: 25px;
+	padding-left: 1px;
+	padding-right: 1px;
+	border-radius: 3px;
+}
+
+.vue-treeselect__placeholder,
+.vue-treeselect__single-value {
+	font-size: 11px;
+	line-height: 25px;
+	padding-left: 2px;
+	padding-right: 2px;
+}
+
+.vue-treeselect--searchable
+.vue-treeselect__input-container {
+	font-size: 11px;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 </style>
 
