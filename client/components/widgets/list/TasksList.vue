@@ -39,136 +39,146 @@
 		<v-divider class="ma-0"></v-divider>
 		<div class="tasks-list-body">
 			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="tskbox">
-				<div class="task-container" v-for="(item, index) in items">
-					<div class="task-body">
-						<div class="task-clmn1">
-							<v-speed-dial
-								:direction="direction"
-								:open-on-hover="hover"
-								:transition="transition">
-								<v-btn
-									slot="activator"
-									color="blue darken-2"
-									dark
-									fab
-									small>
-									<v-icon>playlist_add_check</v-icon>
-									<v-icon>close</v-icon>
-								</v-btn>
-								<v-btn
-									fab
-									dark
-									small
-									color="green">
-									<v-icon>play_arrow</v-icon>
-								</v-btn>
-								<v-btn
-									fab
-									dark
-									small
-									color="green">
-									<v-icon>not_interested</v-icon>
-								</v-btn>
-								<v-btn
-									fab
-									dark
-									small
-									color="green">
-									<v-icon>delete_forever</v-icon>
-								</v-btn>
-							</v-speed-dial>
-						</div>
+				<SlickList
+					lockAxis="y"
+					:value="items"
+					:useDragHandle="true"
+					@sort-start="onSortStart($event)"
+					@sort-end="onSortEnd($event)">
+					<SlickItem v-for="(item, index) in items" :index="index" :key="index" class="task-container" collection="#1">
+					<!-- <div class="task-container" v-for="(item, index) in items"> -->
+						<div class="task-body">
+							<div v-handle class="task-handle"></div>
+							<div class="task-clmn1">
+								<v-speed-dial
+									:direction="direction"
+									:open-on-hover="hover"
+									:transition="transition">
+									<v-btn
+										slot="activator"
+										color="blue darken-2"
+										dark
+										fab
+										small>
+										<v-icon>playlist_add_check</v-icon>
+										<v-icon>close</v-icon>
+									</v-btn>
+									<v-btn
+										fab
+										dark
+										small
+										color="green">
+										<v-icon>play_arrow</v-icon>
+									</v-btn>
+									<v-btn
+										fab
+										dark
+										small
+										color="green">
+										<v-icon>not_interested</v-icon>
+									</v-btn>
+									<v-btn
+										fab
+										dark
+										small
+										color="green">
+										<v-icon>delete_forever</v-icon>
+									</v-btn>
+								</v-speed-dial>
+							</div>
 
-						<div class="task-clmn2">
-							<v-tooltip bottom class="task-status">
-								<v-icon
-									slot="activator"
-								>play_arrow</v-icon>
-								<span>Начато</span>
-							</v-tooltip>
+							<div class="task-clmn2">
+								<v-tooltip bottom class="task-status">
+									<v-icon
+										slot="activator"
+									>play_arrow</v-icon>
+									<span>Начато</span>
+								</v-tooltip>
 
-							<v-menu
-								bottom
-								origin="center center"
-								transition="scale-transition"
-							>
-								<v-icon
+								<v-menu
+									bottom
+									origin="center center"
+									transition="scale-transition"
+								>
+									<v-icon
+										slot="activator"
+										color="primary"
+									>more_horiz</v-icon>
+
+									<v-list>
+										<v-list-tile
+											v-for="(mmitem, i) in moreMenu"
+											:key="i"
+											@click=""
+										>
+											<v-list-tile-title>{{ mmitem.title }}</v-list-tile-title>
+										</v-list-tile>
+									</v-list>
+								</v-menu>
+
+								<!-- <a style="margin-bottom: 2px">more</a> -->
+							</div>
+
+							<div class="task-clmn3">
+								<!-- <v-flex class="ma-0" style="padding:1px;"> -->
+									<ItmTextArea
+										placeholder="Task name"
+										v-model="item.name"
+										:min-height="21"
+										:max-height="84"
+									></ItmTextArea>
+								<!-- </v-flex> -->
+								<v-flex class="ma-0" style="padding:1px;">
+									<TagsInput element-id="item.task_id"
+										:tag-input="context(item.task_id)"
+										:existing-tags="{
+											'web-development': 'Web Development',
+											'php': 'PHP',
+											'javascript': 'JavaScript',
+										}"
+										:typeahead="true"
+										:placeholder="'Add a context'">
+									</TagsInput>
+								</v-flex>
+							</div>
+
+							<div class="task-clmn4">
+								<v-tooltip bottom >
+									<div slot="activator" class="task-duration">{{ getDuration(item.duration) }}</div>
+									<span>Время затрачено</span>
+								</v-tooltip>
+
+								<div class="task-id">id: {{ item.tid }}</div>
+
+								<v-icon @click="expandIcoClick(item)" class="expand-ico"
 									slot="activator"
 									color="primary"
-								>more_horiz</v-icon>
-								<v-list>
-									<v-list-tile
-										v-for="(mmitem, i) in moreMenu"
-										:key="i"
-										@click=""
-									>
-										<v-list-tile-title>{{ mmitem.title }}</v-list-tile-title>
-									</v-list-tile>
-								</v-list>
-							</v-menu>
+									dark
+								>{{ (item.iExpanded) ? "keyboard_arrow_up" : "keyboard_arrow_down" }}</v-icon>
 
-							<!-- <a style="margin-bottom: 2px">more</a> -->
+								<treeselect v-model="item.group_id"
+									placeholder="Group"
+									:clearable="false"
+									:multiple="false"
+									:options="mainGroupsMini" />
+							</div>
+						</div> <!-- task-body -->
+
+						<div class="task-expander" v-show="item.iExpanded">
+							<v-textarea style="padding-left: 6px; padding-right: 6px; margin-bottom: 2px;"
+								hide-details
+								no-resize
+								clearable
+								rows="3"
+								counter
+								name="input-7-1"
+								label="Примечание"
+								v-model="item.note"
+								placeholder="Введите сюда любую сопутствующую задаче текстовую информацию"></v-textarea>
 						</div>
-
-						<div class="task-clmn3">
-							<!-- <v-flex class="ma-0" style="padding:1px;"> -->
-								<ItmTextArea
-									placeholder="Task name"
-									v-model="item.name"
-									:min-height="21"
-									:max-height="84"
-								></ItmTextArea>
-							<!-- </v-flex> -->
-							<v-flex class="ma-0" style="padding:1px;">
-								<TagsInput element-id="item.task_id"
-									:tag-input="context(item.task_id)"
-									:existing-tags="{
-										'web-development': 'Web Development',
-										'php': 'PHP',
-										'javascript': 'JavaScript',
-									}"
-									:typeahead="true"
-									:placeholder="'Add a context'">
-								</TagsInput>
-							</v-flex>
-						</div>
-
-						<div class="task-clmn4">
-							<v-tooltip bottom >
-								<div slot="activator" class="task-duration">{{ getDuration(item.duration) }}</div>
-								<span>Время затрачено</span>
-							</v-tooltip>
-
-							<div class="task-id">id: {{ item.tid }}</div>
-
-							<v-icon @click="expandIcoClick(item)" class="expand-ico"
-								slot="activator"
-								color="primary"
-								dark
-							>{{ (item.iExpanded) ? "keyboard_arrow_up" : "keyboard_arrow_down" }}</v-icon>
-
-							<treeselect v-model="item.group_id"
-								placeholder="Group"
-								:clearable="false"
-								:multiple="false"
-								:options="mainGroupsMini" />
-						</div>
-					</div> <!-- task-body -->
-
-					<div class="task-expander" v-show="item.iExpanded">
-						<v-textarea style="padding-left: 6px; padding-right: 6px; margin-bottom: 2px;"
-							hide-details
-							no-resize
-							clearable
-							rows="3"
-							counter
-							name="input-7-1"
-							label="Примечание"
-							v-model="item.note"
-							placeholder="Введите сюда любую сопутствующую задаче текстовую информацию"></v-textarea>
-					</div>
-				</div> <!-- task-container -->
-
+					</SlickItem>
+					<!-- </div> task-container -->
+				</SlickList>
 				<infinite-loading @infinite="infiniteHandler" ref="infLoadingTasksList"></infinite-loading>
 			</vue-perfect-scrollbar>
 		</div> <!-- tasks-list-body -->
@@ -183,6 +193,8 @@ import ItmTextArea from '../ItmTextArea.vue'
 import VuePerfectScrollbar from '../perfect-scrollbar.vue'
 import InfiniteLoading from '../../InfiniteLoading'
 import TagsInput from '../../VoerroTagsInput/VoerroTagsInput.vue'
+
+import { SlickList, SlickItem, HandleDirective } from 'vue-slicksort'
 
 const taskStatus = [
 	'Assigned', //Назначено - 0
@@ -202,7 +214,10 @@ export default {
 		ItmTextArea,
 		VuePerfectScrollbar,
 		InfiniteLoading,
+    SlickItem,
+    SlickList
 	},
+	directives: { handle: HandleDirective },
 	data: () => ({
 		direction: 'right',
 		hover: false,
@@ -271,8 +286,19 @@ export default {
 			// 	console.log(err)
 			// })
 		},
-    handleClick: (e) => {
+    onSortStart: function(e) {
       console.log(e)
+		},
+		onSortEnd: function(e) {
+			if (e.oldIndex === e.newIndex) return
+
+			this.$store.dispatch('REORDER_TASKS_LIST', e.oldIndex, e.newIndex, e.collection)
+			.then((res) => {
+				console.log('reordering')
+			})
+			.catch((err) => {
+				console.err(err)
+			})
 		},
 		infiniteHandler($state) {
 			if (this.countEl == 0) {
@@ -330,6 +356,7 @@ export default {
 			return `${hours>9 ? '' : '0'}${hours}:${minutes>9 ? '' : '0'}${minutes}:${seconds>9 ? '' : '0'}${seconds}`
 		},
 		expandIcoClick(id) {
+			console.log('hello')
 			id.iExpanded = !id.iExpanded
 			//TODO set task property
 		}
@@ -377,6 +404,29 @@ export default {
 	/*-13px 0 15px -15px rgba(0, 0, 0, .7),
 	13px 0 15px -15px rgba(0, 0, 0, .7),*/
 	0 0 40px rgba(0, 0, 0, .1) inset
+}
+
+.task-handle {
+  content: '...';
+  width: 10px;
+	max-width: 10px;
+  /* height: 20px; */
+  /* display: inline-block; */
+  overflow: hidden;
+  line-height: 5px;
+  /* padding: 3px 4px; */
+  cursor: move;
+  /* vertical-align: middle; */
+  /* margin-top: -.7em; */
+  margin-left: .2em;
+  font-size: 12px;
+  font-family: sans-serif;
+  letter-spacing: 2px;
+  color: #cccccc;
+  text-shadow: 1px 0 1px black;
+}
+.task-handle::after {
+  content: '.. .. .. ..';
 }
 
 .task-clmn1 {

@@ -137,6 +137,7 @@ async function getTasks(condition, done) {
 						 mvg.owner AS growner FROM main_visible_groups AS mvg
 					JOIN tasks_list AS tl ON mvg.group_id = tl.group_id
 					LEFT JOIN tasks AS tsk ON tl.task_id = tsk.id
+					ORDER BY tl.group_id, (tl.p::float8/tl.q)
 			LIMIT ${limit} OFFSET ${offset}`
 
 	} catch (error) {

@@ -119,6 +119,7 @@ export default {
 			return Promise.reject(err.response.data)
 		})
 	},
+
 	LINK_USERS_LIST: ({ commit, state }, id) => {
 		const fetchQuery = {
 			url: 'users',
@@ -145,6 +146,7 @@ export default {
 			return Promise.reject(err.response.data)
 		})
 	},
+
 	UNLINK_USERS_LIST: ({ commit, state }, id) => {
 		const fetchQuery = {
 			url: 'users',
@@ -213,6 +215,7 @@ export default {
 			return Promise.reject(err.response.data)
 		})
 	},
+
 	FETCH_SUBGROUPS: ({ commit, state }, group_id) => {
 		const activeList = state.activeGroupsList.list
 		const searchText = state[activeList].searchText
@@ -268,6 +271,7 @@ export default {
 			return Promise.reject(err.response.data)
 		})
 	},
+
 	UNLINK_GROUPS_LIST: ({ commit, state }, id) => {
 		const fetchQuery = {
 			url: 'groups',
@@ -337,37 +341,12 @@ export default {
 		})
 	},
 
-	//*** User actions */
-	MAINUSER_REQUEST1: ({ commit, state }) => {
-		const fetchQuery = {
-			url: 'main-user',
-			method: 'GET'
-		}
+	REORDER_TASKS_LIST: ({ commit, state }, oldIndex, newIndex, list) => {
+		const activeList = state.activeTasksList.list
 
-		commit('MAINUSER_REQUEST')
-
-		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(0)
-			} else {
-				if (!state.auth.token) {
-					//if need refressh token in store
-					commit('AUTH_SUCCESS', getTokensFromSessionStorage().access_token)
-				}
-
-				commit('MAINUSER_SUCCESS', dataFromSrv)
-				commit('THEUSER_SUCCESS', dataFromSrv)
-
-				return Promise.resolve(1)
-			}
-		})
-		.catch((err) => {
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
-		})
 	},
 
+	//*** User actions */
 	MAINUSER_REQUEST: ({ commit, state }) => {
 		commit('MAINUSER_REQUEST')
 
