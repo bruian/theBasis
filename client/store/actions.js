@@ -341,9 +341,33 @@ export default {
 		})
 	},
 
-	REORDER_TASKS_LIST: ({ commit, state }, oldIndex, newIndex, list) => {
-		const activeList = state.activeTasksList.list
+	REORDER_TASKS_LIST: ({ commit, state }, options) => {
+		//проверочка на всякий случай допустимых значений
+		if (options.oldIndex === options.newIndex || options.newIndex === 0) return
 
+		const activeList = state.activeTasksList.list
+		const taskList = state[activeList].list
+
+		//идём в начало списка с новой позиции, это необходимо
+		//что бы определить позицию divider, там мы найдём group_id
+		//он нам нужен для того что бы назначить перетаскиваемой задаче
+		//новую группу, если она попала в список этой группы
+		let newGroupId
+		for (let i = (options.newIndex > options.oldIndex) ? options.newIndex : options.newIndex - 1; i >= 0; i--) {
+			if (taskList[i].divider) {
+				newGroupId = taskList[i].group_id
+				break
+			}
+		}
+
+		//перемещение элемента на новое место
+		const movedItem = taskList.splice(options.oldIndex, 1)[0]
+		taskList.splice(options.newIndex, 0, movedItem)
+
+		//изменение значения группы на новую группу, если она задана
+		if (newGroupId != undefined) {
+			commit('UPDATE_VALUES_TASK', { task_id: movedItem.task_id, group_id: newGroupId })
+		}
 	},
 
 	//*** User actions */

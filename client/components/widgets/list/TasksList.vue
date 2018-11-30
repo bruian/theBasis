@@ -45,10 +45,23 @@
 					:useDragHandle="true"
 					@sort-start="onSortStart($event)"
 					@sort-end="onSortEnd($event)">
-					<SlickItem v-for="(item, index) in items" :index="index" :key="index" class="task-container" collection="#1">
-					<!-- <div class="task-container" v-for="(item, index) in items"> -->
-						<div class="task-body">
-							<div v-handle class="task-handle"></div>
+					<SlickItem v-for="(item, index) in items"
+						:index="index"
+						:key="index"
+						class="task-container"
+						collection="#1">
+
+						<div class="task-divider-body" v-if="item.divider">
+							<div class="task-divider-clmn1">
+								<p>id: {{ item.group_id }} | Группа: {{ item.name }}</p>
+							</div>
+						</div>
+
+						<div class="task-body"
+							v-if="!item.divider"
+							v-bind:class="{ active: item.isActive }"
+							@click="taskBodyClick(item.task_id)">
+							<div v-handle v-bind:class="{ 'task-handle': true, 'task-handle-active': item.isActive }"></div>
 							<div class="task-clmn1">
 								<v-speed-dial
 									:direction="direction"
@@ -154,7 +167,7 @@
 									slot="activator"
 									color="primary"
 									dark
-								>{{ (item.iExpanded) ? "keyboard_arrow_up" : "keyboard_arrow_down" }}</v-icon>
+								>{{ (item.isExpanded) ? "keyboard_arrow_up" : "keyboard_arrow_down" }}</v-icon>
 
 								<treeselect v-model="item.group_id"
 									placeholder="Group"
@@ -164,7 +177,7 @@
 							</div>
 						</div> <!-- task-body -->
 
-						<div class="task-expander" v-show="item.iExpanded">
+						<div class="task-expander" v-show="item.isExpanded">
 							<v-textarea style="padding-left: 6px; padding-right: 6px; margin-bottom: 2px;"
 								hide-details
 								no-resize
@@ -177,7 +190,6 @@
 								placeholder="Введите сюда любую сопутствующую задаче текстовую информацию"></v-textarea>
 						</div>
 					</SlickItem>
-					<!-- </div> task-container -->
 				</SlickList>
 				<infinite-loading @infinite="infiniteHandler" ref="infLoadingTasksList"></infinite-loading>
 			</vue-perfect-scrollbar>
@@ -255,8 +267,6 @@ export default {
 
 			function que(params) {
 				if (that.countEl == 0) {
-					//that.$store.commit('RESET_USERS_LIST')
-					//that.$store.commit('SET_PARAMS_USERS_LIST', { searchText: that.searchText })
 					that.$refs.infLoadingTasksList.$emit('$InfiniteLoading:reset')
 					that.blocked = false
 					console.log('ask')
@@ -286,19 +296,27 @@ export default {
 			// 	console.log(err)
 			// })
 		},
+		taskBodyClick: function(task_id) {
+			// debugger
+			this.$store.commit('SET_ACTIVE_TASK', { task_id: task_id })
+		},
     onSortStart: function(e) {
       console.log(e)
 		},
 		onSortEnd: function(e) {
-			if (e.oldIndex === e.newIndex) return
-
-			this.$store.dispatch('REORDER_TASKS_LIST', e.oldIndex, e.newIndex, e.collection)
-			.then((res) => {
-				console.log('reordering')
-			})
-			.catch((err) => {
-				console.err(err)
-			})
+			console.log(e)
+			if (e.oldIndex !== e.newIndex & e.newIndex > 0) {
+				this.$store.dispatch('REORDER_TASKS_LIST', {
+					oldIndex: e.oldIndex,
+					newIndex: e.newIndex,
+					list: e.collection })
+				.then((res) => {
+					console.log('reordering')
+				})
+				.catch((err) => {
+					console.err(err)
+				})
+			}
 		},
 		infiniteHandler($state) {
 			if (this.countEl == 0) {
@@ -355,10 +373,10 @@ export default {
 
 			return `${hours>9 ? '' : '0'}${hours}:${minutes>9 ? '' : '0'}${minutes}:${seconds>9 ? '' : '0'}${seconds}`
 		},
-		expandIcoClick(id) {
-			console.log('hello')
-			id.iExpanded = !id.iExpanded
-			//TODO set task property
+		expandIcoClick(item) {
+			//debugger
+			console.log('fireddd')
+			this.$store.commit('UPDATE_VALUES_TASK', { task_id: item.task_id, isExpanded: !item.isExpanded })
 		}
   }
 }
@@ -388,18 +406,25 @@ export default {
 	max-width: 100%;
 
   margin: 0.3em;
-	background-color: #f8f9fa;
-	box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, .2);
 }
 
 .task-body {
 	display: flex;
 	flex-flow: row nowrap;
+	background-color: #f8f9fa;
+	box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, .2);
 }
 
-.task-container:hover,
-.task-container:focus,
-.task-container:active {
+.task-body:hover,
+.task-body:focus,
+.task-body:active {
+	box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, .2),
+	/*-13px 0 15px -15px rgba(0, 0, 0, .7),
+	13px 0 15px -15px rgba(0, 0, 0, .7),*/
+	0 0 40px rgba(0, 0, 0, .1) inset
+}
+
+.active {
 	box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, .2),
 	/*-13px 0 15px -15px rgba(0, 0, 0, .7),
 	13px 0 15px -15px rgba(0, 0, 0, .7),*/
@@ -427,6 +452,12 @@ export default {
 }
 .task-handle::after {
   content: '.. .. .. ..';
+}
+.task-handle-active {
+	color: blue;
+}
+.task-handle-active::after {
+	content: '.. .. .. .. .. ..'
 }
 
 .task-clmn1 {
@@ -506,6 +537,21 @@ export default {
 .expand-ico {
 	flex: 1;
 	text-align: right;
+}
+
+.task-divider-body {
+	display: flex;
+	flex-flow: row nowrap;
+	border-top: 1px solid #b3d4fc;
+}
+
+.task-divider-body p {
+	margin: 0.2em;
+}
+
+.task-divider-clmn1 {
+	align-self: center;
+	min-height: 20px;
 }
 
 .list-header

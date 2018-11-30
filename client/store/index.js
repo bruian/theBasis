@@ -68,7 +68,7 @@ export function createStore () {
 			},
 
 			theTask: {
-				id: null
+				task_id: 0
 			},
 
 			subgroupsCache: [],

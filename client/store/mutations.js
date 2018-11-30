@@ -7,6 +7,28 @@ function setApiStatus(state, status, error) {
 	}
 }
 
+function findGroup(mainGroups, id) {
+	let result
+
+	for (let i = 0; i < mainGroups.length; i++) {
+		if (mainGroups[i].children && mainGroups[i].children.length > 0) {
+			if (mainGroups[i].id === id) {
+				result = mainGroups[i]
+			} else {
+				result = findGroup(mainGroups[i].children, id)
+			}
+		} else {
+			if (mainGroups[i].id === id) {
+				result = mainGroups[i]
+			}
+		}
+
+		if (result) break
+	}
+
+	return result
+}
+
 export default {
 	//*** API Status mutation */
 	API_ERROR: (state, error) => {
@@ -292,14 +314,36 @@ export default {
 	//*** Tasks mutations */
 	SET_TASKS_LIST: (state, data) => {
 		setApiStatus(state, 'SET_TASKS_LIST', null)
+		debugger
 
-		data.forEach((element) => {
-			element.iExpanded = false
-		})
+		const taskList = state[state.activeTasksList.list].list;
+		//const newData = [];
 
-		state[state.activeTasksList.list].list = state[state.activeTasksList.list].list.concat(data)
+		let prevGroupId
+		for (let i = 0; i < data.length; i++) {
+			if (prevGroupId !== data[i].group_id) {
+				let grp = findGroup(state.mainGroups, data[i].group_id)
+				taskList.push({ divider: true,
+					group_id: data[i].group_id,
+					name: grp.name,
+					isActive: false })
+				prevGroupId = data[i].group_id
+			}
+
+			data[i].isExpanded = false
+			data[i].isActive = false
+			//if (data[i].task_id === 1) data[i].isActive = true
+			taskList.push(data[i])
+		}
+
+		// data.forEach((element) => {
+		// 	element.iExpanded = false
+		// })
+
+		// state[state.activeTasksList.list].list = state[state.activeTasksList.list].list.concat(data)
 		state[state.activeTasksList.list].offset = state[state.activeTasksList.list].offset + data.length
 	},
+
 	SET_ACTIVE_TASKS_LIST: (state, activeID) => {
 		let temp = state.activeTasksList
 
@@ -315,6 +359,35 @@ export default {
 					state.availableTasksList.push(temp)
 				}
 			}
+		}
+	},
+
+	//values must contain task_id of element task_id:id
+	UPDATE_VALUES_TASK: (state, values) => {
+		//debugger
+
+		const tl = state[state.activeTasksList.list]
+		const idx = tl.list.findIndex(el => el.task_id == values.task_id)
+		const element = tl.list[idx]
+		for (const key in values) {
+			if (key === 'task_id') continue
+
+			if (element.hasOwnProperty(key)) {
+				element[key] = values[key]
+			}
+		}
+	},
+
+	SET_ACTIVE_TASK: (state, obj) => {
+		let activedTask = state.tasksList.list.find(el => el.task_id === state.theTask.task_id)
+		if (activedTask) {
+			activedTask.isActive = false
+		}
+
+		let activeTask = state.tasksList.list.find(el => el.task_id === obj.task_id)
+		if (activeTask) {
+			activeTask.isActive = true
+			state.theTask.task_id = obj.task_id
 		}
 	},
 

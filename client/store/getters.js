@@ -28,6 +28,28 @@ export default {
 		}
 	},
 
+	groupById: state => id => {
+		function findGroup(mainGroups) {
+			let result
+
+			for (let i = 0; i < mainGroups.length; i++) {
+				if (mainGroups[i].children && mainGroups[i].children.length > 0) {
+					result = findGroup(mainGroups[i].children)
+				} else {
+					if (mainGroups[i].id === id) {
+						result = mainGroups[i]
+					}
+				}
+
+				if (result) break
+			}
+
+			return result
+		}
+
+		return findGroup(state.mainGroups)
+	},
+
 	// ids of the items that should be currently displayed based on
   // current list type and current pagination
   activeIds (state) {
