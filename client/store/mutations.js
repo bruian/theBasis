@@ -314,10 +314,9 @@ export default {
 	//*** Tasks mutations */
 	SET_TASKS_LIST: (state, data) => {
 		setApiStatus(state, 'SET_TASKS_LIST', null)
-		debugger
+		// debugger
 
 		const taskList = state[state.activeTasksList.list].list;
-		//const newData = [];
 
 		let prevGroupId
 		for (let i = 0; i < data.length; i++) {
@@ -330,17 +329,25 @@ export default {
 				prevGroupId = data[i].group_id
 			}
 
+			if (data[i].task_id) {
+				switch (data[i].task_id) {
+					case 1:
+						data[i].context = ['maus', 'santa']
+						break;
+					case 3:
+						data[i].context = ['klaus', 'ganta']
+						break;
+					default:
+						data[i].context = new Array
+						break;
+				}
+			}
+
 			data[i].isExpanded = false
 			data[i].isActive = false
-			//if (data[i].task_id === 1) data[i].isActive = true
 			taskList.push(data[i])
 		}
 
-		// data.forEach((element) => {
-		// 	element.iExpanded = false
-		// })
-
-		// state[state.activeTasksList.list].list = state[state.activeTasksList.list].list.concat(data)
 		state[state.activeTasksList.list].offset = state[state.activeTasksList.list].offset + data.length
 	},
 
@@ -364,16 +371,38 @@ export default {
 
 	//values must contain task_id of element task_id:id
 	UPDATE_VALUES_TASK: (state, values) => {
-		//debugger
+		debugger
 
 		const tl = state[state.activeTasksList.list]
-		const idx = tl.list.findIndex(el => el.task_id == values.task_id)
-		const element = tl.list[idx]
+		const idxTask = tl.list.findIndex(el => el.task_id == values.task_id)
+		const element = tl.list[idxTask]
 		for (const key in values) {
-			if (key === 'task_id') continue
+			if (key === 'task_id' || key === 'reorder') continue
 
 			if (element.hasOwnProperty(key)) {
 				element[key] = values[key]
+			}
+
+			if (key === 'group_id') {
+				let idxGroup = tl.list.findIndex(el => (el.group_id === values.group_id && el.divider))
+				if (idxGroup === -1) {
+					let grp = findGroup(state.mainGroups, values.group_id)
+					idxGroup = tl.list.push({ divider: true,
+						group_id: values.group_id,
+						name: grp.name,
+						isActive: false }) - 1
+				} else if (idxGroup === 0) {
+					idxGroup = 1
+				}
+
+				if (values.reorder) {
+					// if (idxTask - 1 === idxGroup) {
+
+					// } else {
+						const movedItem = tl.list.splice(idxTask, 1)[0]
+						tl.list.splice(idxGroup, 0, movedItem)
+					// }
+				}
 			}
 		}
 	},

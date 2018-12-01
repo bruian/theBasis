@@ -1,3 +1,4 @@
+
 export default {
 	//*** Authentication getters */
 	isAuth: state => !!state.auth.token,
@@ -17,8 +18,9 @@ export default {
 		return state[state.activeTasksList.list].list
 	},
 
+	/*
 	context: state => id => {
-		//debugger
+		debugger
 		const context = state[state.activeTasksList.list].context
 		const foundContext = context.find(el => el.id === id)
 		if (foundContext) {
@@ -26,6 +28,12 @@ export default {
 		} else {
 			return []
 		}
+	},
+	*/
+
+	taskByIndex: state => index => {
+		const taskList = state[state.activeTasksList.list].list
+		return taskList[index]
 	},
 
 	groupById: state => id => {

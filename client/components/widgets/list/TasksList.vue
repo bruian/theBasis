@@ -47,7 +47,7 @@
 					@sort-end="onSortEnd($event)">
 					<SlickItem v-for="(item, index) in items"
 						:index="index"
-						:key="index"
+						:key="item.task_id"
 						class="task-container"
 						collection="#1">
 
@@ -133,17 +133,16 @@
 							</div>
 
 							<div class="task-clmn3">
+								<ItmTextArea
+									placeholder="Task name"
+									v-model="item.name"
+									:min-height="21"
+									:max-height="84">
+								</ItmTextArea>
+
 								<!-- <v-flex class="ma-0" style="padding:1px;"> -->
-									<ItmTextArea
-										placeholder="Task name"
-										v-model="item.name"
-										:min-height="21"
-										:max-height="84"
-									></ItmTextArea>
-								<!-- </v-flex> -->
-								<v-flex class="ma-0" style="padding:1px;">
-									<TagsInput element-id="item.task_id"
-										:tag-input="context(item.task_id)"
+									<TagsInput :element-id="'#'+item.tid"
+										v-model="item.context"
 										:existing-tags="{
 											'web-development': 'Web Development',
 											'php': 'PHP',
@@ -152,7 +151,7 @@
 										:typeahead="true"
 										:placeholder="'Add a context'">
 									</TagsInput>
-								</v-flex>
+								<!-- </v-flex> -->
 							</div>
 
 							<div class="task-clmn4">
@@ -173,7 +172,9 @@
 									placeholder="Group"
 									:clearable="false"
 									:multiple="false"
-									:options="mainGroupsMini" />
+									:options="mainGroupsMini"
+									@open="onGroupOpen"
+									@input="onGroupInput" />
 							</div>
 						</div> <!-- task-body -->
 
@@ -247,7 +248,8 @@ export default {
 		moreMenu: [
 			{ title: 'Add subtask' },
 			{ title: 'Collapse subtask' }
-		]
+		],
+		groupChangeStart: false
 	}),
 	beforeMount () {
 		if (this.$root._isMounted) {
@@ -260,6 +262,19 @@ export default {
 		mainGroupsMini() { return this.$store.state.mainGroupsMini }
 	},
   methods: {
+		onGroupOpen: function(instanceId) {
+			this.groupChangeStart = true
+		},
+		onGroupInput: function(value, instanceId) {
+			if (this.groupChangeStart) {
+				this.$store.commit('UPDATE_VALUES_TASK',
+					{ task_id: this.$store.state.theTask.task_id,
+						group_id: value,
+						reorder: true
+				})
+				this.groupChangeStart = false
+			}
+		},
 		onChange: function(value) {
 			console.log('changed searchText: ' + value)
 			this.searchText = value
@@ -297,11 +312,11 @@ export default {
 			// })
 		},
 		taskBodyClick: function(task_id) {
-			// debugger
 			this.$store.commit('SET_ACTIVE_TASK', { task_id: task_id })
 		},
     onSortStart: function(e) {
-      console.log(e)
+			const task = this.$store.getters.taskByIndex(e.index)
+      this.$store.commit('SET_ACTIVE_TASK', { task_id: task.task_id })
 		},
 		onSortEnd: function(e) {
 			console.log(e)
@@ -351,7 +366,8 @@ export default {
       }, 500)
 		},
 		context(id) {
-			return this.$store.getters.context(id)
+			let thisContext = this.$store.getters.context(id)
+			return thisContext
 		},
 		getHref(condition) {
 			//v-bind:href="getHref(ulitem.condition)"

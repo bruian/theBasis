@@ -123,13 +123,6 @@ export function createStore () {
 			],
 			tasksList: {
 				list: [],
-				context: [{
-					id: 1,
-					tags: ['maus', 'santa']
-				},{
-					id: 3,
-					tags: ['klaus', 'ganta']
-				}],
 				limit: 10,
 				offset: 0,
 				searchText: ''
