@@ -157,7 +157,7 @@ async function getTasks(condition, done) {
 			INNER JOIN recursive_tree ON (recursive_tree.id = T2t.parent)
 		)	SELECT tsk.id AS task_id, tsk.tid, tsk.name,
 			tsk.owner AS tskowner, tsk.status, tsk.duration,
-			tsk.note, recursive_tree.group_id, recursive_tree.p, recursive_tree.q FROM recursive_tree
+			tsk.note, recursive_tree.group_id, recursive_tree.p, recursive_tree.q, recursive_tree.level FROM recursive_tree
 		LEFT JOIN tasks AS tsk ON recursive_tree.id = tsk.id
 		ORDER BY recursive_tree.group_id, (recursive_tree.p::float8/recursive_tree.q)
 		LIMIT ${limit} OFFSET ${offset};`

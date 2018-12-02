@@ -94,10 +94,6 @@ export default {
 		blocked: false,
 		showActiveTasksList: false //shows selected user list, my or all. Its for animation
 	}),
-	// beforeMount () {
-	// 	if (this.$root._isMounted) {
-	// 	}
-	// },
 	computed: {
 		items() {	return this.$store.getters.tasksList },
 		activeTasksList() { return this.$store.state.activeTasksList },
@@ -124,21 +120,6 @@ export default {
 			}
 
 			if (!this.blocked) que()
-		},
-		onLink: function(id) {
-			// return this.$store.dispatch('LINK_USERS_LIST', id).then((res) => {
-			// })
-			// .catch((err) => {
-			// 	console.log(err)
-			// })
-		},
-		onUnLink: function(id) {
-			// return this.$store.dispatch('UNLINK_USERS_LIST', id).then((res) => {
-			// 	if (res) {}
-			// })
-			// .catch((err) => {
-			// 	console.log(err)
-			// })
 		},
     onSortStart: function(e) {
 			const task = this.$store.getters.taskByIndex(e.index)

@@ -1,7 +1,9 @@
 <template>
 	<div>
-		<div class="task-body"
-			v-bind:class="{ active: item.isActive }"
+		 <!-- class="task-body"
+		 v-bind:class="{ active: item.isActive }"-->
+		<div v-bind:class="classObject"
+
 			@click="taskBodyClick(item.task_id)">
 			<div v-handle v-bind:class="{ 'task-handle': true, 'task-handle-active': item.isActive }"></div>
 			<div class="task-clmn1">
@@ -177,7 +179,23 @@ export default {
 		groupChangeStart: false
 	}),
 	computed: {
-		mainGroupsMini() { return this.$store.state.mainGroupsMini }
+		mainGroupsMini() { return this.$store.state.mainGroupsMini },
+		classObject() {
+			const classObj = {
+				'task-body': true,
+				'task-level-2': false,
+				'task-level-3': false,
+				active: this.item.isActive
+			}
+
+			if (this.item.level === 2) {
+				classObj['task-level-2'] = true
+			} else if (this.item.level === 3) {
+				classObj['task-level-3'] = true
+			}
+
+			return classObj
+		}
 	},
 	watch: {
 		// value() {
@@ -333,6 +351,14 @@ export default {
   width: 50px;
   border: 1px solid black;
 } */
+
+.task-level-2 {
+	margin-left: 8px;
+}
+
+.task-level-3 {
+	margin-left: 16px;
+}
 
 .task-duration {
 	font-size: 12px;
