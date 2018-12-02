@@ -156,7 +156,7 @@ WITH RECURSIVE recursive_tree (id, parent, path, user_type, level) AS (
     FROM groups_list AS T2gl
 	RIGHT JOIN groups AS T2g ON (T2gl.group_id = T2g.id)
 	INNER JOIN recursive_tree ON (recursive_tree.id = T2g.parent)
-)
+) select * from recursive_tree
 SELECT recursive_tree.id, recursive_tree.user_type, grp.name, recursive_tree.parent, recursive_tree.level, recursive_tree.path,
 	   grp.creating, grp.reading, grp.updating, grp.deleting, grp.task_creating, 
 	   grp.task_reading, grp.task_updating, grp.task_deleting, grp.group_type FROM recursive_tree
@@ -164,13 +164,12 @@ LEFT JOIN groups AS grp ON recursive_tree.id = grp.id
 ORDER BY path;
 */
 
-
-/*
+/****************
 SELECT user_id, group_id, owner, user_type, name, parent, creating, reading, updating, deleting, task_creating, task_reading, task_updating, task_deleting, group_type FROM groups_list AS gl
 	RIGHT JOIN groups AS grp ON gl.group_id = grp.id
 */
 
-/* Выборка друзей моего друга 
+/**************** Выборка друзей моего друга 
 WITH main_ul AS (
 	SELECT * FROM users_list AS ul
 	WHERE ul.user_id = 1 AND ul.friend_id = 2 AND ul.visible = 2
@@ -181,13 +180,12 @@ SELECT id, username, name, email, verified, loged, dateofbirth, city, country, g
 	RIGHT JOIN users_photo AS usr_ph ON ul.friend_id = usr_ph.user_id AND usr_ph.isAvatar = true
 	WHERE ul.visible > 0 AND ul.user_id = 2 AND (SELECT COUNT(user_id) FROM main_ul) > 0;
 */
+
 --INSERT INTO users_list (user_id, friend_id, visible) VALUES (2, 4, 2)
-
 --UPDATE users SET visible = 1 WHERE id = 1
-
 --CREATE TABLE refresh_tokens (value varchar(1024), user_id int, client_id int, scope varchar(10), expiration timestamp)
 
-/*
+/****************
 INSERT INTO users_personality (user_id, name, dateofbirth, city, country, phone)
 	VALUES (1, 'Dergach Виктор', '1984-03-29', 'Krasnoyarsk', 'Russia', '+7 (905) 976-54-53');
 	
@@ -195,7 +193,7 @@ INSERT INTO users_photo (user_id, isavatar, url)
 	VALUES (1, true, 'https://s3.amazonaws.com/uifaces/faces/twitter/fabbianz/128.jpg');
 */
 
-/*
+/****************
 DELETE FROM clients;
 DELETE FROM users;
 DELETE FROM groups;
@@ -208,16 +206,17 @@ SELECT * FROM users_list;
 SELECT * FROM users_personality;
 SELECT * FROM users_photo ORDER BY user_id;
 */
+
 --UPDATE users_photo SET user_id = 2 WHERE photo_id = 2;
 
-/*
+/****************
 ALTER TABLE tasks
     ADD COLUMN ends timestamp;
 */
 
 --ALTER TABLE context_list RENAME COLUMN id_user TO id_task;
 
-/*
+/****************
 SELECT * FROM groups_list, groups WHERE 
 		(groups_list.group_id = groups.id) 
 	AND (groups_list.user_id = 3) 
@@ -234,9 +233,9 @@ ALTER TABLE public.tasks
 */
 
 /*
-INSERT INTO tasks (tid, name, owner, status, duration, note) 
-	VALUES (2, 'Китайский язык - повторение материала', 1, 2, 2400000, '');
-SELECT task_place_list(1, 4, NULL, TRUE);
+INSERT INTO tasks (tid, name, owner, status, duration, note, parent) 
+	VALUES (6, 'Подзадача для id=1 и tid=1', 1, 2, 2400000, '', 1);
+SELECT task_place_list(1, 7, 6, FALSE);
 SELECT * FROM tasks_list ORDER BY group_id, (p::float8/q);
 INSERT INTO context (value) VALUES ('Китайский язык');
 INSERT INTO context_list (id_task, id_context) VALUES (3, 3);
@@ -272,7 +271,28 @@ SELECT tl.task_id, tsk.tid, tsk.name, tsk.owner AS tskowner, tsk.status, tsk.dur
 	  ORDER BY tl.group_id, (tl.p::float8/tl.q);
 */
 
---UPDATE tasks_list SET group_id = 50 WHERE task_id = 3
+WITH RECURSIVE main_visible_groups AS (
+	SELECT group_id FROM groups_list AS gl
+		RIGHT JOIN groups AS grp ON gl.group_id = grp.id
+		WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = 1)
+	), recursive_tree (id, parent, path, group_id, p, q, level) AS (
+	SELECT T1t.id, T1t.parent, CAST (T1t.id AS VARCHAR (50)) AS path, T1tl.group_id, T1tl.p, T1tl.q, 1
+    FROM tasks_list AS T1tl
+	RIGHT JOIN tasks AS T1t ON (T1tl.task_id = T1t.id)
+	WHERE T1t.parent IS NULL AND T1tl.group_id IN (SELECT group_id FROM main_visible_groups)
+		UNION
+	SELECT T2t.id, T2t.parent, CAST (recursive_tree.PATH ||'->'|| T2t.id AS VARCHAR(50)), T2tl.group_id, T2tl.p, T2tl.q, level + 1
+    FROM tasks_list AS T2tl
+	RIGHT JOIN tasks AS T2t ON (T2tl.task_id = T2t.id)
+	INNER JOIN recursive_tree ON (recursive_tree.id = T2t.parent)
+) --select * from recursive_tree order by (recursive_tree.p::float8/recursive_tree.q)
+--SELECT recursive_tree.id, tsk.name, recursive_tree.parent, recursive_tree.group_id, recursive_tree.level, recursive_tree.path,
+--	   tsk.owner, tsk.status, tsk.duration, tsk.note, recursive_tree.p, recursive_tree.q FROM recursive_tree
+SELECT tsk.id AS task_id, tsk.tid, tsk.name, tsk.owner AS tskowner, tsk.status, tsk.duration, tsk.note, recursive_tree.group_id, recursive_tree.p, recursive_tree.q FROM recursive_tree
+LEFT JOIN tasks AS tsk ON recursive_tree.id = tsk.id
+ORDER BY recursive_tree.group_id, (recursive_tree.p::float8/recursive_tree.q);
+
+--UPDATE tasks SET parent = null WHERE task_id = 3
 --SELECT * FROM context_list WHERE owner = 1
 --SELECT * FROM groups_list WHERE user_id = 1
 --SELECT * FROM tasks_list;

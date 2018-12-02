@@ -67,7 +67,7 @@
 </template>
 
 <script>
-import VuePerfectScrollbar from '../perfect-scrollbar.vue'
+import VuePerfectScrollbar from '../../Perfect-scrollbar.vue'
 import InfiniteLoading from '../../InfiniteLoading'
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms))

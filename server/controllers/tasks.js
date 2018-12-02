@@ -122,7 +122,7 @@ async function getTasks(condition, done) {
 		// } else if (condition.whose === 'user') {
 		// 	whose = ''
 		// }
-
+		/*
 		queryText = `WITH main_visible_groups AS (
 			SELECT group_id, user_type, name, parent,
 						 creating, reading, updating, deleting,
@@ -139,6 +139,28 @@ async function getTasks(condition, done) {
 					LEFT JOIN tasks AS tsk ON tl.task_id = tsk.id
 					ORDER BY tl.group_id, (tl.p::float8/tl.q)
 			LIMIT ${limit} OFFSET ${offset}`
+		*/
+
+		queryText = `WITH RECURSIVE main_visible_groups AS (
+			SELECT group_id FROM groups_list AS gl
+				RIGHT JOIN groups AS grp ON gl.group_id = grp.id
+				WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
+			), recursive_tree (id, parent, path, group_id, p, q, level) AS (
+			SELECT T1t.id, T1t.parent, CAST (T1t.id AS VARCHAR (50)) AS path, T1tl.group_id, T1tl.p, T1tl.q, 1
+				FROM tasks_list AS T1tl
+			RIGHT JOIN tasks AS T1t ON (T1tl.task_id = T1t.id)
+			WHERE T1t.parent IS NULL AND T1tl.group_id IN (SELECT group_id FROM main_visible_groups)
+				UNION
+			SELECT T2t.id, T2t.parent, CAST (recursive_tree.PATH ||'->'|| T2t.id AS VARCHAR(50)), T2tl.group_id, T2tl.p, T2tl.q, level + 1
+				FROM tasks_list AS T2tl
+			RIGHT JOIN tasks AS T2t ON (T2tl.task_id = T2t.id)
+			INNER JOIN recursive_tree ON (recursive_tree.id = T2t.parent)
+		)	SELECT tsk.id AS task_id, tsk.tid, tsk.name,
+			tsk.owner AS tskowner, tsk.status, tsk.duration,
+			tsk.note, recursive_tree.group_id, recursive_tree.p, recursive_tree.q FROM recursive_tree
+		LEFT JOIN tasks AS tsk ON recursive_tree.id = tsk.id
+		ORDER BY recursive_tree.group_id, (recursive_tree.p::float8/recursive_tree.q)
+		LIMIT ${limit} OFFSET ${offset};`
 
 	} catch (error) {
 		return done(error)

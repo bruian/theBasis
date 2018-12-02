@@ -93,7 +93,7 @@
 </template>
 
 <script>
-import VuePerfectScrollbar from './widgets/perfect-scrollbar.vue'
+import VuePerfectScrollbar from './Perfect-scrollbar.vue'
 
 export default {
 	name: 'app-drawer',

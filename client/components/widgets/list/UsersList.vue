@@ -98,7 +98,7 @@
 </template>
 
 <script>
-import VuePerfectScrollbar from '../perfect-scrollbar.vue'
+import VuePerfectScrollbar from '../../Perfect-scrollbar.vue'
 import InfiniteLoading from '../../InfiniteLoading'
 //import InfiniteLoading from 'vue-infinite-loading/src/components/InfiniteLoading.vue'
 //import axios from 'axios'

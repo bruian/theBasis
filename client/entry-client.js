@@ -17,6 +17,7 @@ import 'material-design-icons-iconfont/dist/material-design-icons.css'
 //import '@mdi/font/css/materialdesignicons.css'
 //import '@fortawesome/fontawesome-free/css/all.css'
 import 'vuetify/dist/vuetify.min.css'
+import '@riophae/vue-treeselect/dist/vue-treeselect.css'
 
 Vue.use(BootstrapVue)
 Vue.use(VueAxios, axios)
