@@ -14,8 +14,10 @@ export default {
 		return state[state.activeGroupsList.list].list
 	},
 
-	tasksList (state) {
-		return state[state.activeTasksList.list].list
+	tasksList: state => list_id => {
+		// const currentList = state.listOfList.find(el => el.list_id === list_id).list
+		// return (currentList) ? currentList.list : []
+		return state.listOfList.find(el => el.list_id === list_id).list
 	},
 
 	/*
@@ -31,9 +33,9 @@ export default {
 	},
 	*/
 
-	taskByIndex: state => index => {
-		const taskList = state[state.activeTasksList.list].list
-		return taskList[index]
+	taskByIndex: state => obj => {
+		const currentList = state.listOfList.find(el => el.list_id === obj.list_id).list
+		return currentList[obj.index]
 	},
 
 	groupById: state => id => {

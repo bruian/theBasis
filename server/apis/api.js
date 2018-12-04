@@ -173,9 +173,10 @@ router.get('/tasks', (req, res) => {
 		mainUser_id: req.body.userId,
 		group_id: (req.query.group_id) ? req.query.group_id : null,
 		user_id: (req.query.user_id) ? req.query.user_id : null,
-		task_id: null,
-		like: (req.query.like) ? req.query.like : null,
-		whose: (req.query.whose) ? req.query.whose : null,
+		parent_id: (req.query.parent_id) ? req.query.parent_id : null,
+		task_id: (req.query.task_id) ? req.query.task_id : null,
+		searchText: (req.query.searchText) ? req.query.searchText : null,
+		// whose: (req.query.whose) ? req.query.whose : null,
 		limit: (req.headers.limit) ? req.headers.limit : null,
 		offset: (req.headers.offset) ? req.headers.offset : null
 	}
@@ -183,8 +184,8 @@ router.get('/tasks', (req, res) => {
 	TaskController.getTasks(condition, (err, data) => {
 		if (err) return res.json(err)
 
-		log.debug(`/tasks:return |-> like: ${condition.like} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
-		const ids = data.map((el) => el.id).toString()
+		log.debug(`/tasks:return |-> like: ${condition.searchText} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
+		const ids = data.map((el) => el.task_id).toString()
 		console.log(ids)
 
 		return res.json({ data: data, partid: req.headers.partid })

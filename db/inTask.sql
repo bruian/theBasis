@@ -270,7 +270,7 @@ SELECT tl.task_id, tsk.tid, tsk.name, tsk.owner AS tskowner, tsk.status, tsk.dur
 	  LEFT JOIN tasks AS tsk ON tl.task_id = tsk.id
 	  ORDER BY tl.group_id, (tl.p::float8/tl.q);
 */
-
+/*
 WITH RECURSIVE main_visible_groups AS (
 	SELECT group_id FROM groups_list AS gl
 		RIGHT JOIN groups AS grp ON gl.group_id = grp.id
@@ -288,10 +288,58 @@ WITH RECURSIVE main_visible_groups AS (
 ) --select * from recursive_tree order by (recursive_tree.p::float8/recursive_tree.q)
 --SELECT recursive_tree.id, tsk.name, recursive_tree.parent, recursive_tree.group_id, recursive_tree.level, recursive_tree.path,
 --	   tsk.owner, tsk.status, tsk.duration, tsk.note, recursive_tree.p, recursive_tree.q FROM recursive_tree
-SELECT tsk.id AS task_id, tsk.tid, tsk.name, tsk.owner AS tskowner, tsk.status, tsk.duration, tsk.note, recursive_tree.group_id, recursive_tree.p, recursive_tree.q FROM recursive_tree
+SELECT tsk.id AS task_id, tsk.tid, tsk.name, tsk.owner AS tskowner, 
+	tsk.status, tsk.duration, tsk.note, recursive_tree.group_id, 
+	recursive_tree.p, recursive_tree.q, recursive_tree.parent FROM recursive_tree
 LEFT JOIN tasks AS tsk ON recursive_tree.id = tsk.id
 ORDER BY recursive_tree.group_id, (recursive_tree.p::float8/recursive_tree.q);
+*/
 
+/*
+SELECT p.id, p.title,
+  SUM(CASE c.status WHEN 1 THEN 1 ELSE 0 END) AS 'Count status 1',
+  SUM(CASE c.status WHEN 2 THEN 1 ELSE 0 END) AS 'Count status 2'
+  FROM Tags AS p
+  LEFT OUTER JOIN Tags AS c
+    ON c.parent_id = p.id
+  WHERE p.parent_id IS NULL
+  GROUP BY p.id, p.title
+*/
+
+/*
+WITH main_visible_groups AS (
+SELECT group_id FROM groups_list AS gl
+	RIGHT JOIN groups AS grp ON gl.group_id = grp.id
+	WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = 1)
+), 
+SELECT tl.task_id, tl.group_id, tl.p, tl.q,
+	tsk.tid, tsk.name, tsk.owner AS tskowner, 
+	tsk.status, tsk.duration, tsk.note, tsk.parent,
+	(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild
+FROM tasks_list AS tl
+RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
+WHERE tl.group_id IN (SELECT * FROM main_visible_groups) AND tsk.parent = 1
+ORDER BY (tl.p::float8/tl.q);
+*/
+--SELECT * from groups_list order by group_id, user_id
+
+WITH main_visible_groups AS (
+SELECT group_id FROM groups_list AS gl
+	LEFT JOIN groups AS grp ON gl.group_id = grp.id
+	WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = 1)
+), user_groups AS (
+SELECT gl.group_id FROM groups_list AS gl
+	WHERE gl.group_id IN (SELECT * FROM main_visible_groups) AND gl.user_id = 2
+) 
+SELECT tl.task_id, tl.group_id, tl.p, tl.q,
+	tsk.tid, tsk.name, tsk.owner AS tskowner, 
+	tsk.status, tsk.duration, tsk.note, tsk.parent,
+	(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild
+FROM tasks_list AS tl
+RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
+WHERE tl.group_id IN (SELECT * FROM user_groups) AND tsk.parent = 1
+ORDER BY (tl.p::float8/tl.q);
+									 
 --UPDATE tasks SET parent = null WHERE task_id = 3
 --SELECT * FROM context_list WHERE owner = 1
 --SELECT * FROM groups_list WHERE user_id = 1

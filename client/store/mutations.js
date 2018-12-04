@@ -312,17 +312,19 @@ export default {
 	},
 
 	//*** Tasks mutations */
-	SET_TASKS_LIST: (state, data) => {
+	SET_TASKS_LIST: (state, obj) => {
+		//debugger
 		setApiStatus(state, 'SET_TASKS_LIST', null)
-		// debugger
 
-		const taskList = state[state.activeTasksList.list].list;
+		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
+		const taskList = activeList.list
+		const data = obj.data
 
 		let prevGroupId
 		for (let i = 0; i < data.length; i++) {
 			if (prevGroupId !== data[i].group_id) {
 				let grp = findGroup(state.mainGroups, data[i].group_id)
-				taskList.push({ divider: true,
+				taskList.push({ isDivider: true,
 					group_id: data[i].group_id,
 					name: grp.name,
 					isActive: false })
@@ -333,22 +335,25 @@ export default {
 				switch (data[i].task_id) {
 					case 1:
 						data[i].context = ['maus', 'santa']
-						break;
+						break
 					case 3:
 						data[i].context = ['klaus', 'ganta']
-						break;
+						break
 					default:
 						data[i].context = new Array
-						break;
+						break
 				}
 			}
 
+			data[i].isShowed = (data[i].level > 1) ? false : true
+			data[i].isSubtaskExpanded = false
 			data[i].isExpanded = false
 			data[i].isActive = false
+			data[i].level = 1
 			taskList.push(data[i])
 		}
 
-		state[state.activeTasksList.list].offset = state[state.activeTasksList.list].offset + data.length
+		activeList.offset = activeList.offset + data.length
 	},
 
 	SET_ACTIVE_TASKS_LIST: (state, activeID) => {
@@ -370,53 +375,50 @@ export default {
 	},
 
 	//values must contain task_id of element task_id:id
-	UPDATE_VALUES_TASK: (state, values) => {
-		debugger
+	UPDATE_VALUES_TASK: (state, obj) => {
+		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
+		const taskList = activeList.list
+		const idxTask = taskList.findIndex(el => el.task_id == obj.task_id)
+		const element = taskList[idxTask]
 
-		const tl = state[state.activeTasksList.list]
-		const idxTask = tl.list.findIndex(el => el.task_id == values.task_id)
-		const element = tl.list[idxTask]
-		for (const key in values) {
-			if (key === 'task_id' || key === 'reorder') continue
+		for (const key in obj) {
+			if (key === 'task_id' || key === 'reorder' || key === 'list_id') continue
 
 			if (element.hasOwnProperty(key)) {
-				element[key] = values[key]
+				element[key] = obj[key]
 			}
 
 			if (key === 'group_id') {
-				let idxGroup = tl.list.findIndex(el => (el.group_id === values.group_id && el.divider))
+				let idxGroup = taskList.findIndex(el => (el.group_id === obj.group_id && el.divider))
 				if (idxGroup === -1) {
-					let grp = findGroup(state.mainGroups, values.group_id)
-					idxGroup = tl.list.push({ divider: true,
-						group_id: values.group_id,
+					let grp = findGroup(state.mainGroups, obj.group_id)
+					idxGroup = taskList.push({ divider: true,
+						group_id: obj.group_id,
 						name: grp.name,
 						isActive: false }) - 1
 				} else if (idxGroup === 0) {
 					idxGroup = 1
 				}
 
-				if (values.reorder) {
-					// if (idxTask - 1 === idxGroup) {
-
-					// } else {
-						const movedItem = tl.list.splice(idxTask, 1)[0]
-						tl.list.splice(idxGroup, 0, movedItem)
-					// }
+				if (obj.reorder) {
+					const movedItem = taskList.splice(idxTask, 1)[0]
+					taskList.splice(idxGroup, 0, movedItem)
 				}
 			}
 		}
 	},
 
 	SET_ACTIVE_TASK: (state, obj) => {
-		let activedTask = state.tasksList.list.find(el => el.task_id === state.theTask.task_id)
+		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
+		let activedTask = activeList.list.find(el => el.isActive === true)
 		if (activedTask) {
 			activedTask.isActive = false
 		}
 
-		let activeTask = state.tasksList.list.find(el => el.task_id === obj.task_id)
+		let activeTask = activeList.list.find(el => el.task_id === obj.task_id)
 		if (activeTask) {
 			activeTask.isActive = true
-			state.theTask.task_id = obj.task_id
+			//state.theTask.task_id = obj.task_id
 		}
 	},
 

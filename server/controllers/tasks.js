@@ -94,15 +94,14 @@ function _delete(condition) {
 async function getTasks(condition, done) {
 	let client,
 		limit = 'null', offset = 'null',
-		queryText = ''
+		queryText = '',
+		selectTask = false
 
 	try {
 		if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
-			return done(new PgError(`The condition must contain the <user_id> field that sets the current user relatively,
+			return done(new PgError(`The condition must contain the <mainUser_id> field that sets the current user relatively,
 				because regarding his rights there will be a request for information from the database`))
 		}
-
-		//if (isNumeric(condition.user_id)) {}
 
 		if (isNumeric(condition.limit)) {
 			limit = condition.limit
@@ -112,56 +111,110 @@ async function getTasks(condition, done) {
 			offset = condition.offset
 		}
 
-		// if (condition.like) {
-		// 	condition1 = condition1 + ` AND grp.name ILIKE '%${condition.like}%'`
-		// }
+		let pgСonditions = '',
+				pgUserGroups = '',
+				pgGroups = 'main_visible_groups', //tasks visible only for main user
+				pgParentCondition = ' AND tsk.parent is null', //select Top level tasks
+				pgTaskCondition = '',
+				pgGroupCondition = '',
+				pgSearchText = ''
 
-		// let whose
 		// if (condition.whose === '' || condition.whose === 'all') {
-		// 	whose = `AND grp.owner != ${condition.mainUser_id}`
-		// } else if (condition.whose === 'user') {
-		// 	whose = ''
 		// }
-		/*
-		queryText = `WITH main_visible_groups AS (
-			SELECT group_id, user_type, name, parent,
-						 creating, reading, updating, deleting,
-						 task_creating, task_reading, task_updating,
-						 task_deleting, group_type, owner FROM groups_list AS gl
-				RIGHT JOIN groups AS grp ON gl.group_id = grp.id
-				WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
-			)
-			SELECT tl.task_id, tsk.tid, tsk.name,
-						 tsk.owner AS tskowner, tsk.status,
-						 tsk.duration, tsk.note, mvg.group_id,
-						 mvg.owner AS growner FROM main_visible_groups AS mvg
-					JOIN tasks_list AS tl ON mvg.group_id = tl.group_id
-					LEFT JOIN tasks AS tsk ON tl.task_id = tsk.id
-					ORDER BY tl.group_id, (tl.p::float8/tl.q)
-			LIMIT ${limit} OFFSET ${offset}`
-		*/
+		// if (condition.whose === 'task-parent') {
+		// }
+		// if (condition.whose === 'task') {
+		// }
+		// if (condition.whose === 'user') {
+		// }
+		// if (condition.whose === 'group') {
+		// }
 
-		queryText = `WITH RECURSIVE main_visible_groups AS (
-			SELECT group_id FROM groups_list AS gl
-				RIGHT JOIN groups AS grp ON gl.group_id = grp.id
-				WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
-			), recursive_tree (id, parent, path, group_id, p, q, level) AS (
-			SELECT T1t.id, T1t.parent, CAST (T1t.id AS VARCHAR (50)) AS path, T1tl.group_id, T1tl.p, T1tl.q, 1
-				FROM tasks_list AS T1tl
-			RIGHT JOIN tasks AS T1t ON (T1tl.task_id = T1t.id)
-			WHERE T1t.parent IS NULL AND T1tl.group_id IN (SELECT group_id FROM main_visible_groups)
-				UNION
-			SELECT T2t.id, T2t.parent, CAST (recursive_tree.PATH ||'->'|| T2t.id AS VARCHAR(50)), T2tl.group_id, T2tl.p, T2tl.q, level + 1
-				FROM tasks_list AS T2tl
-			RIGHT JOIN tasks AS T2t ON (T2tl.task_id = T2t.id)
-			INNER JOIN recursive_tree ON (recursive_tree.id = T2t.parent)
-		)	SELECT tsk.id AS task_id, tsk.tid, tsk.name,
-			tsk.owner AS tskowner, tsk.status, tsk.duration,
-			tsk.note, recursive_tree.group_id, recursive_tree.p, recursive_tree.q, recursive_tree.level FROM recursive_tree
-		LEFT JOIN tasks AS tsk ON recursive_tree.id = tsk.id
-		ORDER BY recursive_tree.group_id, (recursive_tree.p::float8/recursive_tree.q)
-		LIMIT ${limit} OFFSET ${offset};`
+		if (isNumeric(condition.parent_id) && condition.parent_id > 0) {
+			selectTask = true
+			pgParentCondition = ` AND tsk.parent = ${condition.parent_id}`
+		}
 
+		if (isNumeric(condition.task_id) && condition.task_id > 0) {
+			selectTask = true
+			pgTaskCondition = ` AND tsk.id = ${condition.task_id}`
+		}
+
+		if (condition.user_id && isNumeric(condition.user_id)) {
+			pgUserGroups = `, user_groups AS (
+				SELECT gl.group_id FROM groups_list AS gl
+					WHERE gl.group_id IN (SELECT * FROM main_visible_groups) AND gl.user_id = ${condition.user_id}
+			)`
+
+			pgGroups = 'user_groups'
+		}
+
+		if (condition.group_id && isNumeric(condition.group_id)) {
+			pgGroupCondition = ` AND tl.group_id = ${condition.group_id}`
+		}
+
+		if (condition.searchText) {
+			pgSearchText = ` AND tsk.name ILIKE '%${condition.searchText}%'`
+		}
+
+		pgСonditions = pgParentCondition + pgTaskCondition + pgGroupCondition + pgSearchText
+
+		if (selectTask) {
+			//SELECT mainUser-groups, filter on: mainUser_id or [public groups (group_id = 0)]
+			// if condition.whose = 'user' SELECT user-groups from [mainUser-groups] filter on: user_id
+			//	SELECT tasks IN [mainUser-groups] OR [user-groups if condition.whose = 'user'] filter on: tasks.parent = task_id
+
+			queryText = `WITH main_visible_groups AS (
+				SELECT group_id FROM groups_list AS gl
+					LEFT JOIN groups AS grp ON gl.group_id = grp.id
+					WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
+				) ${pgUserGroups}
+				SELECT tl.task_id, tl.group_id, tl.p, tl.q,
+					tsk.tid, tsk.name, tsk.owner AS tskowner,
+					tsk.status, tsk.duration, tsk.note, tsk.parent,
+					(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild
+				FROM tasks_list AS tl
+				RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
+				WHERE tl.group_id IN (SELECT * FROM ${pgGroups}) ${pgСonditions}
+				ORDER BY tl.group_id, (tl.p::float8/tl.q);`
+		} else {
+			queryText = `WITH main_visible_groups AS (
+				SELECT group_id FROM groups_list AS gl
+					LEFT JOIN groups AS grp ON gl.group_id = grp.id
+					WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
+				) ${pgUserGroups}
+				SELECT tl.task_id, tl.group_id, tl.p, tl.q,
+					tsk.tid, tsk.name, tsk.owner AS tskowner,
+					tsk.status, tsk.duration, tsk.note, tsk.parent,
+					(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild
+				FROM tasks_list AS tl
+				RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
+				WHERE tl.group_id IN (SELECT * FROM ${pgGroups}) ${pgСonditions}
+				ORDER BY tl.group_id, (tl.p::float8/tl.q)
+				LIMIT ${limit} OFFSET ${offset};`
+			// queryText = `WITH RECURSIVE main_visible_groups AS (
+			// 	SELECT group_id FROM groups_list AS gl
+			// 		RIGHT JOIN groups AS grp ON gl.group_id = grp.id
+			// 		WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
+			// 	), recursive_tree (id, parent, path, group_id, p, q, level) AS (
+			// 	SELECT T1t.id, T1t.parent, CAST (T1t.id AS VARCHAR (50)) AS path, T1tl.group_id, T1tl.p, T1tl.q, 1
+			// 		FROM tasks_list AS T1tl
+			// 	RIGHT JOIN tasks AS T1t ON (T1tl.task_id = T1t.id)
+			// 	WHERE T1t.parent IS NULL AND T1tl.group_id IN (SELECT group_id FROM main_visible_groups)
+			// 		UNION
+			// 	SELECT T2t.id, T2t.parent, CAST (recursive_tree.PATH ||'->'|| T2t.id AS VARCHAR(50)), T2tl.group_id, T2tl.p, T2tl.q, level + 1
+			// 		FROM tasks_list AS T2tl
+			// 	RIGHT JOIN tasks AS T2t ON (T2tl.task_id = T2t.id)
+			// 	INNER JOIN recursive_tree ON (recursive_tree.id = T2t.parent)
+			// )	SELECT tsk.id AS task_id, tsk.tid, tsk.name,
+			// 	tsk.owner AS tskowner, tsk.status, tsk.duration,
+			// 	tsk.note, recursive_tree.group_id, recursive_tree.p,
+			// 	recursive_tree.q, recursive_tree.level,
+			// 	tsk.parent FROM recursive_tree
+			// LEFT JOIN tasks AS tsk ON recursive_tree.id = tsk.id
+			// ORDER BY recursive_tree.group_id, (recursive_tree.p::float8/recursive_tree.q)
+			// LIMIT ${limit} OFFSET ${offset};`
+		}
 	} catch (error) {
 		return done(error)
 	}
@@ -174,6 +227,34 @@ async function getTasks(condition, done) {
 		if (rowCount === 0) {
 			return done({ message: `No datas with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
 		} else {
+			// let hierarchicalRows = []
+
+			// function constructHierarchy (rows, parentId) {
+			// 	let hRows = []
+
+			// 	for (let i = 0; i < rows.length; i++) {
+			// 		let record = Object.assign({}, rows[i])
+			// 		if ((parentId === null && record.parent === null) || (record.parent === parentId)) {
+			// 			const innerRows = constructHierarchy(rows, record.task_id)
+			// 			if (innerRows.length > 0) {
+			// 				record.children = innerRows
+			// 				record.havechild = 1
+			// 			} else {
+			// 				record.havechild = 0
+			// 			}
+
+			// 			hRows.push(record)
+			// 		}
+			// 	}
+
+			// 	return hRows
+			// }
+			// hierarchicalRows = constructHierarchy(rows, null)
+
+			// return done(null, hierarchicalRows)
+			rows.forEach(el => {
+				if (el.havechild) el.children = []
+			})
 			return done(null, rows)
 		}
 	} catch (error) {

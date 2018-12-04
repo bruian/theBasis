@@ -128,6 +128,23 @@ export function createStore () {
 				searchText: ''
 			},
 
+			theList: 0,
+			listOfList: [
+				{
+					list_id: 'main-tasks',
+					condition: {
+						group_id: null,
+						user_id: null,
+						parent_id: null,
+						task_id: null,
+						searchText: null
+					},
+					list: [],
+					limit: 10,
+					offset: 0,
+				}
+			],
+
 			/* -OTHERS DATAS- */
       activeType: null,
       itemsPerPage: 20,

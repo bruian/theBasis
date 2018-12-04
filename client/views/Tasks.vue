@@ -5,7 +5,7 @@
 				<profile></profile>
 			</v-flex> -->
 			<v-flex xl12 lg12 md12 sm12 xs12>
-				<tasks-list></tasks-list>
+				<tasks-list v-bind:list_id="'main-tasks'"></tasks-list>
 			</v-flex>
 			<!-- <v-flex xl4 lg6 md6 sm12 xs12>
 				<users-list></users-list>

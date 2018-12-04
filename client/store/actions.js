@@ -298,28 +298,35 @@ export default {
 	},
 
 	//*** TASKS LIST actions */
-	FETCH_TASKS_LIST: ({ commit, state }) => {
-		//debugger
-		const activeList = state.activeTasksList.list
-		const searchText = state[activeList].searchText
+	FETCH_TASKS_LIST: ({ commit, state }, list_id) => {
+		const activeList = state.listOfList.find(el => el.list_id === list_id)
 		const fetchQuery = {
 			url: 'tasks',
 			method: 'GET',
-			params: {
-				like: (searchText) ? searchText : '',
-				whose: state.activeTasksList.whose
-			},
-			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++taskPartID }
+			params: {},
+			headers: { limit: activeList.limit, offset: activeList.offset, partid: ++taskPartID }
 		}
 
-		const condition = state.activeTasksList.condition
-		for (let i = 0; i < condition.length; i++) {
-			switch (condition[i]) {
-				case 'user_id':
-					fetchQuery.params.user_id = state.theUser.id
-					break
+		for (const key in activeList.condition) {
+			if (activeList.condition[key] === null) continue
+
+			switch (key) {
 				case 'group_id':
-					fetchQuery.url += '/' + state.theGroup.id
+					fetchQuery.params.group_id = activeList.condition[key]
+					break
+				case 'user_id':
+					fetchQuery.params.user_id = activeList.condition[key]
+					break
+				case 'parent_id':
+					fetchQuery.params.parent_id = activeList.condition[key]
+					break
+				case 'task_id':
+					fetchQuery.params.task_id =  activeList.condition[key]
+					break
+				case 'searchText':
+					fetchQuery.params.searchText = activeList.condition[key]
+					break
+				default:
 					break
 			}
 		}
@@ -330,7 +337,7 @@ export default {
 				return Promise.resolve(0)
 			} else {
 				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${taskPartID}`)
-				commit('SET_TASKS_LIST', dataFromSrv.data)
+				commit('SET_TASKS_LIST', { list_id: list_id, data: dataFromSrv.data })
 				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
@@ -341,12 +348,66 @@ export default {
 		})
 	},
 
+	FETCH_SUBTASKS: ({ commit, state }, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		const taskList = activeList.list
+
+		const foundTask = taskList.find(el => el.task_id === options.parent_id)
+		foundTask.children = [
+			{
+				children: [],
+				context: [],
+				duration: 6000,
+				group_id: 1,
+				havechild: 0,
+				isActive: false,
+				isExpanded: false,
+				isShowed: true,
+				isSubtaskExpanded: false,
+				name: 'Подзадача 1',
+				note: '',
+				p: 4,
+				parent: 1,
+				q: 5,
+				status: 2,
+				task_id: 9,
+				tid: 9,
+				tskowner: 1,
+				level: 2
+			},
+			{
+				children: [],
+				context: [],
+				duration: 6000,
+				group_id: 1,
+				havechild: 0,
+				isActive: false,
+				isExpanded: false,
+				isShowed: true,
+				isSubtaskExpanded: false,
+				name: 'Подзадача 2',
+				note: '',
+				p: 4,
+				parent: 1,
+				q: 6,
+				status: 2,
+				task_id: 10,
+				tid: 10,
+				tskowner: 1,
+				level: 2
+			}
+		]
+
+		return Promise.resolve()
+	},
+
 	REORDER_TASKS_LIST: ({ commit, state }, options) => {
+		debugger
 		//проверочка на всякий случай допустимых значений
 		if (options.oldIndex === options.newIndex || options.newIndex === 0) return
 
-		const activeList = state.activeTasksList.list
-		const taskList = state[activeList].list
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		const taskList = activeList.list
 
 		//идём в начало списка с новой позиции, это необходимо
 		//что бы определить позицию divider, там мы найдём group_id
@@ -354,7 +415,7 @@ export default {
 		//новую группу, если она попала в список этой группы
 		let newGroupId
 		for (let i = (options.newIndex > options.oldIndex) ? options.newIndex : options.newIndex - 1; i >= 0; i--) {
-			if (taskList[i].divider) {
+			if (taskList[i].isDivider) {
 				newGroupId = taskList[i].group_id
 				break
 			}
@@ -366,7 +427,7 @@ export default {
 
 		//изменение значения группы на новую группу, если она задана
 		if (newGroupId != undefined) {
-			commit('UPDATE_VALUES_TASK', { task_id: movedItem.task_id, group_id: newGroupId })
+			commit('UPDATE_VALUES_TASK', { list_id: options.list_id, task_id: movedItem.task_id, group_id: newGroupId })
 		}
 	},
 

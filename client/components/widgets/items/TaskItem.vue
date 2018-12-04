@@ -1,10 +1,16 @@
 <template>
-	<div>
+	<div class="task-container">
 		 <!-- class="task-body"
 		 v-bind:class="{ active: item.isActive }"-->
-		<div v-bind:class="classObject"
+		<div class="task-divider-body" v-if="item.isDivider">
+			<div class="task-divider-clmn1">
+				<p>id: {{ item.group_id }} | Группа: {{ item.name }}</p>
+			</div>
+		</div>
 
-			@click="taskBodyClick(item.task_id)">
+		<div v-bind:class="classObject"
+			v-if="!item.isDivider && item.isShowed"
+			@click="onBodyClick()">
 			<div v-handle v-bind:class="{ 'task-handle': true, 'task-handle-active': item.isActive }"></div>
 			<div class="task-clmn1">
 				<v-speed-dial
@@ -52,7 +58,13 @@
 					<span>Начато</span>
 				</v-tooltip>
 
-				<v-menu
+				<v-icon @click="onExpandSubtasks()" class="expand-ico"
+					slot="activator"
+					color="primary"
+					dark
+				>{{ (item.isSubtaskExpanded) ? "expand_less" : "expand_more" }}</v-icon>
+
+				<!-- <v-menu
 					bottom
 					origin="center center"
 					transition="scale-transition"
@@ -71,7 +83,7 @@
 							<v-list-tile-title>{{ mmitem.title }}</v-list-tile-title>
 						</v-list-tile>
 					</v-list>
-				</v-menu>
+				</v-menu> -->
 
 				<!-- <a style="margin-bottom: 2px">more</a> -->
 			</div>
@@ -106,12 +118,12 @@
 
 				<div class="task-id">id: {{ item.tid }}</div>
 
-				<v-icon @click="expandIcoClick(item)" class="expand-ico"
+				<v-icon @click="onExpandMore(item)" class="expand-ico"
 					slot="activator"
 					color="primary"
 					dark
-				>{{ (item.isExpanded) ? "keyboard_arrow_up" : "keyboard_arrow_down" }}</v-icon>
-
+				>{{ (item.isExpanded) ? "unfold_less" : "unfold_more" }}</v-icon>
+<!-- {{ (item.isExpanded) ? "keyboard_arrow_up" : "keyboard_arrow_down" }} -->
 				<treeselect v-model="item.group_id"
 					placeholder="Group"
 					:clearable="false"
@@ -134,14 +146,29 @@
 				v-model="item.note"
 				placeholder="Введите сюда любую сопутствующую задаче текстовую информацию"></v-textarea>
 		</div>
+		<SlickList
+			lockAxis="y"
+			:value="item.children"
+			:useDragHandle="true"
+			@sort-start=""
+			@sort-end="">
+			<TaskItem v-if="item.isSubtaskExpanded"
+				v-for="(children, childrenIndex) in item.children"
+				:list_id="list_id"
+				:item="children"
+				:index="childrenIndex"
+				:key="children.task_id"
+				collection="'list_id2'"></TaskItem>
+		</SlickList>
 	</div>
 </template>
 
 <script>
+//import TaskItem from './TaskItem.vue'
 import Treeselect from '@riophae/vue-treeselect'
 import ItmTextArea from '../ItmTextArea.vue'
 import TagsInput from '../../VoerroTagsInput/VoerroTagsInput.vue'
-import { HandleDirective } from 'vue-slicksort'
+import { HandleDirective, ElementMixin, SlickList } from 'vue-slicksort'
 
 const taskStatus = [
 	'Assigned', //Назначено - 0
@@ -155,18 +182,22 @@ const taskStatus = [
 
 export default {
 	name: 'task-item',
+	mixins: [ElementMixin],
 	components: {
+		TaskItem: () => import('./TaskItem.vue'),
+		SlickList,
 		Treeselect,
 		TagsInput,
 		ItmTextArea
 	},
 	directives: { handle: HandleDirective },
-	props: {
-		item: {
-			type: Object,
-			default: () => { return {} }
-		}
-	},
+	props: ['item', 'list_id'],
+	// props: {
+	// 	item: {
+	// 		type: Object,
+	// 		default: () => { return {} }
+	// 	}
+	// },
 	data: () => ({
 		// item: {},
 		direction: 'right',
@@ -207,17 +238,20 @@ export default {
 			this.groupChangeStart = true
 		},
 		onGroupInput: function(value, instanceId) {
+			//on default this event fired twice
 			if (this.groupChangeStart) {
-				this.$store.commit('UPDATE_VALUES_TASK',
-					{ task_id: this.$store.state.theTask.task_id,
-						group_id: value,
-						reorder: true
+				//our need catch event only first time
+				this.$store.commit('UPDATE_VALUES_TASK', {
+					list_id: this.list_id,
+					task_id: this.$store.state.theTask.task_id,
+					group_id: value,
+					reorder: true
 				})
 				this.groupChangeStart = false
 			}
 		},
-		taskBodyClick: function(task_id) {
-			this.$store.commit('SET_ACTIVE_TASK', { task_id: task_id })
+		onBodyClick: function() {
+			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: this.item.task_id })
 		},
 		getDuration(duration) {
 			let timeDiff = duration / 1000
@@ -234,9 +268,25 @@ export default {
 
 			return `${hours>9 ? '' : '0'}${hours}:${minutes>9 ? '' : '0'}${minutes}:${seconds>9 ? '' : '0'}${seconds}`
 		},
-		expandIcoClick(item) {
-			console.log('fireddd')
-			this.$store.commit('UPDATE_VALUES_TASK', { task_id: item.task_id, isExpanded: !item.isExpanded })
+		onExpandMore() {
+			console.log(`onExpandMore taskId !{ this.item.task_id }`)
+			this.$store.commit('UPDATE_VALUES_TASK', { list_id: this.list_id, task_id: this.item.task_id, isExpanded: !this.item.isExpanded })
+		},
+		onExpandSubtasks() {
+			console.log(`onExpandSubtasks taskId !{ this.item.task_id }`)
+
+			if (Array.isArray(this.item.children) && this.item.children.length > 0) {
+				this.$store.commit('UPDATE_VALUES_TASK', { list_id: this.list_id, task_id: this.item.task_id, isSubtaskExpanded: !this.item.isSubtaskExpanded })
+			} else {
+				return this.$store.dispatch('FETCH_SUBTASKS', { list_id: this.list_id, parent_id: this.item.task_id }).
+				then((count) => {
+					this.$store.commit('UPDATE_VALUES_TASK', { list_id: this.list_id, task_id: this.item.task_id, isSubtaskExpanded: !this.item.isSubtaskExpanded })
+					console.log('Subtasks fetched')
+				})
+				.catch((err) => {
+					console.warn(err)
+				})
+			}
 		}
 		// getContext(id) {
 		// 	let thisContext = this.$store.getters.context(id)
@@ -247,7 +297,20 @@ export default {
 </script>
 
 <style lang="css">
+.task-container {
+	/* padding: 1em; */
+	/* width: 100%; */
+	display: flex;
+	flex-direction: column;
+	max-width: 100%;
+
+  /* margin: 0.3em; */
+}
+
 .task-body {
+	margin-top: 0.3em;
+	margin-right: 0.3em;
+	margin-left: 0.3em;
 	display: flex;
 	flex-flow: row nowrap;
 	background-color: #f8f9fa;
@@ -407,4 +470,23 @@ export default {
   padding-left: 2px;
   padding-right: 2px;
 }
+
+.task-divider-body {
+	margin-top: .2em;
+	display: flex;
+	flex-flow: row nowrap;
+	border-top: 1px solid #b3d4fc;
+}
+
+.task-divider-body p {
+	margin: 0.2em;
+}
+
+.task-divider-clmn1 {
+	align-self: center;
+	min-height: 20px;
+}
+/* .tsk-area-el {
+	flex: 1;
+} */
 </style>

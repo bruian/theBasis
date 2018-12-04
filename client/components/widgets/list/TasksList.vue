@@ -45,20 +45,18 @@
 					:useDragHandle="true"
 					@sort-start="onSortStart($event)"
 					@sort-end="onSortEnd($event)">
-					<SlickItem v-for="(item, index) in items"
+					<TaskItem v-for="(item, index) in items"
+						:list_id="list_id"
+						:item="item"
+						:index="index"
+						:key="item.task_id"
+						collection="list_id"></TaskItem>
+					<!-- <SlickItem v-for="(item, index) in items"
 						:index="index"
 						:key="item.task_id"
 						class="task-container"
 						collection="#1">
-
-						<div class="task-divider-body" v-if="item.divider">
-							<div class="task-divider-clmn1">
-								<p>id: {{ item.group_id }} | Группа: {{ item.name }}</p>
-							</div>
-						</div>
-
-						<TaskItem :item="item" v-if="!item.divider"></TaskItem>
-					</SlickItem>
+					</SlickItem> -->
 				</SlickList>
 				<infinite-loading @infinite="infiniteHandler" ref="infLoadingTasksList"></infinite-loading>
 			</vue-perfect-scrollbar>
@@ -71,7 +69,7 @@ import TaskItem from '../items/TaskItem.vue'
 import VuePerfectScrollbar from '../../Perfect-scrollbar.vue'
 import InfiniteLoading from '../../InfiniteLoading'
 
-import { SlickList, SlickItem } from 'vue-slicksort'
+import { SlickList } from 'vue-slicksort'
 
 export default {
 	name: 'tasks-list',
@@ -79,8 +77,13 @@ export default {
 		TaskItem,
 		VuePerfectScrollbar,
 		InfiniteLoading,
-    SlickItem,
     SlickList
+	},
+	props: {
+		list_id: {
+			type: String,
+			required: true
+		}
 	},
 	data: () => ({
 		searchText: '',
@@ -95,7 +98,7 @@ export default {
 		showActiveTasksList: false //shows selected user list, my or all. Its for animation
 	}),
 	computed: {
-		items() {	return this.$store.getters.tasksList },
+		items() {	return this.$store.getters.tasksList(this.list_id) },
 		activeTasksList() { return this.$store.state.activeTasksList },
 		availableTasksList() { return this.$store.state.availableTasksList }
 	},
@@ -122,16 +125,17 @@ export default {
 			if (!this.blocked) que()
 		},
     onSortStart: function(e) {
-			const task = this.$store.getters.taskByIndex(e.index)
-      this.$store.commit('SET_ACTIVE_TASK', { task_id: task.task_id })
+			const task = this.$store.getters.taskByIndex({ list_id: this.list_id, index: e.index })
+      this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: task.task_id })
 		},
 		onSortEnd: function(e) {
 			console.log(e)
+			debugger
 			if (e.oldIndex !== e.newIndex & e.newIndex > 0) {
 				this.$store.dispatch('REORDER_TASKS_LIST', {
 					oldIndex: e.oldIndex,
 					newIndex: e.newIndex,
-					list: e.collection })
+					list_id: this.list_id })
 				.then((res) => {
 					console.log('reordering')
 				})
@@ -143,8 +147,8 @@ export default {
 		infiniteHandler($state) {
 			if (this.countEl == 0) {
 				this.countEl++
-				console.log(`1** infiniteHandler fetch offset: ${this.$store.state[this.$store.state.activeTasksList.list].offset} CNT: ${this.countEl}`)
-				return this.$store.dispatch('FETCH_TASKS_LIST').then((count) => {
+				console.log(`1** infiniteHandler fetch tasks CNT: ${this.countEl}`)
+				return this.$store.dispatch('FETCH_TASKS_LIST', this.list_id).then((count) => {
 					this.countEl--
 					if (count) {
 						$state.loaded()
@@ -190,16 +194,6 @@ export default {
 .tasks-list-body {
 	padding: 1px;
 	margin: 0px;
-}
-
-.task-container {
-	/* padding: 1em; */
-	/* width: 100%; */
-	display: flex;
-	flex-direction: column;
-	max-width: 100%;
-
-  margin: 0.3em;
 }
 
 .list-header
@@ -269,25 +263,6 @@ export default {
   opacity: 0;
   transform: translateY(30px);
 }
-
-.task-divider-body {
-	display: flex;
-	flex-flow: row nowrap;
-	border-top: 1px solid #b3d4fc;
-}
-
-.task-divider-body p {
-	margin: 0.2em;
-}
-
-.task-divider-clmn1 {
-	align-self: center;
-	min-height: 20px;
-}
-/* .tsk-area-el {
-	flex: 1;
-} */
-
 </style>
 
 <style lang="stylus">
