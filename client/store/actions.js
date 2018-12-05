@@ -245,6 +245,7 @@ export default {
 			return Promise.reject(err.response.data)
 		})
 	},
+
 	LINK_GROUPS_LIST: ({ commit, state }, id) => {
 		const fetchQuery = {
 			url: 'groups',
@@ -298,8 +299,8 @@ export default {
 	},
 
 	//*** TASKS LIST actions */
-	FETCH_TASKS_LIST: ({ commit, state }, list_id) => {
-		const activeList = state.listOfList.find(el => el.list_id === list_id)
+	FETCH_TASKS: ({ commit, state }, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		const fetchQuery = {
 			url: 'tasks',
 			method: 'GET',
@@ -307,6 +308,7 @@ export default {
 			headers: { limit: activeList.limit, offset: activeList.offset, partid: ++taskPartID }
 		}
 
+		// apply global condition
 		for (const key in activeList.condition) {
 			if (activeList.condition[key] === null) continue
 
@@ -331,13 +333,20 @@ export default {
 			}
 		}
 
+		// apply local condition
+		for (const key in options) {
+			if (key === 'list_id') continue
+
+			fetchQuery.params[key] = options[key]
+		}
+
 		return fetchSrv(fetchQuery)
 		.then((dataFromSrv) => {
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(0)
 			} else {
 				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${taskPartID}`)
-				commit('SET_TASKS_LIST', { list_id: list_id, data: dataFromSrv.data })
+				commit('SET_TASKS', { list_id: options.list_id, data: dataFromSrv.data })
 				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
@@ -363,7 +372,7 @@ export default {
 				isActive: false,
 				isExpanded: false,
 				isShowed: true,
-				isSubtaskExpanded: false,
+				isSubtaskExpanded: 0,
 				name: 'Подзадача 1',
 				note: '',
 				p: 4,
@@ -384,7 +393,7 @@ export default {
 				isActive: false,
 				isExpanded: false,
 				isShowed: true,
-				isSubtaskExpanded: false,
+				isSubtaskExpanded: 0,
 				name: 'Подзадача 2',
 				note: '',
 				p: 4,
@@ -402,7 +411,7 @@ export default {
 	},
 
 	REORDER_TASKS_LIST: ({ commit, state }, options) => {
-		debugger
+		//debugger
 		//проверочка на всякий случай допустимых значений
 		if (options.oldIndex === options.newIndex || options.newIndex === 0) return
 
@@ -427,7 +436,7 @@ export default {
 
 		//изменение значения группы на новую группу, если она задана
 		if (newGroupId != undefined) {
-			commit('UPDATE_VALUES_TASK', { list_id: options.list_id, task_id: movedItem.task_id, group_id: newGroupId })
+			commit('UPDATE_TASK_VALUES', { list_id: options.list_id, task_id: movedItem.task_id, group_id: newGroupId })
 		}
 	},
 

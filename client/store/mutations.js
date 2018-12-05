@@ -29,6 +29,34 @@ function findGroup(mainGroups, id) {
 	return result
 }
 
+function recursiveFind(list, cb) {
+	let result
+
+	for (let i = 0; i < list.length; i++) {
+		if (cb(list[i])) {
+			result = list[i]
+		} else if (list[i].children && list[i].children.length > 0) {
+			result = recursiveFind(list[i].children, cb)
+		}
+
+		if (result) break
+	}
+
+	return result
+}
+
+function recursiveSet(list, key, value) {
+	for (let i = 0; i < list.length; i++) {
+		if (list[i].hasOwnProperty(key)) {
+			list[i][key] = value
+		}
+
+		if (list[i].children && list[i].children.length > 0) {
+			recursiveSet(list[i].children, key, value)
+		}
+	}
+}
+
 export default {
 	//*** API Status mutation */
 	API_ERROR: (state, error) => {
@@ -312,17 +340,17 @@ export default {
 	},
 
 	//*** Tasks mutations */
-	SET_TASKS_LIST: (state, obj) => {
+	SET_TASKS: (state, obj) => {
 		//debugger
-		setApiStatus(state, 'SET_TASKS_LIST', null)
+		setApiStatus(state, 'SET_TASKS', null)
 
 		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
 		const taskList = activeList.list
 		const data = obj.data
 
-		let prevGroupId
+		let prevGroupId, prevParentId, prevParent
 		for (let i = 0; i < data.length; i++) {
-			if (prevGroupId !== data[i].group_id) {
+			if (prevGroupId !== data[i].group_id && data[i].parent === null) {
 				let grp = findGroup(state.mainGroups, data[i].group_id)
 				taskList.push({ isDivider: true,
 					group_id: data[i].group_id,
@@ -346,14 +374,29 @@ export default {
 			}
 
 			data[i].isShowed = (data[i].level > 1) ? false : true
-			data[i].isSubtaskExpanded = false
+			data[i].isSubtaskExpanded = 0
 			data[i].isExpanded = false
 			data[i].isActive = false
 			data[i].level = 1
-			taskList.push(data[i])
+
+			if (data[i].parent === null) {
+				activeList.offset++
+				taskList.push(data[i])
+			} else {
+				if (!prevParentId) {
+					if (prevParent !== data[i].parent) {
+						prevParent = recursiveFind(taskList, el => el.task_id === data[i].parent)
+					}
+				}
+
+				if (prevParent) {
+					data[i].level = prevParent.level + 1
+					prevParent.children.push(data[i])
+				}
+			}
 		}
 
-		activeList.offset = activeList.offset + data.length
+		//activeList.offset = activeList.offset + data.length
 	},
 
 	SET_ACTIVE_TASKS_LIST: (state, activeID) => {
@@ -375,11 +418,10 @@ export default {
 	},
 
 	//values must contain task_id of element task_id:id
-	UPDATE_VALUES_TASK: (state, obj) => {
+	UPDATE_TASK_VALUES: (state, obj) => {
 		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
-		const taskList = activeList.list
-		const idxTask = taskList.findIndex(el => el.task_id == obj.task_id)
-		const element = taskList[idxTask]
+		let taskList = activeList.list
+		const element = recursiveFind(taskList, el => el.task_id === obj.task_id)
 
 		for (const key in obj) {
 			if (key === 'task_id' || key === 'reorder' || key === 'list_id') continue
@@ -389,10 +431,10 @@ export default {
 			}
 
 			if (key === 'group_id') {
-				let idxGroup = taskList.findIndex(el => (el.group_id === obj.group_id && el.divider))
+				let idxGroup = taskList.findIndex(el => (el.group_id === obj.group_id && el.isDivider))
 				if (idxGroup === -1) {
 					let grp = findGroup(state.mainGroups, obj.group_id)
-					idxGroup = taskList.push({ divider: true,
+					idxGroup = taskList.push({ isDivider: true,
 						group_id: obj.group_id,
 						name: grp.name,
 						isActive: false }) - 1
@@ -400,8 +442,35 @@ export default {
 					idxGroup = 1
 				}
 
+				if (element.children && element.children.length > 0) {
+					recursiveSet(element.children, key, obj[key])
+				}
+
 				if (obj.reorder) {
-					const movedItem = taskList.splice(idxTask, 1)[0]
+					let movedItem
+					if (element.parent === null) {
+						const idxTask = taskList.findIndex(el => el.task_id == obj.task_id)
+						movedItem = taskList.splice(idxTask, 1)[0]
+					} else {
+						const parentElement = recursiveFind(taskList, el => el.task_id === element.parent)
+						parentElement.havechild--
+
+						if (!parentElement.havechild) parentElement.isSubtaskExpanded = 0
+
+						const idxTask = parentElement.children.findIndex(el => el.task_id === obj.task_id)
+						movedItem = parentElement.children.splice(idxTask, 1)[0]
+
+						movedItem.parent = null
+						movedItem.level = 1
+						if (movedItem.children && movedItem.children.length > 0) {
+							for (let i = 0; i < movedItem.children.length; i++) {
+								movedItem.children[i].level = 2
+							}
+						}
+
+						idxGroup++
+					}
+
 					taskList.splice(idxGroup, 0, movedItem)
 				}
 			}
@@ -410,15 +479,24 @@ export default {
 
 	SET_ACTIVE_TASK: (state, obj) => {
 		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
-		let activedTask = activeList.list.find(el => el.isActive === true)
+		let activedTask = recursiveFind(activeList.list, el => el.isActive === true)
 		if (activedTask) {
 			activedTask.isActive = false
 		}
 
-		let activeTask = activeList.list.find(el => el.task_id === obj.task_id)
+		let activeTask = recursiveFind(activeList.list, el => el.task_id === obj.task_id)
 		if (activeTask) {
 			activeTask.isActive = true
-			//state.theTask.task_id = obj.task_id
+		}
+	},
+
+	UPDATE_LUST_CONDITION: ({ commit, state }, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+
+		for (const key in options) {
+			if (key === 'list_id') continue
+
+			activeList.condition[key] = options[key]
 		}
 	},
 

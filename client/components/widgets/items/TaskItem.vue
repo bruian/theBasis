@@ -1,7 +1,5 @@
 <template>
 	<div class="task-container">
-		 <!-- class="task-body"
-		 v-bind:class="{ active: item.isActive }"-->
 		<div class="task-divider-body" v-if="item.isDivider">
 			<div class="task-divider-clmn1">
 				<p>id: {{ item.group_id }} | Группа: {{ item.name }}</p>
@@ -10,8 +8,10 @@
 
 		<div v-bind:class="classObject"
 			v-if="!item.isDivider && item.isShowed"
-			@click="onBodyClick()">
-			<div v-handle v-bind:class="{ 'task-handle': true, 'task-handle-active': item.isActive }"></div>
+			@click="onBodyClick">
+			<div v-bind:class="{ 'task-handle': true, 'task-handle-active': item.isActive }"
+				@mousedown="dragHandleDown"
+				@mouseup="dragHandleUp"></div>
 			<div class="task-clmn1">
 				<v-speed-dial
 					:direction="direction"
@@ -58,11 +58,11 @@
 					<span>Начато</span>
 				</v-tooltip>
 
-				<v-icon @click="onExpandSubtasks()" class="expand-ico"
+				<v-icon @click="onExpandSubtasks()" v-show="item.havechild" class="expand-ico"
 					slot="activator"
 					color="primary"
 					dark
-				>{{ (item.isSubtaskExpanded) ? "expand_less" : "expand_more" }}</v-icon>
+				>{{ (item.isSubtaskExpanded > 1) ? "expand_less" : "expand_more" }}</v-icon>
 
 				<!-- <v-menu
 					bottom
@@ -96,18 +96,16 @@
 					:max-height="84">
 				</ItmTextArea>
 
-				<!-- <v-flex class="ma-0" style="padding:1px;"> -->
-					<TagsInput :element-id="'#'+item.tid"
-						v-model="item.context"
-						:existing-tags="{
-							'web-development': 'Web Development',
-							'php': 'PHP',
-							'javascript': 'JavaScript',
-						}"
-						:typeahead="true"
-						:placeholder="'Add a context'">
-					</TagsInput>
-				<!-- </v-flex> -->
+				<TagsInput :element-id="'#'+item.tid"
+					v-model="item.context"
+					:existing-tags="{
+						'web-development': 'Web Development',
+						'php': 'PHP',
+						'javascript': 'JavaScript',
+					}"
+					:typeahead="true"
+					:placeholder="'Add a context'">
+				</TagsInput>
 			</div>
 
 			<div class="task-clmn4">
@@ -123,7 +121,6 @@
 					color="primary"
 					dark
 				>{{ (item.isExpanded) ? "unfold_less" : "unfold_more" }}</v-icon>
-<!-- {{ (item.isExpanded) ? "keyboard_arrow_up" : "keyboard_arrow_down" }} -->
 				<treeselect v-model="item.group_id"
 					placeholder="Group"
 					:clearable="false"
@@ -146,29 +143,26 @@
 				v-model="item.note"
 				placeholder="Введите сюда любую сопутствующую задаче текстовую информацию"></v-textarea>
 		</div>
-		<SlickList
-			lockAxis="y"
-			:value="item.children"
-			:useDragHandle="true"
-			@sort-start=""
-			@sort-end="">
-			<TaskItem v-if="item.isSubtaskExpanded"
-				v-for="(children, childrenIndex) in item.children"
-				:list_id="list_id"
-				:item="children"
-				:index="childrenIndex"
-				:key="children.task_id"
-				collection="'list_id2'"></TaskItem>
-		</SlickList>
+
+		<Container v-if="(item.isSubtaskExpanded > 1)"
+			drag-handle-selector=".task-handle"
+			group-name="item.list_id"
+			:get-child-payload="itemIndex => getChildPayload(itemIndex, item.level + 1)"
+			@drag-start="onDragStart"
+			@drop="onDrop">
+			<Draggable v-for="(children, index) in item.children"	:key="children.task_id">
+				<TaskItem :list_id="list_id" :item="children" ></TaskItem>
+			</Draggable>
+		</Container>
 	</div>
 </template>
 
 <script>
-//import TaskItem from './TaskItem.vue'
 import Treeselect from '@riophae/vue-treeselect'
 import ItmTextArea from '../ItmTextArea.vue'
 import TagsInput from '../../VoerroTagsInput/VoerroTagsInput.vue'
-import { HandleDirective, ElementMixin, SlickList } from 'vue-slicksort'
+
+import { Container, Draggable } from 'vue-smooth-dnd'
 
 const taskStatus = [
 	'Assigned', //Назначено - 0
@@ -182,15 +176,14 @@ const taskStatus = [
 
 export default {
 	name: 'task-item',
-	mixins: [ElementMixin],
 	components: {
 		TaskItem: () => import('./TaskItem.vue'),
-		SlickList,
 		Treeselect,
 		TagsInput,
-		ItmTextArea
+		ItmTextArea,
+		Container,
+		Draggable
 	},
-	directives: { handle: HandleDirective },
 	props: ['item', 'list_id'],
 	// props: {
 	// 	item: {
@@ -199,7 +192,6 @@ export default {
 	// 	}
 	// },
 	data: () => ({
-		// item: {},
 		direction: 'right',
 		hover: false,
 		transition: 'slide-x-transition',
@@ -207,7 +199,8 @@ export default {
 			{ title: 'Add subtask' },
 			{ title: 'Collapse subtask' }
 		],
-		groupChangeStart: false
+		groupChangeStart: false,
+		wasSubtaskExpanded: false
 	}),
 	computed: {
 		mainGroupsMini() { return this.$store.state.mainGroupsMini },
@@ -234,6 +227,50 @@ export default {
 		// }
 	},
 	methods: {
+		getChildPayload: function(itemIndex, level) {
+      return { index: itemIndex, level }
+    },
+    onDragStart: function(dragResult) {
+			debugger
+
+			return
+			const { isSource, payload, willAcceptDrop } = dragResult
+			const task = this.$store.getters.taskByIndex({ list_id: this.list_id, index: payload.index })
+			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: task.task_id })
+
+			// if (task.isSubtaskExpanded) task.isSubtaskExpanded = false
+		},
+		onDrop: function(dropResult) {
+			debugger
+			const { removedIndex, addedIndex, payload, element } = dropResult
+			return
+			if (removedIndex !== addedIndex & addedIndex > 0) {
+				this.$store.dispatch('REORDER_TASKS_LIST', {
+					oldIndex: removedIndex,
+					newIndex: addedIndex,
+					list_id: this.list_id })
+				.then((res) => {
+					console.log('reordering')
+				})
+				.catch((err) => {
+					console.err(err)
+				})
+			}
+		},
+		dragHandleDown: function() {
+			if (this.item.isSubtaskExpanded > 1) {
+				this.item.isSubtaskExpanded = 1
+				//this.wasSubtaskExpanded = true
+			}
+		},
+		dragHandleUp: function() {
+			console.log('dragHandleUp')
+
+			if (this.item.isSubtaskExpanded === 1) {
+				this.item.isSubtaskExpanded = 2
+				//this.wasSubtaskExpanded = false
+			}
+		},
 		onGroupOpen: function(instanceId) {
 			this.groupChangeStart = true
 		},
@@ -241,9 +278,9 @@ export default {
 			//on default this event fired twice
 			if (this.groupChangeStart) {
 				//our need catch event only first time
-				this.$store.commit('UPDATE_VALUES_TASK', {
+				this.$store.commit('UPDATE_TASK_VALUES', {
 					list_id: this.list_id,
-					task_id: this.$store.state.theTask.task_id,
+					task_id: this.item.task_id,
 					group_id: value,
 					reorder: true
 				})
@@ -270,17 +307,18 @@ export default {
 		},
 		onExpandMore() {
 			console.log(`onExpandMore taskId !{ this.item.task_id }`)
-			this.$store.commit('UPDATE_VALUES_TASK', { list_id: this.list_id, task_id: this.item.task_id, isExpanded: !this.item.isExpanded })
+			this.$store.commit('UPDATE_TASK_VALUES', { list_id: this.list_id, task_id: this.item.task_id, isExpanded: !this.item.isExpanded })
 		},
 		onExpandSubtasks() {
 			console.log(`onExpandSubtasks taskId !{ this.item.task_id }`)
 
 			if (Array.isArray(this.item.children) && this.item.children.length > 0) {
-				this.$store.commit('UPDATE_VALUES_TASK', { list_id: this.list_id, task_id: this.item.task_id, isSubtaskExpanded: !this.item.isSubtaskExpanded })
+				this.$store.commit('UPDATE_TASK_VALUES', { list_id: this.list_id, task_id: this.item.task_id, isSubtaskExpanded: ((this.item.isSubtaskExpanded > 1) ? 0 : 2) })
 			} else {
-				return this.$store.dispatch('FETCH_SUBTASKS', { list_id: this.list_id, parent_id: this.item.task_id }).
+				return this.$store.dispatch('FETCH_TASKS', { list_id: this.list_id, parent_id: this.item.task_id }).
 				then((count) => {
-					this.$store.commit('UPDATE_VALUES_TASK', { list_id: this.list_id, task_id: this.item.task_id, isSubtaskExpanded: !this.item.isSubtaskExpanded })
+					debugger
+					this.$store.commit('UPDATE_TASK_VALUES', { list_id: this.list_id, task_id: this.item.task_id, isSubtaskExpanded: ((this.item.isSubtaskExpanded > 1) ? 0 : 2) })
 					console.log('Subtasks fetched')
 				})
 				.catch((err) => {
@@ -303,8 +341,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	max-width: 100%;
-
-  /* margin: 0.3em; */
+  margin-bottom: 0.1em;
 }
 
 .task-body {
@@ -420,7 +457,7 @@ export default {
 }
 
 .task-level-3 {
-	margin-left: 16px;
+	margin-left: 12px;
 }
 
 .task-duration {

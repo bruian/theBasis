@@ -253,6 +253,7 @@ async function getTasks(condition, done) {
 
 			// return done(null, hierarchicalRows)
 			rows.forEach(el => {
+				el.havechild = parseInt(el.havechild, 10)
 				if (el.havechild) el.children = []
 			})
 			return done(null, rows)

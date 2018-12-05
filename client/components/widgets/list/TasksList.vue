@@ -1,3 +1,4 @@
+
 <template>
 	<div class="tasks-list">
 		<v-expansion-panel class="mb-0">
@@ -38,26 +39,18 @@
 		</v-expansion-panel>
 		<v-divider class="ma-0"></v-divider>
 		<div class="tasks-list-body">
+			<!-- :get-ghost-parent="getGhostParent" -->
 			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="tskbox">
-				<SlickList
-					lockAxis="y"
-					:value="items"
-					:useDragHandle="true"
-					@sort-start="onSortStart($event)"
-					@sort-end="onSortEnd($event)">
-					<TaskItem v-for="(item, index) in items"
-						:list_id="list_id"
-						:item="item"
-						:index="index"
-						:key="item.task_id"
-						collection="list_id"></TaskItem>
-					<!-- <SlickItem v-for="(item, index) in items"
-						:index="index"
-						:key="item.task_id"
-						class="task-container"
-						collection="#1">
-					</SlickItem> -->
-				</SlickList>
+				<Container
+					drag-handle-selector=".task-handle"
+					group-name="item.list_id"
+					:get-child-payload="itemIndex => getChildPayload(itemIndex, 1)"
+					@drag-start="onDragStart($event)"
+					@drop="onDrop($event)">
+					<Draggable v-for="(item, index) in items"	:key="item.task_id">
+						<TaskItem :list_id="list_id" :item="item" ></TaskItem>
+					</Draggable>
+				</Container>
 				<infinite-loading @infinite="infiniteHandler" ref="infLoadingTasksList"></infinite-loading>
 			</vue-perfect-scrollbar>
 		</div> <!-- tasks-list-body -->
@@ -69,7 +62,7 @@ import TaskItem from '../items/TaskItem.vue'
 import VuePerfectScrollbar from '../../Perfect-scrollbar.vue'
 import InfiniteLoading from '../../InfiniteLoading'
 
-import { SlickList } from 'vue-slicksort'
+import { Container, Draggable } from 'vue-smooth-dnd'
 
 export default {
 	name: 'tasks-list',
@@ -77,7 +70,8 @@ export default {
 		TaskItem,
 		VuePerfectScrollbar,
 		InfiniteLoading,
-    SlickList
+		Container,
+		Draggable
 	},
 	props: {
 		list_id: {
@@ -124,19 +118,32 @@ export default {
 
 			if (!this.blocked) que()
 		},
-    onSortStart: function(e) {
-			const task = this.$store.getters.taskByIndex({ list_id: this.list_id, index: e.index })
-      this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: task.task_id })
+		getChildPayload: function(itemIndex, level) {
+      return { index: itemIndex, level }
+    },
+    onDragStart: function(dragResult) {
+			//debugger
+			const { isSource, payload, willAcceptDrop } = dragResult
+			const task = this.$store.getters.taskByIndex({ list_id: this.list_id, index: payload.index })
+			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: task.task_id })
+
+			// if (task.isSubtaskExpanded) task.isSubtaskExpanded = false
 		},
-		onSortEnd: function(e) {
-			console.log(e)
-			debugger
-			if (e.oldIndex !== e.newIndex & e.newIndex > 0) {
+		onDrop: function(dropResult) {
+			//debugger
+			const { removedIndex, addedIndex, payload, element } = dropResult
+
+			if (removedIndex !== addedIndex & addedIndex > 0) {
 				this.$store.dispatch('REORDER_TASKS_LIST', {
-					oldIndex: e.oldIndex,
-					newIndex: e.newIndex,
+					oldIndex: removedIndex,
+					newIndex: addedIndex,
 					list_id: this.list_id })
 				.then((res) => {
+					const task = this.$store.getters.taskByIndex({ list_id: this.list_id, index: addedIndex })
+					if (task.isSubtaskExpanded === 1) {
+						this.$store.commit('UPDATE_TASK_VALUES', { list_id: this.list_id, task_id: task.task_id, isSubtaskExpanded: 2 })
+					}
+
 					console.log('reordering')
 				})
 				.catch((err) => {
@@ -148,7 +155,7 @@ export default {
 			if (this.countEl == 0) {
 				this.countEl++
 				console.log(`1** infiniteHandler fetch tasks CNT: ${this.countEl}`)
-				return this.$store.dispatch('FETCH_TASKS_LIST', this.list_id).then((count) => {
+				return this.$store.dispatch('FETCH_TASKS', { list_id: this.list_id }).then((count) => {
 					this.countEl--
 					if (count) {
 						$state.loaded()
@@ -262,6 +269,10 @@ export default {
 .list-enter, .list-leave-to /* .list-leave-active до версии 2.1.8 */ {
   opacity: 0;
   transform: translateY(30px);
+}
+
+.smooth-dnd-container.vertical > .smooth-dnd-draggable-wrapper {
+  overflow: visible;
 }
 </style>
 
