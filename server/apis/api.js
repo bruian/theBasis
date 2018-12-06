@@ -191,6 +191,24 @@ router.get('/tasks', (req, res) => {
 	})
 })
 
+router.post('/tasks/order', (req, res) => {
+	const condition = {
+		mainUser_id: req.body.userId,
+		group_id: (req.query.group_id) ? req.query.group_id : null,
+		task_id: (req.query.task_id) ? req.query.task_id : null,
+		parent_id: (req.query.parent_id) ? req.query.parent_id : null,
+		position: (req.query.position) ? req.query.position : null
+	}
+
+	TaskController.setPosition(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		log.debug(`/tasks/order:return |-> data`)
+
+		return res.json({ data: data })
+	})
+})
+
 /*** -OTHER API- */
 router.get('/fakeSet', (req, res) => {
 	return res.end('Can not generates fake datas')

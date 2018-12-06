@@ -43,7 +43,7 @@
 			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="tskbox">
 				<Container
 					drag-handle-selector=".task-handle"
-					group-name="item.list_id"
+					group-name="1"
 					:get-child-payload="itemIndex => getChildPayload(itemIndex, 1)"
 					@drag-start="onDragStart($event)"
 					@drop="onDrop($event)">
@@ -119,7 +119,7 @@ export default {
 			if (!this.blocked) que()
 		},
 		getChildPayload: function(itemIndex, level) {
-      return { index: itemIndex, level }
+      return { index: itemIndex, level, fromParent: null }
     },
     onDragStart: function(dragResult) {
 			//debugger
@@ -130,13 +130,14 @@ export default {
 			// if (task.isSubtaskExpanded) task.isSubtaskExpanded = false
 		},
 		onDrop: function(dropResult) {
-			//debugger
 			const { removedIndex, addedIndex, payload, element } = dropResult
 
 			if (removedIndex !== addedIndex & addedIndex > 0) {
 				this.$store.dispatch('REORDER_TASKS', {
 					oldIndex: removedIndex,
 					newIndex: addedIndex,
+					fromParent: payload.fromParent,
+					toParent: null,
 					list_id: this.list_id })
 				.then((res) => {
 					const task = this.$store.getters.taskByIndex({ list_id: this.list_id, index: addedIndex })

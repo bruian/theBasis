@@ -99,8 +99,7 @@ async function getTasks(condition, done) {
 
 	try {
 		if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
-			return done(new PgError(`The condition must contain the <mainUser_id> field that sets the current user relatively,
-				because regarding his rights there will be a request for information from the database`))
+			return done(new PgError('For database operations, a main user token is required'))
 		}
 
 		if (isNumeric(condition.limit)) {
@@ -229,10 +228,39 @@ async function getTasks(condition, done) {
 	}
 }
 
+/***
+ * Set new position in tasks_list OR change group for task
+ */
+async function setPosition(condition, done) {
+	let client, queryText
+
+	try {
+		if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
+			return done(new PgError(`For database operations, a main user token is required`))
+		}
+
+		/* Для смены позиции в древовидной структуре для начала определим
+		изменились ли родитель и группа задачи */
+		return done(null, true)
+	} catch (error) {
+		return done(new PgError(error))
+	} finally {
+
+	}
+	/*
+	mainUser_id
+	group_id
+	task_id
+	parent_id
+	position
+	*/
+}
+
 module.exports = {
 	_create,
 	_read,
 	_update,
 	_delete,
-	getTasks
+	getTasks,
+	setPosition
 }

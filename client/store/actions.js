@@ -367,9 +367,8 @@ export default {
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		const taskList = activeList.list
 
-		const fromDepth = treeDepth(taskList)
-		return
 
+		return
 		//идём в начало списка с новой позиции, это необходимо
 		//что бы определить позицию divider, там мы найдём group_id
 		//он нам нужен для того что бы назначить перетаскиваемой задаче

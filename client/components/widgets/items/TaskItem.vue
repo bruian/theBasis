@@ -146,7 +146,7 @@
 
 		<Container v-if="(item.isSubtaskExpanded > 1)"
 			drag-handle-selector=".task-handle"
-			group-name="item.list_id"
+			group-name="1"
 			:get-child-payload="itemIndex => getChildPayload(itemIndex, item.level + 1)"
 			@drag-start="onDragStart"
 			@drop="onDrop">
@@ -161,6 +161,7 @@
 import Treeselect from '@riophae/vue-treeselect'
 import ItmTextArea from '../ItmTextArea.vue'
 import TagsInput from '../../VoerroTagsInput/VoerroTagsInput.vue'
+import { recursiveFind } from '../../../util/helpers.js'
 
 import { Container, Draggable } from 'vue-smooth-dnd'
 
@@ -228,26 +229,25 @@ export default {
 	},
 	methods: {
 		getChildPayload: function(itemIndex, level) {
-      return { index: itemIndex, level }
+      return { index: itemIndex, level, fromParent: this.item.task_id }
     },
     onDragStart: function(dragResult) {
-			debugger
-
-			return
 			const { isSource, payload, willAcceptDrop } = dragResult
-			const task = this.$store.getters.taskByIndex({ list_id: this.list_id, index: payload.index })
-			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: task.task_id })
 
-			// if (task.isSubtaskExpanded) task.isSubtaskExpanded = false
+			if (this.item.children) {
+				const task_id = this.item.children[payload.index].task_id
+				this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: task_id })
+			}
 		},
 		onDrop: function(dropResult) {
-			debugger
 			const { removedIndex, addedIndex, payload, element } = dropResult
-			return
+
 			if (removedIndex !== addedIndex & addedIndex > 0) {
 				this.$store.dispatch('REORDER_TASKS', {
 					oldIndex: removedIndex,
 					newIndex: addedIndex,
+					fromParent: payload.fromParent,
+					toParent: this.item.task_id,
 					list_id: this.list_id })
 				.then((res) => {
 					console.log('reordering')
@@ -317,7 +317,7 @@ export default {
 			} else {
 				return this.$store.dispatch('FETCH_TASKS', { list_id: this.list_id, parent_id: this.item.task_id }).
 				then((count) => {
-					debugger
+					//debugger
 					this.$store.commit('UPDATE_TASK_VALUES', { list_id: this.list_id, task_id: this.item.task_id, isSubtaskExpanded: ((this.item.isSubtaskExpanded > 1) ? 0 : 2) })
 					console.log('Subtasks fetched')
 				})
