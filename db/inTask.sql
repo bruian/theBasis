@@ -323,23 +323,34 @@ ORDER BY (tl.p::float8/tl.q);
 */
 --SELECT * from groups_list order by group_id, user_id
 
-WITH main_visible_groups AS (
+/* выбираем все группы которые видимы main пользователю и 
+   помещаем в таблицу main_visible_groups,
+   затем строим иерархию задач по родителю для определения глубины иерархии
+   А в Целевой выборке мы получаем все задачи входящие в main_visible_groups
+   в соответствии с заданной пользователем последовательностью хранения 
+   задач (сортировка по полям tl.p/tl.q по принципу дробления числа)
+*/
+WITH RECURSIVE main_visible_groups AS (
 SELECT group_id FROM groups_list AS gl
 	LEFT JOIN groups AS grp ON gl.group_id = grp.id
 	WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = 1)
-), user_groups AS (
-SELECT gl.group_id FROM groups_list AS gl
-	WHERE gl.group_id IN (SELECT * FROM main_visible_groups) AND gl.user_id = 2
-) 
+), descendants(id, parent, depth, path) AS (
+    SELECT id, parent, 1 depth, ARRAY[id] FROM tasks WHERE parent is null
+UNION
+	SELECT t.id, t.parent, d.depth + 1, path || t.id FROM tasks t 
+	JOIN descendants d ON t.parent = d.id
+)
 SELECT tl.task_id, tl.group_id, tl.p, tl.q,
 	tsk.tid, tsk.name, tsk.owner AS tskowner, 
 	tsk.status, tsk.duration, tsk.note, tsk.parent,
-	(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild
+	(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild,
+	dsc.depth
 FROM tasks_list AS tl
 RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
-WHERE tl.group_id IN (SELECT * FROM user_groups) AND tsk.parent = 1
-ORDER BY (tl.p::float8/tl.q);
-									 
+JOIN (SELECT max(depth) AS depth, descendants.path[1] AS parent_id FROM descendants GROUP BY descendants.path[1]) AS dsc ON tl.task_id = dsc.parent_id
+WHERE tl.group_id IN (SELECT * FROM main_visible_groups) AND tsk.parent is null
+ORDER BY tl.group_id, (tl.p::float8/tl.q);
+
 --UPDATE tasks SET parent = null WHERE task_id = 3
 --SELECT * FROM context_list WHERE owner = 1
 --SELECT * FROM groups_list WHERE user_id = 1

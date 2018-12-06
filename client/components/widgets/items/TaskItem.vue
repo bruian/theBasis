@@ -245,7 +245,7 @@ export default {
 			const { removedIndex, addedIndex, payload, element } = dropResult
 			return
 			if (removedIndex !== addedIndex & addedIndex > 0) {
-				this.$store.dispatch('REORDER_TASKS_LIST', {
+				this.$store.dispatch('REORDER_TASKS', {
 					oldIndex: removedIndex,
 					newIndex: addedIndex,
 					list_id: this.list_id })

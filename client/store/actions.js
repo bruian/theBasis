@@ -1,5 +1,6 @@
 import config from '../config'
 import Vue from 'vue'
+import { treeDepth } from '../util/helpers'
 //import querystring from 'querystring'
 
 const logRequests = !!config.DEBUG_API
@@ -357,66 +358,17 @@ export default {
 		})
 	},
 
-	FETCH_SUBTASKS: ({ commit, state }, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		const taskList = activeList.list
-
-		const foundTask = taskList.find(el => el.task_id === options.parent_id)
-		foundTask.children = [
-			{
-				children: [],
-				context: [],
-				duration: 6000,
-				group_id: 1,
-				havechild: 0,
-				isActive: false,
-				isExpanded: false,
-				isShowed: true,
-				isSubtaskExpanded: 0,
-				name: 'Подзадача 1',
-				note: '',
-				p: 4,
-				parent: 1,
-				q: 5,
-				status: 2,
-				task_id: 9,
-				tid: 9,
-				tskowner: 1,
-				level: 2
-			},
-			{
-				children: [],
-				context: [],
-				duration: 6000,
-				group_id: 1,
-				havechild: 0,
-				isActive: false,
-				isExpanded: false,
-				isShowed: true,
-				isSubtaskExpanded: 0,
-				name: 'Подзадача 2',
-				note: '',
-				p: 4,
-				parent: 1,
-				q: 6,
-				status: 2,
-				task_id: 10,
-				tid: 10,
-				tskowner: 1,
-				level: 2
-			}
-		]
-
-		return Promise.resolve()
-	},
-
-	REORDER_TASKS_LIST: ({ commit, state }, options) => {
-		//debugger
+	REORDER_TASKS: ({ commit, state }, options) => {
+		debugger
 		//проверочка на всякий случай допустимых значений
-		if (options.oldIndex === options.newIndex || options.newIndex === 0) return
+		if (options.oldIndex === options.newIndex || options.newIndex === 0)
+			return Promise.reject('position has not changed')
 
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		const taskList = activeList.list
+
+		const fromDepth = treeDepth(taskList)
+		return
 
 		//идём в начало списка с новой позиции, это необходимо
 		//что бы определить позицию divider, там мы найдём group_id

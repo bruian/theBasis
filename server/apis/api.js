@@ -176,7 +176,6 @@ router.get('/tasks', (req, res) => {
 		parent_id: (req.query.parent_id) ? req.query.parent_id : null,
 		task_id: (req.query.task_id) ? req.query.task_id : null,
 		searchText: (req.query.searchText) ? req.query.searchText : null,
-		// whose: (req.query.whose) ? req.query.whose : null,
 		limit: (req.headers.limit) ? req.headers.limit : null,
 		offset: (req.headers.offset) ? req.headers.offset : null
 	}

@@ -115,29 +115,25 @@ async function getTasks(condition, done) {
 				pgUserGroups = '',
 				pgGroups = 'main_visible_groups', //tasks visible only for main user
 				pgParentCondition = ' AND tsk.parent is null', //select Top level tasks
+				pgParentCondition2 = 'parent is null',
 				pgTaskCondition = '',
 				pgGroupCondition = '',
-				pgSearchText = ''
-
-		// if (condition.whose === '' || condition.whose === 'all') {
-		// }
-		// if (condition.whose === 'task-parent') {
-		// }
-		// if (condition.whose === 'task') {
-		// }
-		// if (condition.whose === 'user') {
-		// }
-		// if (condition.whose === 'group') {
-		// }
+				pgSearchText = '',
+				pgLimit = ''
 
 		if (isNumeric(condition.parent_id) && condition.parent_id > 0) {
 			selectTask = true
 			pgParentCondition = ` AND tsk.parent = ${condition.parent_id}`
+			pgParentCondition2 = `parent = ${condition.parent_id}`
 		}
 
 		if (isNumeric(condition.task_id) && condition.task_id > 0) {
 			selectTask = true
 			pgTaskCondition = ` AND tsk.id = ${condition.task_id}`
+		}
+
+		if (!selectTask) {
+			pgLimit = `LIMIT ${limit} OFFSET ${offset}`
 		}
 
 		if (condition.user_id && isNumeric(condition.user_id)) {
@@ -159,62 +155,30 @@ async function getTasks(condition, done) {
 
 		pgСonditions = pgParentCondition + pgTaskCondition + pgGroupCondition + pgSearchText
 
-		if (selectTask) {
-			//SELECT mainUser-groups, filter on: mainUser_id or [public groups (group_id = 0)]
-			// if condition.whose = 'user' SELECT user-groups from [mainUser-groups] filter on: user_id
-			//	SELECT tasks IN [mainUser-groups] OR [user-groups if condition.whose = 'user'] filter on: tasks.parent = task_id
+		//SELECT mainUser-groups, filter on: mainUser_id or [public groups (group_id = 0)]
+		// if condition.whose = 'user' SELECT user-groups from [mainUser-groups] filter on: user_id
+		//	SELECT tasks IN [mainUser-groups] OR [user-groups if condition.whose = 'user'] filter on: tasks.parent = task_id
 
-			queryText = `WITH main_visible_groups AS (
-				SELECT group_id FROM groups_list AS gl
-					LEFT JOIN groups AS grp ON gl.group_id = grp.id
-					WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
-				) ${pgUserGroups}
-				SELECT tl.task_id, tl.group_id, tl.p, tl.q,
-					tsk.tid, tsk.name, tsk.owner AS tskowner,
-					tsk.status, tsk.duration, tsk.note, tsk.parent,
-					(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild
-				FROM tasks_list AS tl
-				RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
-				WHERE tl.group_id IN (SELECT * FROM ${pgGroups}) ${pgСonditions}
-				ORDER BY tl.group_id, (tl.p::float8/tl.q);`
-		} else {
-			queryText = `WITH main_visible_groups AS (
-				SELECT group_id FROM groups_list AS gl
-					LEFT JOIN groups AS grp ON gl.group_id = grp.id
-					WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
-				) ${pgUserGroups}
-				SELECT tl.task_id, tl.group_id, tl.p, tl.q,
-					tsk.tid, tsk.name, tsk.owner AS tskowner,
-					tsk.status, tsk.duration, tsk.note, tsk.parent,
-					(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild
-				FROM tasks_list AS tl
-				RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
-				WHERE tl.group_id IN (SELECT * FROM ${pgGroups}) ${pgСonditions}
-				ORDER BY tl.group_id, (tl.p::float8/tl.q)
-				LIMIT ${limit} OFFSET ${offset};`
-			// queryText = `WITH RECURSIVE main_visible_groups AS (
-			// 	SELECT group_id FROM groups_list AS gl
-			// 		RIGHT JOIN groups AS grp ON gl.group_id = grp.id
-			// 		WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
-			// 	), recursive_tree (id, parent, path, group_id, p, q, level) AS (
-			// 	SELECT T1t.id, T1t.parent, CAST (T1t.id AS VARCHAR (50)) AS path, T1tl.group_id, T1tl.p, T1tl.q, 1
-			// 		FROM tasks_list AS T1tl
-			// 	RIGHT JOIN tasks AS T1t ON (T1tl.task_id = T1t.id)
-			// 	WHERE T1t.parent IS NULL AND T1tl.group_id IN (SELECT group_id FROM main_visible_groups)
-			// 		UNION
-			// 	SELECT T2t.id, T2t.parent, CAST (recursive_tree.PATH ||'->'|| T2t.id AS VARCHAR(50)), T2tl.group_id, T2tl.p, T2tl.q, level + 1
-			// 		FROM tasks_list AS T2tl
-			// 	RIGHT JOIN tasks AS T2t ON (T2tl.task_id = T2t.id)
-			// 	INNER JOIN recursive_tree ON (recursive_tree.id = T2t.parent)
-			// )	SELECT tsk.id AS task_id, tsk.tid, tsk.name,
-			// 	tsk.owner AS tskowner, tsk.status, tsk.duration,
-			// 	tsk.note, recursive_tree.group_id, recursive_tree.p,
-			// 	recursive_tree.q, recursive_tree.level,
-			// 	tsk.parent FROM recursive_tree
-			// LEFT JOIN tasks AS tsk ON recursive_tree.id = tsk.id
-			// ORDER BY recursive_tree.group_id, (recursive_tree.p::float8/recursive_tree.q)
-			// LIMIT ${limit} OFFSET ${offset};`
-		}
+		queryText = `WITH RECURSIVE main_visible_groups AS (
+			SELECT group_id FROM groups_list AS gl
+				LEFT JOIN groups AS grp ON gl.group_id = grp.id
+				WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
+			) ${pgUserGroups}, descendants(id, parent, depth, path) AS (
+					SELECT id, parent, 1 depth, ARRAY[id] FROM tasks WHERE ${pgParentCondition2}
+			UNION
+				SELECT t.id, t.parent, d.depth + 1, path || t.id FROM tasks t
+				JOIN descendants d ON t.parent = d.id
+			)
+			SELECT tl.task_id, tl.group_id, tl.p, tl.q,
+				tsk.tid, tsk.name, tsk.owner AS tskowner,
+				tsk.status, tsk.duration, tsk.note, tsk.parent,
+				(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild,
+				dsc.depth
+			FROM tasks_list AS tl
+			RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
+			JOIN (SELECT max(depth) AS depth, descendants.path[1] AS parent_id FROM descendants GROUP BY descendants.path[1]) AS dsc ON tl.task_id = dsc.parent_id
+			WHERE tl.group_id IN (SELECT * FROM ${pgGroups}) ${pgСonditions}
+			ORDER BY tl.group_id, (tl.p::float8/tl.q) ${pgLimit};`
 	} catch (error) {
 		return done(error)
 	}

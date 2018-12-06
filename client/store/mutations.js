@@ -1,59 +1,10 @@
 import Vue from 'vue'
+import { recursiveFind, recursiveSet, findGroup } from '../util/helpers'
 
 /* use only for api srv mutations */
 function setApiStatus(state, status, error) {
 	if (state.logStatus) {
 		state.apiStatus.push({ status, error })
-	}
-}
-
-function findGroup(mainGroups, id) {
-	let result
-
-	for (let i = 0; i < mainGroups.length; i++) {
-		if (mainGroups[i].children && mainGroups[i].children.length > 0) {
-			if (mainGroups[i].id === id) {
-				result = mainGroups[i]
-			} else {
-				result = findGroup(mainGroups[i].children, id)
-			}
-		} else {
-			if (mainGroups[i].id === id) {
-				result = mainGroups[i]
-			}
-		}
-
-		if (result) break
-	}
-
-	return result
-}
-
-function recursiveFind(list, cb) {
-	let result
-
-	for (let i = 0; i < list.length; i++) {
-		if (cb(list[i])) {
-			result = list[i]
-		} else if (list[i].children && list[i].children.length > 0) {
-			result = recursiveFind(list[i].children, cb)
-		}
-
-		if (result) break
-	}
-
-	return result
-}
-
-function recursiveSet(list, key, value) {
-	for (let i = 0; i < list.length; i++) {
-		if (list[i].hasOwnProperty(key)) {
-			list[i][key] = value
-		}
-
-		if (list[i].children && list[i].children.length > 0) {
-			recursiveSet(list[i].children, key, value)
-		}
 	}
 }
 
