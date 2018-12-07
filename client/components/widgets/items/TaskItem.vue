@@ -144,16 +144,18 @@
 				placeholder="Введите сюда любую сопутствующую задаче текстовую информацию"></v-textarea>
 		</div>
 
-		<Container v-if="(item.isSubtaskExpanded > 1)"
-			drag-handle-selector=".task-handle"
-			group-name="1"
-			:get-child-payload="itemIndex => getChildPayload(itemIndex, item.level + 1)"
-			@drag-start="onDragStart"
-			@drop="onDrop">
-			<Draggable v-for="(children, index) in item.children"	:key="children.task_id">
-				<TaskItem :list_id="list_id" :item="children" ></TaskItem>
-			</Draggable>
-		</Container>
+		<draggable v-model="items" v-if="(item.isSubtaskExpanded > 1)"
+			:options="getDraggableOptions()"
+			@start="onDragStart"
+			@end="onDrop"
+			v-bind:data-parent="item.task_id">
+			<div v-for="(children, index) in items"
+				:key="children.task_id"
+				v-bind:data-task_id="children.task_id"
+				v-bind:data-parent="children.parent">
+				<TaskItem :list_id="list_id" :item="children"></TaskItem>
+			</div>
+		</draggable>
 	</div>
 </template>
 
@@ -163,7 +165,7 @@ import ItmTextArea from '../ItmTextArea.vue'
 import TagsInput from '../../VoerroTagsInput/VoerroTagsInput.vue'
 import { recursiveFind } from '../../../util/helpers.js'
 
-import { Container, Draggable } from 'vue-smooth-dnd'
+import draggable from 'vuedraggable'
 
 const taskStatus = [
 	'Assigned', //Назначено - 0
@@ -182,8 +184,7 @@ export default {
 		Treeselect,
 		TagsInput,
 		ItmTextArea,
-		Container,
-		Draggable
+		draggable
 	},
 	props: ['item', 'list_id'],
 	// props: {
@@ -204,7 +205,13 @@ export default {
 		wasSubtaskExpanded: false
 	}),
 	computed: {
-		mainGroupsMini() { return this.$store.state.mainGroupsMini },
+		items: {
+			get() {
+				return this.item.children
+			},
+			set(value) {}
+		},
+			mainGroupsMini() { return this.$store.state.mainGroupsMini },
 		classObject() {
 			const classObj = {
 				'task-body': true,
@@ -228,26 +235,24 @@ export default {
 		// }
 	},
 	methods: {
-		getChildPayload: function(itemIndex, level) {
-      return { index: itemIndex, level, fromParent: this.item.task_id }
-    },
+		getDraggableOptions: function() {
+			return { group:this.list_id, handle:'.task-handle' }
+		},
     onDragStart: function(dragResult) {
-			const { isSource, payload, willAcceptDrop } = dragResult
+			const { item } = dragResult
 
-			if (this.item.children) {
-				const task_id = this.item.children[payload.index].task_id
-				this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: task_id })
-			}
+			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
 		},
 		onDrop: function(dropResult) {
-			const { removedIndex, addedIndex, payload, element } = dropResult
+			const { newIndex, oldIndex, item, to } = dropResult
+			//item.dataset.task_id
 
-			if (removedIndex !== addedIndex & addedIndex > 0) {
+			if (oldIndex !== newIndex & newIndex > 0) {
 				this.$store.dispatch('REORDER_TASKS', {
-					oldIndex: removedIndex,
-					newIndex: addedIndex,
-					fromParent: payload.fromParent,
-					toParent: this.item.task_id,
+					oldIndex: oldIndex,
+					newIndex: newIndex,
+					fromParent: (item.dataset.parent === '0') ? null : Number.parseInt(item.dataset.parent, 10),
+					toParent: (to.dataset.parent === '0') ? null : Number.parseInt(to.dataset.parent, 10),
 					list_id: this.list_id })
 				.then((res) => {
 					console.log('reordering')

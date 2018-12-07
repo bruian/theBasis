@@ -39,18 +39,19 @@
 		</v-expansion-panel>
 		<v-divider class="ma-0"></v-divider>
 		<div class="tasks-list-body">
-			<!-- :get-ghost-parent="getGhostParent" -->
-			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="tskbox">
-				<Container
-					drag-handle-selector=".task-handle"
-					group-name="1"
-					:get-child-payload="itemIndex => getChildPayload(itemIndex, 1)"
-					@drag-start="onDragStart($event)"
-					@drop="onDrop($event)">
-					<Draggable v-for="(item, index) in items"	:key="item.task_id">
+			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="list_id">
+				<draggable v-model="items"
+					:options="getDraggableOptions()"
+					@start="onDragStart"
+					@end="onDrop"
+					v-bind:data-parent="0">
+					<div v-for="(item, index) in items"
+						:key="item.id"
+						v-bind:data-task_id="item.task_id"
+						v-bind:data-parent="(item.parent === null) ? 0 : item.parent">
 						<TaskItem :list_id="list_id" :item="item" ></TaskItem>
-					</Draggable>
-				</Container>
+					</div>
+				</draggable>
 				<infinite-loading @infinite="infiniteHandler" ref="infLoadingTasksList"></infinite-loading>
 			</vue-perfect-scrollbar>
 		</div> <!-- tasks-list-body -->
@@ -62,7 +63,7 @@ import TaskItem from '../items/TaskItem.vue'
 import VuePerfectScrollbar from '../../Perfect-scrollbar.vue'
 import InfiniteLoading from '../../InfiniteLoading'
 
-import { Container, Draggable } from 'vue-smooth-dnd'
+import draggable from 'vuedraggable'
 
 export default {
 	name: 'tasks-list',
@@ -70,8 +71,7 @@ export default {
 		TaskItem,
 		VuePerfectScrollbar,
 		InfiniteLoading,
-		Container,
-		Draggable
+		draggable
 	},
 	props: {
 		list_id: {
@@ -81,9 +81,6 @@ export default {
 	},
 	data: () => ({
 		searchText: '',
-		// suggestionAttribute: 'original_title',
-		// suggestions: [],
-		// selectedEvent: "",
 		scrollSettings: {
 			maxScrollLength: 10
 		},
@@ -92,11 +89,19 @@ export default {
 		showActiveTasksList: false //shows selected user list, my or all. Its for animation
 	}),
 	computed: {
-		items() {	return this.$store.getters.tasksList(this.list_id) },
+		items: {
+			get() {
+				return this.$store.getters.tasksList(this.list_id)
+			},
+			set(value) {}
+		},
 		activeTasksList() { return this.$store.state.activeTasksList },
 		availableTasksList() { return this.$store.state.availableTasksList }
 	},
   methods: {
+		getDraggableOptions: function() {
+			return { group:this.list_id, handle:'.task-handle' }
+		},
 		onChange: function(value) {
 			console.log('changed searchText: ' + value)
 			this.searchText = value
@@ -118,33 +123,23 @@ export default {
 
 			if (!this.blocked) que()
 		},
-		getChildPayload: function(itemIndex, level) {
-      return { index: itemIndex, level, fromParent: null }
-    },
     onDragStart: function(dragResult) {
-			//debugger
-			const { isSource, payload, willAcceptDrop } = dragResult
-			const task = this.$store.getters.taskByIndex({ list_id: this.list_id, index: payload.index })
-			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: task.task_id })
+			const { item } = dropResult
 
-			// if (task.isSubtaskExpanded) task.isSubtaskExpanded = false
+			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
 		},
 		onDrop: function(dropResult) {
-			const { removedIndex, addedIndex, payload, element } = dropResult
+			const { newIndex, oldIndex, item, to } = dropResult
+			//item.dataset.task_id
 
-			if (removedIndex !== addedIndex & addedIndex > 0) {
+			if (oldIndex !== newIndex & newIndex > 0) {
 				this.$store.dispatch('REORDER_TASKS', {
-					oldIndex: removedIndex,
-					newIndex: addedIndex,
-					fromParent: payload.fromParent,
-					toParent: null,
+					oldIndex: oldIndex,
+					newIndex: newIndex,
+					fromParent: (item.dataset.parent === '0') ? null : Number.parseInt(item.dataset.parent, 10),
+					toParent: (to.dataset.parent === '0') ? null : Number.parseInt(to.dataset.parent, 10),
 					list_id: this.list_id })
 				.then((res) => {
-					const task = this.$store.getters.taskByIndex({ list_id: this.list_id, index: addedIndex })
-					if (task.isSubtaskExpanded === 1) {
-						this.$store.commit('UPDATE_TASK_VALUES', { list_id: this.list_id, task_id: task.task_id, isSubtaskExpanded: 2 })
-					}
-
 					console.log('reordering')
 				})
 				.catch((err) => {
