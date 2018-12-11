@@ -279,7 +279,7 @@ WITH RECURSIVE main_visible_groups AS (
 	SELECT T1t.id, T1t.parent, CAST (T1t.id AS VARCHAR (50)) AS path, T1tl.group_id, T1tl.p, T1tl.q, 1
     FROM tasks_list AS T1tl
 	RIGHT JOIN tasks AS T1t ON (T1tl.task_id = T1t.id)
-	WHERE T1t.parent IS NULL AND T1tl.group_id IN (SELECT group_id FROM main_visible_groups)
+	WHERE T1t.parent =0 AND T1tl.group_id IN (SELECT group_id FROM main_visible_groups)
 		UNION
 	SELECT T2t.id, T2t.parent, CAST (recursive_tree.PATH ||'->'|| T2t.id AS VARCHAR(50)), T2tl.group_id, T2tl.p, T2tl.q, level + 1
     FROM tasks_list AS T2tl
@@ -330,12 +330,19 @@ ORDER BY (tl.p::float8/tl.q);
    в соответствии с заданной пользователем последовательностью хранения 
    задач (сортировка по полям tl.p/tl.q по принципу дробления числа)
 */
+/*main_user, to_group_id, task_id, to_task_id, isBefore, to_parent*/
+--SELECT reorder_task(1, 1, 4, null, FALSE, 0);
+--SELECT reorder_task(1, 50, 3, null, FALSE, 0);
+--SELECT reorder_task(1, 50, 6, null, FALSE, 5);
+--UPDATE tasks_list SET group_id = 1 WHERE task_id = 4;
+
+/* tasks by parent id ****/
 WITH RECURSIVE main_visible_groups AS (
 SELECT group_id FROM groups_list AS gl
 	LEFT JOIN groups AS grp ON gl.group_id = grp.id
 	WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = 1)
 ), descendants(id, parent, depth, path) AS (
-    SELECT id, parent, 1 depth, ARRAY[id] FROM tasks WHERE parent is null
+    SELECT id, parent, 1 depth, ARRAY[id] FROM tasks --WHERE parent is null
 UNION
 	SELECT t.id, t.parent, d.depth + 1, path || t.id FROM tasks t 
 	JOIN descendants d ON t.parent = d.id
@@ -348,9 +355,93 @@ SELECT tl.task_id, tl.group_id, tl.p, tl.q,
 FROM tasks_list AS tl
 RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
 JOIN (SELECT max(depth) AS depth, descendants.path[1] AS parent_id FROM descendants GROUP BY descendants.path[1]) AS dsc ON tl.task_id = dsc.parent_id
-WHERE tl.group_id IN (SELECT * FROM main_visible_groups) AND tsk.parent is null
+WHERE tl.group_id IN (SELECT * FROM main_visible_groups) --AND tsk.parent is null
 ORDER BY tl.group_id, (tl.p::float8/tl.q);
 
+/* return 0 - moving a record to its own position is a no-op
+          1 - operation complete
+		  2 - user is not assigned this group or this group no public
+		  3 - user does not have permissions to read this group
+		  4 - user does not have permissions to updating this group
+CREATE OR REPLACE FUNCTION reorder_task(
+	main_user_id INTEGER,
+	grp_id INTEGER,
+    tsk_id INTEGER,
+    rel_id INTEGER,
+    is_before BOOLEAN,
+	new_parent INTEGER)
+  RETURNS integer
+  LANGUAGE plpgsql
+  volatile called ON NULL INPUT
+AS $f$
+  DECLARE
+	before_group_id INTEGER; before_parent_id INTEGER;
+    main_group_id INTEGER; main_group_reading INTEGER;
+    main_group_updating INTEGER; main_user_type INTEGER;
+	rel_group_id INTEGER;
+  BEGIN
+	SELECT group_id, grp.reading, grp.updating, gl.user_type 
+	  INTO strict main_group_id, main_group_reading, 
+	       main_group_updating, main_user_type FROM groups_list gl
+	LEFT JOIN groups grp ON gl.group_id = grp.id
+    WHERE gl.group_id = grp_id AND (gl.user_id = 0 OR gl.user_id = main_user_id);
+	
+    IF main_group_id IS NULL THEN
+	  RETURN 2;
+    END IF;
+	
+	IF main_group_reading < main_user_type THEN
+	  RETURN 3;
+	END IF;
+	
+	IF main_group_updating < main_user_type THEN
+	  RETURN 4;
+	END IF;
+
+    -- moving a record to its own position is a no-op
+    --IF rel_id=tsk_id THEN RETURN 0; END IF;
+
+	SELECT tl.group_id, t.parent
+	INTO strict before_group_id, before_parent_id FROM tasks_list AS tl
+	LEFT JOIN tasks AS t ON t.id = tl.task_id
+	WHERE tl.task_id = tsk_id
+	GROUP BY tl.group_id, t.parent;
+
+	IF new_parent IS NOT NULL THEN
+		IF new_parent <> before_parent_id THEN
+			UPDATE tasks SET parent = new_parent WHERE id = tsk_id;
+		END IF;
+	END IF;
+
+	IF rel_id IS NULL THEN
+		perform task_place_list(grp_id, tsk_id, rel_id, is_before);
+	ELSE
+		SELECT tl.group_id
+		INTO strict rel_group_id FROM tasks_list AS tl
+		WHERE tl.task_id = rel_id;
+
+		--IF before_group_id <> rel_group_id THEN
+		IF grp_id <> rel_group_id THEN
+			perform task_place_list(grp_id, tsk_id, null, FALSE);
+		ELSE
+			perform task_place_list(grp_id, tsk_id, rel_id, is_before);
+		END IF;
+		
+		--perform task_place_list(grp_id, tsk_id, rel_id, is_before);
+	END IF;
+
+    -- lock the tasks_list
+    --perform 1 FROM tasks_list tl WHERE tl.task_id=before_group_id FOR UPDATE;
+
+	IF before_group_id <> main_group_id THEN
+		DELETE FROM tasks_list WHERE (group_id = before_group_id) AND (task_id = tsk_id);
+ 	END IF;
+
+	return 1;
+  END;
+$f$;
+*/
+																											  
 --UPDATE tasks SET parent = null WHERE task_id = 3
 --SELECT * FROM context_list WHERE owner = 1
 --SELECT * FROM groups_list WHERE user_id = 1

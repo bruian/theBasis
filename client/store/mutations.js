@@ -301,7 +301,7 @@ export default {
 
 		let prevGroupId, prevParentId, prevParent
 		for (let i = 0; i < data.length; i++) {
-			if (prevGroupId !== data[i].group_id && data[i].parent === null) {
+			if (prevGroupId !== data[i].group_id && data[i].parent === 0) {
 				let grp = findGroup(state.mainGroups, data[i].group_id)
 				taskList.push({ isDivider: true,
 					group_id: data[i].group_id,
@@ -330,7 +330,7 @@ export default {
 			data[i].isActive = false
 			data[i].level = 1
 
-			if (data[i].parent === null) {
+			if (data[i].parent === 0) {
 				activeList.offset++
 				taskList.push(data[i])
 			} else {
@@ -393,13 +393,13 @@ export default {
 					idxGroup = 1
 				}
 
-				if (element.children && element.children.length > 0) {
-					recursiveSet(element.children, key, obj[key])
-				}
+				// if (element.children && element.children.length > 0) {
+				// 	recursiveSet(element.children, key, obj[key])
+				// }
 
 				if (obj.reorder) {
 					let movedItem
-					if (element.parent === null) {
+					if (element.parent === 0) {
 						const idxTask = taskList.findIndex(el => el.task_id == obj.task_id)
 						movedItem = taskList.splice(idxTask, 1)[0]
 					} else {
@@ -411,7 +411,7 @@ export default {
 						const idxTask = parentElement.children.findIndex(el => el.task_id === obj.task_id)
 						movedItem = parentElement.children.splice(idxTask, 1)[0]
 
-						movedItem.parent = null
+						movedItem.parent = 0
 						movedItem.level = 1
 						if (movedItem.children && movedItem.children.length > 0) {
 							for (let i = 0; i < movedItem.children.length; i++) {

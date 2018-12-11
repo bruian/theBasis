@@ -113,8 +113,8 @@ async function getTasks(condition, done) {
 		let pgСonditions = '',
 				pgUserGroups = '',
 				pgGroups = 'main_visible_groups', //tasks visible only for main user
-				pgParentCondition = ' AND tsk.parent is null', //select Top level tasks
-				pgParentCondition2 = 'parent is null',
+				pgParentCondition = ' AND tsk.parent = 0', //select Top level tasks
+				pgParentCondition2 = 'parent = 0',
 				pgTaskCondition = '',
 				pgGroupCondition = '',
 				pgSearchText = '',
@@ -232,20 +232,45 @@ async function getTasks(condition, done) {
  * Set new position in tasks_list OR change group for task
  */
 async function setPosition(condition, done) {
-	let client, queryText
+	let client, queryText, isBefore = false
 
 	try {
 		if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
-			return done(new PgError(`For database operations, a main user token is required`))
+			return done(new PgError('For database operations, a main user token is required'))
 		}
 
-		/* Для смены позиции в древовидной структуре для начала определим
-		изменились ли родитель и группа задачи */
-		return done(null, true)
+		if (!condition.group_id) {
+			return done(new PgError('Condition must contain <group_id> field and value must be not null'))
+		}
+
+		if (!condition.task_id) {
+			return done(new PgError('Condition must contain <task_id> field (from task) and value must be not null'))
+		}
+
+		// if (!condition.position) {
+		// 	return done(new PgError('Condition must contain <position> field (to task) and value must be not null'))
+		// }
+
+		if (condition.isBefore !== null) isBefore = condition.isBefore
+
+		queryText = `SELECT reorder_task(${condition.mainUser_id}, ${condition.group_id}, ${condition.task_id}, ${condition.position}, ${isBefore}, ${condition.parent_id});`
+	} catch (error) {
+		return done(error)
+	}
+
+	try {
+		client = await pg.pool.connect()
+
+		const { rowCount, rows } = await client.query(queryText)
+		if (rowCount === 0) {
+			return done({ message: `No datas with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
+		} else {
+			return done(null, rows)
+		}
 	} catch (error) {
 		return done(new PgError(error))
 	} finally {
-
+		client.release()
 	}
 	/*
 	mainUser_id
@@ -253,6 +278,7 @@ async function setPosition(condition, done) {
 	task_id
 	parent_id
 	position
+	isBefore
 	*/
 }
 

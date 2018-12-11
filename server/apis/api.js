@@ -18,7 +18,7 @@ router.get('/hello', (req, res) => {
 router.get('/main-user', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
-		packet: (req.headers.packet) ? req.headers.packet : null
+		packet: ('packet' in req.headers) ? req.headers.packet : null
 	}
 
 	UserController.getUser(condition, (err, data) => {
@@ -37,10 +37,10 @@ router.get('/users/:id', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
 		user_id: req.params.id,
-		like: (req.query.like) ? req.query.like : null,
-		whose: (req.query.whose) ? req.query.whose : null,
-		limit: (req.headers.limit) ? req.headers.limit : null,
-		offset: (req.headers.offset) ? req.headers.offset : null
+		like: ('like' in req.query) ? req.query.like : null,
+		whose: ('whose' in req.query) ? req.query.whose : null,
+		limit: ('limit' in req.headers) ? req.headers.limit : null,
+		offset: ('offset' in req.headers) ? req.headers.offset : null
 	}
 
 	UserController.getUsers(condition, (err, data) => {
@@ -55,10 +55,10 @@ router.get('/users', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
 		user_id: null,
-		like: (req.query.like) ? req.query.like : null,
-		whose: (req.query.whose) ? req.query.whose : null,
-		limit: (req.headers.limit) ? req.headers.limit : null,
-		offset: (req.headers.offset) ? req.headers.offset : null
+		like: ('like' in req.query) ? req.query.like : null,
+		whose: ('whose' in req.query) ? req.query.whose : null,
+		limit: ('limit' in req.headers) ? req.headers.limit : null,
+		offset: ('offset' in req.headers) ? req.headers.offset : null
 	}
 
 	UserController.getUsers(condition, (err, data) => {
@@ -75,7 +75,7 @@ router.get('/users', (req, res) => {
 router.post('/users', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
-		user_id: (req.query.user_id) ? req.query.user_id : null
+		user_id: ('user_id' in req.query) ? req.query.user_id : null
 	}
 
 	UserController.addUsers(condition, (err, data) => {
@@ -88,7 +88,7 @@ router.post('/users', (req, res) => {
 router.delete('/users', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
-		user_id: (req.query.user_id) ? req.query.user_id : null
+		user_id: ('user_id' in req.query) ? req.query.user_id : null
 	}
 
 	UserController.removeUsers(condition, (err, data) => {
@@ -103,11 +103,11 @@ router.get('/groups/:id', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
 		group_id: req.params.id,
-		user_id: (req.query.user_id) ? req.query.user_id : null,
-		like: (req.query.like) ? req.query.like : null,
-		whose: (req.query.whose) ? req.query.whose : null,
-		limit: (req.headers.limit) ? req.headers.limit : null,
-		offset: (req.headers.offset) ? req.headers.offset : null
+		user_id: ('user_id' in req.query) ? req.query.user_id : null,
+		like: ('like' in req.query) ? req.query.like : null,
+		whose: ('whose' in req.query) ? req.query.whose : null,
+		limit: ('limit' in req.headers) ? req.headers.limit : null,
+		offset: ('offset' in req.headers) ? req.headers.offset : null
 	}
 
 	GroupController.getGroups(condition, (err, data) => {
@@ -122,12 +122,12 @@ router.get('/groups', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
 		group_id: null,
-		user_id: (req.query.user_id) ? req.query.user_id : null,
-		like: (req.query.like) ? req.query.like : null,
-		whose: (req.query.whose) ? req.query.whose : null,
-		limit: (req.headers.limit) ? req.headers.limit : null,
-		offset: (req.headers.offset) ? req.headers.offset : null,
-		packet: (req.headers.packet) ? req.headers.packet : null
+		user_id: ('user_id' in req.query) ? req.query.user_id : null,
+		like: ('like' in req.query) ? req.query.like : null,
+		whose: ('whose' in req.query) ? req.query.whose : null,
+		limit: ('limit' in req.headers) ? req.headers.limit : null,
+		offset: ('offset' in req.headers) ? req.headers.offset : null,
+		packet: ('packet' in req.headers) ? req.headers.packet : null
 	}
 
 	GroupController.getGroups(condition, (err, data) => {
@@ -144,7 +144,7 @@ router.get('/groups', (req, res) => {
 router.post('/groups', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
-		group_id: (req.query.group_id) ? req.query.group_id : null
+		group_id: ('group_id' in req.query) ? req.query.group_id : null
 	}
 
 	GroupController.addGroup(condition, (err, data) => {
@@ -157,7 +157,7 @@ router.post('/groups', (req, res) => {
 router.delete('/groups', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
-		group_id: (req.query.group_id) ? req.query.group_id : null
+		group_id: ('group_id' in req.query) ? req.query.group_id : null
 	}
 
 	GroupController.removeGroup(condition, (err, data) => {
@@ -171,13 +171,13 @@ router.delete('/groups', (req, res) => {
 router.get('/tasks', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
-		group_id: (req.query.group_id) ? req.query.group_id : null,
-		user_id: (req.query.user_id) ? req.query.user_id : null,
-		parent_id: (req.query.parent_id) ? req.query.parent_id : null,
-		task_id: (req.query.task_id) ? req.query.task_id : null,
-		searchText: (req.query.searchText) ? req.query.searchText : null,
-		limit: (req.headers.limit) ? req.headers.limit : null,
-		offset: (req.headers.offset) ? req.headers.offset : null
+		group_id: ('group_id' in req.query) ? req.query.group_id : null,
+		user_id: ('user_id' in req.query) ? req.query.user_id : null,
+		parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
+		task_id: ('task_id' in req.query) ? req.query.task_id : null,
+		searchText: ('searchText' in req.query) ? req.query.searchText : null,
+		limit: ('limit' in req.headers) ? req.headers.limit : null,
+		offset: ('offset' in req.headers) ? req.headers.offset : null
 	}
 
 	TaskController.getTasks(condition, (err, data) => {
@@ -194,10 +194,11 @@ router.get('/tasks', (req, res) => {
 router.post('/tasks/order', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
-		group_id: (req.query.group_id) ? req.query.group_id : null,
-		task_id: (req.query.task_id) ? req.query.task_id : null,
-		parent_id: (req.query.parent_id) ? req.query.parent_id : null,
-		position: (req.query.position) ? req.query.position : null
+		group_id: ('group_id' in req.query) ? req.query.group_id : null,
+		task_id: ('task_id' in req.query) ? req.query.task_id : null,
+		parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
+		position: ('position' in req.query) ? req.query.position : null,
+		isBefore: ('isBefore' in req.query) ? req.query.isBefore : null
 	}
 
 	TaskController.setPosition(condition, (err, data) => {

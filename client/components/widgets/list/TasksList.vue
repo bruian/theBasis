@@ -48,7 +48,7 @@
 					<div v-for="(item, index) in items"
 						:key="item.id"
 						v-bind:data-task_id="item.task_id"
-						v-bind:data-parent="(item.parent === null) ? 0 : item.parent">
+						v-bind:data-parent="item.parent">
 						<TaskItem :list_id="list_id" :item="item" ></TaskItem>
 					</div>
 				</draggable>
@@ -124,28 +124,34 @@ export default {
 			if (!this.blocked) que()
 		},
     onDragStart: function(dragResult) {
-			const { item } = dropResult
+			const { item } = dragResult
 
 			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
 		},
 		onDrop: function(dropResult) {
-			const { newIndex, oldIndex, item, to } = dropResult
-			//item.dataset.task_id
+			const { newIndex, oldIndex, from, to } = dropResult
 
-			if (oldIndex !== newIndex & newIndex > 0) {
-				this.$store.dispatch('REORDER_TASKS', {
-					oldIndex: oldIndex,
-					newIndex: newIndex,
-					fromParent: (item.dataset.parent === '0') ? null : Number.parseInt(item.dataset.parent, 10),
-					toParent: (to.dataset.parent === '0') ? null : Number.parseInt(to.dataset.parent, 10),
-					list_id: this.list_id })
-				.then((res) => {
-					console.log('reordering')
-				})
-				.catch((err) => {
-					console.err(err)
-				})
+			if (from.dataset.parent === to.dataset.parent) {
+				if (oldIndex === newIndex) {
+					return
+				}
 			}
+
+			// const parent = item.dataset.parent
+			// item.dataset.parent = to.dataset.parent
+
+			this.$store.dispatch('REORDER_TASKS', {
+				oldIndex: oldIndex,
+				newIndex: newIndex,
+				fromParent: Number.parseInt(from.dataset.parent, 10),
+				toParent: Number.parseInt(to.dataset.parent, 10),
+				list_id: this.list_id })
+			.then((res) => {
+				console.log('reordering list')
+			})
+			.catch((err) => {
+				console.warn(err)
+			})
 		},
 		infiniteHandler($state) {
 			if (this.countEl == 0) {

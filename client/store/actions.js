@@ -1,6 +1,6 @@
 import config from '../config'
 import Vue from 'vue'
-import { treeDepth } from '../util/helpers'
+import { treeDepth, recursiveFind } from '../util/helpers'
 //import querystring from 'querystring'
 
 const logRequests = !!config.DEBUG_API
@@ -359,36 +359,181 @@ export default {
 	},
 
 	REORDER_TASKS: ({ commit, state }, options) => {
+		// options = {
+		// 	oldIndex,
+		// 	newIndex,
+		// 	fromParent,
+		// 	toParent,
+		// 	list_id
+		// }
 		debugger
-		//проверочка на всякий случай допустимых значений
-		if (options.oldIndex === options.newIndex || options.newIndex === 0)
-			return Promise.reject('position has not changed')
 
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		const taskList = activeList.list
 
+		let fromTask, toTask, fromParent, toParent, newGroupId,
+			isBefore = (options.oldIndex > options.newIndex)
 
-		return
-		//идём в начало списка с новой позиции, это необходимо
-		//что бы определить позицию divider, там мы найдём group_id
-		//он нам нужен для того что бы назначить перетаскиваемой задаче
-		//новую группу, если она попала в список этой группы
-		let newGroupId
-		for (let i = (options.newIndex > options.oldIndex) ? options.newIndex : options.newIndex - 1; i >= 0; i--) {
-			if (taskList[i].isDivider) {
-				newGroupId = taskList[i].group_id
-				break
+		if (options.fromParent === 0) {
+			fromTask = taskList[options.oldIndex]
+		} else {
+			fromParent = recursiveFind(taskList, el => el.task_id === options.fromParent)
+			fromTask = fromParent.children[options.oldIndex]
+		}
+
+		if (options.toParent === 0) {
+			if (taskList.length === options.newIndex) {
+				toTask = taskList[options.newIndex - 1]
+				newGroupId = toTask.group_id
+				toTask = null
+				isBefore = true
+			} else {
+				toTask = taskList[options.newIndex]
+				if (toTask.isDivider) {
+					newGroupId = toTask.group_id
+					if (options.newIndex === 0) {
+						toTask = null
+						isBefore = false
+					} else {
+						//Если элемент перемещается выше своей позиции, иначе ниже
+						if (options.oldIndex > options.newIndex) {
+							toTask = taskList[options.newIndex - 1]
+							newGroupId = toTask.group_id
+							isBefore = false
+						} else {
+							if (taskList.length > options.newIndex + 1) {
+								isBefore = true
+								toTask = taskList[options.newIndex + 1]
+							} else {
+								//достигнут конец списка
+								toTask = null
+							}
+						}
+					}
+				}
+			}
+		} else {
+			toParent = recursiveFind(taskList, el => el.task_id === options.toParent)
+			if (toParent.children.length === options.newIndex) {
+				toTask = toParent.children[options.newIndex - 1]
+			} else {
+				toTask = toParent.children[options.newIndex]
+			}
+
+			if ( ((fromTask.parent === 0) && (toTask.parent !== 0)) ||
+					 ((fromTask.parent !== 0) && (toTask.parent === 0)) ) {
+				newGroupId = fromTask.group_id
+			} else {
+				newGroupId = toTask.group_id
+			}
+
+			//newGroupId = toParent.task_id
+		}
+
+		if (toTask !== null) {
+			if ( ((fromTask.parent !== 0) && (toTask.parent !== 0)) &&
+		  			(fromTask.parent === toTask.parent) ) {
+				if (fromTask.group_id !== toTask.group_id) {
+					return Promise.resolve(false)
+				}
 			}
 		}
 
-		//перемещение элемента на новое место
-		const movedItem = taskList.splice(options.oldIndex, 1)[0]
-		taskList.splice(options.newIndex, 0, movedItem)
-
-		//изменение значения группы на новую группу, если она задана
-		if (newGroupId != undefined) {
-			commit('UPDATE_TASK_VALUES', { list_id: options.list_id, task_id: movedItem.task_id, group_id: newGroupId })
+		//Определим куда переместить задачау (до или после)
+		//при перемещении между разными родителями
+		if (toTask !== null && options.toParent !== options.fromParent) {
+			if (fromTask.parent === toTask.task_id) {
+				isBefore = true
+			} else {
+				if (toTask.parent === 0) {
+					//Если до новой позиции сразу стоит разделитель группы, то ставим на позицию выше
+					if (options.newIndex > 0 && taskList[options.newIndex - 1].isDivider) {
+						isBefore = true
+					}
+				} else {
+					isBefore = !(options.newIndex === toParent.children.length)
+				}
+			}
 		}
+
+		if (newGroupId === undefined) {
+			newGroupId = toTask.group_id
+		}
+
+		const fetchQuery = {
+			url: 'tasks/order',
+			method: 'POST',
+			params: {
+				group_id: newGroupId,
+				task_id: fromTask.task_id,
+				position: (toTask === null) ? null : toTask.task_id,
+				isBefore: isBefore,
+				parent_id: (toParent === undefined) ? 0 : toParent.task_id
+			}
+		}
+//return Promise.resolve(true)
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			debugger
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(false)
+			} else {
+				let movedItem
+
+				if (options.fromParent === 0) {
+					movedItem = taskList.splice(options.oldIndex, 1)[0]
+				} else {
+					movedItem = fromParent.children.splice(options.oldIndex, 1)[0]
+					fromParent.havechild--
+				}
+
+				if (options.toParent === 0) {
+					taskList.splice((options.newIndex === 0) ? 1 : options.newIndex, 0, movedItem)
+				} else {
+					//toParent = recursiveFind(taskList, el => el.task_id === options.toParent)
+					if (toParent.children.length === options.newIndex) {
+						if (toParent.children.length > 0) {
+							toParent.children.splice(options.newIndex, 0, movedItem)
+						} else {
+							toParent.children.splice(0, 0, movedItem)
+						}
+					} else {
+						if (toParent.children[options.newIndex].group_id === movedItem.group_id) {
+							toParent.children.splice(options.newIndex, 0, movedItem)
+						} else {
+							toParent.children.splice(0, 0, movedItem)
+						}
+					}
+
+					toParent.havechild++
+				}
+
+				movedItem.level = ((toParent === undefined) ? 0 : toParent.level) + 1
+				if (movedItem.children && movedItem.children.length > 0) {
+					for (let i = 0; i < movedItem.children.length; i++) {
+						const subItem = movedItem.children[i]
+						subItem.level = subItem.level + 1
+						if (subItem.children && subItem.children.length > 0) {
+							for (let j = 0; j < subItem.children.length; j++) {
+								subItem.children[j].level = subItem.children[j].level + 1;
+							}
+						}
+					}
+				}
+
+				//изменение значения группы на новую группу, если она задана
+				if (newGroupId !== undefined) {
+					commit('UPDATE_TASK_VALUES', { list_id: options.list_id, task_id: movedItem.task_id, group_id: newGroupId })
+				}
+
+				return Promise.resolve(true)
+			}
+		})
+		.catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
 	},
 
 	//*** User actions */

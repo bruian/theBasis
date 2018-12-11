@@ -144,7 +144,7 @@
 				placeholder="Введите сюда любую сопутствующую задаче текстовую информацию"></v-textarea>
 		</div>
 
-		<draggable v-model="items" v-if="(item.isSubtaskExpanded > 1)"
+		<draggable v-model="items" v-show="(item.isSubtaskExpanded > 1)"
 			:options="getDraggableOptions()"
 			@start="onDragStart"
 			@end="onDrop"
@@ -211,7 +211,7 @@ export default {
 			},
 			set(value) {}
 		},
-			mainGroupsMini() { return this.$store.state.mainGroupsMini },
+		mainGroupsMini() { return this.$store.state.mainGroupsMini },
 		classObject() {
 			const classObj = {
 				'task-body': true,
@@ -244,25 +244,32 @@ export default {
 			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
 		},
 		onDrop: function(dropResult) {
-			const { newIndex, oldIndex, item, to } = dropResult
-			//item.dataset.task_id
+			const { newIndex, oldIndex, from, to } = dropResult
 
-			if (oldIndex !== newIndex & newIndex > 0) {
-				this.$store.dispatch('REORDER_TASKS', {
-					oldIndex: oldIndex,
-					newIndex: newIndex,
-					fromParent: (item.dataset.parent === '0') ? null : Number.parseInt(item.dataset.parent, 10),
-					toParent: (to.dataset.parent === '0') ? null : Number.parseInt(to.dataset.parent, 10),
-					list_id: this.list_id })
-				.then((res) => {
-					console.log('reordering')
-				})
-				.catch((err) => {
-					console.err(err)
-				})
+			if (from.dataset.parent === to.dataset.parent) {
+				if (oldIndex === newIndex) {
+					return
+				}
 			}
+
+			//const parent = item.dataset.parent
+			//item.dataset.parent = to.dataset.parent
+
+			this.$store.dispatch('REORDER_TASKS', {
+				oldIndex: oldIndex,
+				newIndex: newIndex,
+				fromParent: Number.parseInt(from.dataset.parent, 10),
+				toParent: Number.parseInt(to.dataset.parent, 10),
+				list_id: this.list_id })
+			.then((res) => {
+				console.log('reordering item')
+			})
+			.catch((err) => {
+				console.warn(err)
+			})
 		},
 		dragHandleDown: function() {
+			//return
 			if (this.item.isSubtaskExpanded > 1) {
 				this.item.isSubtaskExpanded = 1
 				//this.wasSubtaskExpanded = true
