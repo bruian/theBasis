@@ -201,8 +201,7 @@ export default {
 			{ title: 'Add subtask' },
 			{ title: 'Collapse subtask' }
 		],
-		groupChangeStart: false,
-		wasSubtaskExpanded: false
+		groupChangeStart: false
 	}),
 	computed: {
 		items: {
@@ -252,9 +251,6 @@ export default {
 				}
 			}
 
-			//const parent = item.dataset.parent
-			//item.dataset.parent = to.dataset.parent
-
 			this.$store.dispatch('REORDER_TASKS', {
 				oldIndex: oldIndex,
 				newIndex: newIndex,
@@ -269,10 +265,8 @@ export default {
 			})
 		},
 		dragHandleDown: function() {
-			//return
 			if (this.item.isSubtaskExpanded > 1) {
 				this.item.isSubtaskExpanded = 1
-				//this.wasSubtaskExpanded = true
 			}
 		},
 		dragHandleUp: function() {
@@ -280,7 +274,6 @@ export default {
 
 			if (this.item.isSubtaskExpanded === 1) {
 				this.item.isSubtaskExpanded = 2
-				//this.wasSubtaskExpanded = false
 			}
 		},
 		onGroupOpen: function(instanceId) {
@@ -290,13 +283,19 @@ export default {
 			//on default this event fired twice
 			if (this.groupChangeStart) {
 				//our need catch event only first time
-				this.$store.commit('UPDATE_TASK_VALUES', {
+				this.$store.dispatch('UPDATE_TASK_GROUP', {
 					list_id: this.list_id,
 					task_id: this.item.task_id,
-					group_id: value,
-					reorder: true
+					group_id: value
 				})
-				this.groupChangeStart = false
+				.then((res) => {
+					console.log('regroupping item')
+					this.groupChangeStart = false
+				})
+				.catch((err) => {
+					console.warn(err)
+					this.groupChangeStart = false
+				})
 			}
 		},
 		onBodyClick: function() {

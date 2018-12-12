@@ -191,7 +191,7 @@ router.get('/tasks', (req, res) => {
 	})
 })
 
-router.post('/tasks/order', (req, res) => {
+router.put('/tasks/order', (req, res) => {
 	const condition = {
 		mainUser_id: req.body.userId,
 		group_id: ('group_id' in req.query) ? req.query.group_id : null,

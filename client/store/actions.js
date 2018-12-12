@@ -1,6 +1,6 @@
 import config from '../config'
 import Vue from 'vue'
-import { treeDepth, recursiveFind } from '../util/helpers'
+import { treeDepth, recursiveFind, findGroup } from '../util/helpers'
 //import querystring from 'querystring'
 
 const logRequests = !!config.DEBUG_API
@@ -358,16 +358,8 @@ export default {
 		})
 	},
 
+	/** options = {	oldIndex,	newIndex,	fromParent,	toParent,	list_id } */
 	REORDER_TASKS: ({ commit, state }, options) => {
-		// options = {
-		// 	oldIndex,
-		// 	newIndex,
-		// 	fromParent,
-		// 	toParent,
-		// 	list_id
-		// }
-		debugger
-
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		const taskList = activeList.list
 
@@ -462,7 +454,7 @@ export default {
 
 		const fetchQuery = {
 			url: 'tasks/order',
-			method: 'POST',
+			method: 'PUT',
 			params: {
 				group_id: newGroupId,
 				task_id: fromTask.task_id,
@@ -471,10 +463,10 @@ export default {
 				parent_id: (toParent === undefined) ? 0 : toParent.task_id
 			}
 		}
-//return Promise.resolve(true)
+		//return Promise.resolve(true)
 		return fetchSrv(fetchQuery)
 		.then((dataFromSrv) => {
-			debugger
+			//debugger
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(false)
 			} else {
@@ -525,6 +517,78 @@ export default {
 				if (newGroupId !== undefined) {
 					commit('UPDATE_TASK_VALUES', { list_id: options.list_id, task_id: movedItem.task_id, group_id: newGroupId })
 				}
+
+				return Promise.resolve(true)
+			}
+		})
+		.catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+
+	/** options = { list_id, task_id, group_id } */
+	UPDATE_TASK_GROUP: ({ commit, state }, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
+		taskList = activeList.list,
+		element = recursiveFind(taskList, el => el.task_id === options.task_id)
+
+		const fetchQuery = {
+			url: 'tasks/order',
+			method: 'PUT',
+			params: {
+				group_id: options.group_id,
+				task_id: element.task_id,
+				position: null,
+				isBefore: false,
+				parent_id: element.parent
+			}
+		}
+		//return Promise.resolve(true)
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			debugger
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(false)
+			} else {
+				let idxGroup = -1, idxTask = -1, movedItem
+				/* Для элементов первого уровня существуют разделы групп с задачами,
+					 перемещение происходит по этим разделам
+					 Для уровней ниже применяется распределение по группам без разделов */
+				if (element.level === 1) {
+					/* Необходимо найти divider он будет являться началом размещения задачи
+						 в новой группе */
+					idxTask = taskList.findIndex(el => el.task_id == options.task_id)
+					movedItem = taskList.splice(idxTask, 1)[0]
+
+					idxGroup = taskList.findIndex(el => (el.group_id === options.group_id && el.isDivider))
+					if (idxGroup === -1) {
+						const group = findGroup(state.mainGroups, options.group_id)
+						//Такой разделитель не найден, значит необходимо создать новый
+						idxGroup = taskList.push({ isDivider: true,
+							group_id: options.group_id,
+							name: group.name,
+							isActive: false })
+					}
+					idxGroup++
+
+					taskList.splice(idxGroup, 0, movedItem)
+				} else {
+					/* Для элементов последующих уровней необходимо найти самый первый элемент
+						 принадлежащий искомой группе и поместить нашу задачу выше этого элемента */
+					const parent = recursiveFind(taskList, el => el.task_id === element.parent)
+					idxTask = parent.children.findIndex(el => el.task_id == options.task_id)
+					movedItem = parent.children.splice(idxTask, 1)[0]
+
+					idxGroup = parent.children.findIndex(el => (el.group_id === options.group_id))
+					idxGroup = (idxGroup === -1 || idxGroup === 0) ? 0 : idxGroup--
+
+					parent.children.splice(idxGroup, 0, movedItem)
+				}
+
+				//изменение значения группы на новую группу
+				commit('UPDATE_TASK_VALUES', { list_id: options.list_id, task_id: movedItem.task_id, group_id: options.group_id })
 
 				return Promise.resolve(true)
 			}

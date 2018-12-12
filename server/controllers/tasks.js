@@ -230,6 +230,7 @@ async function getTasks(condition, done) {
 
 /***
  * Set new position in tasks_list OR change group for task
+ * condition = { mainUser_id,	group_id,	task_id, parent_id,	position,	isBefore }
  */
 async function setPosition(condition, done) {
 	let client, queryText, isBefore = false
@@ -246,10 +247,6 @@ async function setPosition(condition, done) {
 		if (!condition.task_id) {
 			return done(new PgError('Condition must contain <task_id> field (from task) and value must be not null'))
 		}
-
-		// if (!condition.position) {
-		// 	return done(new PgError('Condition must contain <position> field (to task) and value must be not null'))
-		// }
 
 		if (condition.isBefore !== null) isBefore = condition.isBefore
 
@@ -272,14 +269,6 @@ async function setPosition(condition, done) {
 	} finally {
 		client.release()
 	}
-	/*
-	mainUser_id
-	group_id
-	task_id
-	parent_id
-	position
-	isBefore
-	*/
 }
 
 module.exports = {

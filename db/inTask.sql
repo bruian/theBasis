@@ -336,7 +336,7 @@ ORDER BY (tl.p::float8/tl.q);
 --SELECT reorder_task(1, 50, 6, null, FALSE, 5);
 --UPDATE tasks_list SET group_id = 1 WHERE task_id = 4;
 
-/* tasks by parent id ****/
+/* tasks by parent id ***
 WITH RECURSIVE main_visible_groups AS (
 SELECT group_id FROM groups_list AS gl
 	LEFT JOIN groups AS grp ON gl.group_id = grp.id
@@ -357,6 +357,7 @@ RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
 JOIN (SELECT max(depth) AS depth, descendants.path[1] AS parent_id FROM descendants GROUP BY descendants.path[1]) AS dsc ON tl.task_id = dsc.parent_id
 WHERE tl.group_id IN (SELECT * FROM main_visible_groups) --AND tsk.parent is null
 ORDER BY tl.group_id, (tl.p::float8/tl.q);
+*/
 
 /* return 0 - moving a record to its own position is a no-op
           1 - operation complete

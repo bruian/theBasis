@@ -137,9 +137,6 @@ export default {
 				}
 			}
 
-			// const parent = item.dataset.parent
-			// item.dataset.parent = to.dataset.parent
-
 			this.$store.dispatch('REORDER_TASKS', {
 				oldIndex: oldIndex,
 				newIndex: newIndex,

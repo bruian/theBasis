@@ -1,5 +1,5 @@
 import Vue from 'vue'
-import { recursiveFind, recursiveSet, findGroup } from '../util/helpers'
+import { recursiveFind, findGroup } from '../util/helpers'
 
 /* use only for api srv mutations */
 function setApiStatus(state, status, error) {
@@ -379,51 +379,6 @@ export default {
 
 			if (element.hasOwnProperty(key)) {
 				element[key] = obj[key]
-			}
-
-			if (key === 'group_id') {
-				let idxGroup = taskList.findIndex(el => (el.group_id === obj.group_id && el.isDivider))
-				if (idxGroup === -1) {
-					let grp = findGroup(state.mainGroups, obj.group_id)
-					idxGroup = taskList.push({ isDivider: true,
-						group_id: obj.group_id,
-						name: grp.name,
-						isActive: false }) - 1
-				} else if (idxGroup === 0) {
-					idxGroup = 1
-				}
-
-				// if (element.children && element.children.length > 0) {
-				// 	recursiveSet(element.children, key, obj[key])
-				// }
-
-				if (obj.reorder) {
-					let movedItem
-					if (element.parent === 0) {
-						const idxTask = taskList.findIndex(el => el.task_id == obj.task_id)
-						movedItem = taskList.splice(idxTask, 1)[0]
-					} else {
-						const parentElement = recursiveFind(taskList, el => el.task_id === element.parent)
-						parentElement.havechild--
-
-						if (!parentElement.havechild) parentElement.isSubtaskExpanded = 0
-
-						const idxTask = parentElement.children.findIndex(el => el.task_id === obj.task_id)
-						movedItem = parentElement.children.splice(idxTask, 1)[0]
-
-						movedItem.parent = 0
-						movedItem.level = 1
-						if (movedItem.children && movedItem.children.length > 0) {
-							for (let i = 0; i < movedItem.children.length; i++) {
-								movedItem.children[i].level = 2
-							}
-						}
-
-						idxGroup++
-					}
-
-					taskList.splice(idxGroup, 0, movedItem)
-				}
 			}
 		}
 	},
