@@ -144,10 +144,12 @@
 				no-resize
 				clearable
 				rows="3"
-				counter
 				name="input-7-1"
 				label="Примечание"
 				v-model="item.note"
+				@change="onNoteChange"
+				append-icon="done"
+				@click:append="onNoteChange"
 				placeholder="Введите сюда любую сопутствующую задаче текстовую информацию"></v-textarea>
 		</div>
 
@@ -210,7 +212,8 @@ export default {
 			{ title: 'Add subtask' },
 			{ title: 'Collapse subtask' }
 		],
-		groupChangeStart: false
+		groupChangeStart: false,
+		prevNote: ''
 	}),
 	computed: {
 		items: {
@@ -242,19 +245,41 @@ export default {
 		// 	this.item = this.value
 		// }
 	},
+	created () {
+		this.prevNote = this.item.note
+	},
 	methods: {
+		// onNoteChangeCb: function(e) {
+		// 	console.log('onNoteChangeCb')
+		// 	this.$store.dispatch('UPDATE_TASK_VALUES', {
+		// 		list_id: this.list_id,
+		// 		task_id: this.item.task_id,
+		// 		note: this.item.note
+		// 	})
+		// 	.then((res) => {})
+		// 	.catch((err) => { console.warn(err) })
+		// },
+		onNoteChange: function() {
+			if (this.prevNote !== this.item.note) {
+				this.$store.dispatch('UPDATE_TASK_VALUES', {
+					list_id: this.list_id,
+					task_id: this.item.task_id,
+					note: this.item.note
+				})
+				.then((res) => {
+					this.prevNote = this.item.note
+				})
+				.catch((err) => { console.warn(err) })
+			}
+		},
 		onNameChange: function(text) {
 			this.$store.dispatch('UPDATE_TASK_VALUES', {
 				list_id: this.list_id,
 				task_id: this.item.task_id,
 				name: text
 			})
-			.then((res) => {
-				console.log('updating name Ok')
-			})
-			.catch((err) => {
-				console.warn(err)
-			})
+			.then((res) => {})
+			.catch((err) => {	console.warn(err)	})
 		},
 		taskIndicator: function(itm) {
 			const status = ['success', 'yellow', 'error']

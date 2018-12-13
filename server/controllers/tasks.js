@@ -285,10 +285,13 @@ async function updateTask(condition, done) {
 	for (var prop in condition.values) {
 		switch (prop) {
 			case 'name':
-				attributes = attributes + `name = '${condition.values[prop]}'`
-				break;
+				attributes = attributes + ` name = '${condition.values[prop]}'`
+				break
+			case 'note':
+				attributes = attributes + ` note = '${condition.values[prop]}'`
+				break
 			default:
-				break;
+				break
 		}
 	}
 

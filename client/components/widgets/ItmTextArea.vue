@@ -88,7 +88,7 @@ export default {
 		resize () {
 			const important = this.isHeightImportant ? 'important' : ''
 
-			this.$el.children[0].style.setProperty('height', 'auto', important)
+			this.$el.children[0].children[0].style.setProperty('height', 'auto', important)
 
 			let contentHeight = this.$el.children[0].children[0].scrollHeight + 1
 
@@ -106,7 +106,7 @@ export default {
 			}
 
 			const heightVal = contentHeight + 'px'
-			this.$el.children[0].style.setProperty('height', heightVal, important)
+			this.$el.children[0].children[0].style.setProperty('height', heightVal, important)
 
 			return this
 		}
