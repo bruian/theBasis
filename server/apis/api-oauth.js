@@ -643,8 +643,10 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 			const user = result.rows[0]
 			if (!user.verified) {
 				if (user.verify_expired > new Date()) {
-					req.body.userId = jwtPayload.userId
-					req.body.clientId = jwtPayload.clientId
+					req.auth = {
+						userId: jwtPayload.userId,
+						clientId: jwtPayload.clientId
+					}
 
 					log.debug(`🔑  cbJWTStrategy for NOT verified userId: ${jwtPayload.userId} - token is OK`)
 					return done(null, jwtPayload)
@@ -731,8 +733,10 @@ const cbJWTStrategy = (req, jwtPayload, done) => {
 				return done(new AuthError(err))
 			})
 		} else {
-			req.body.userId = jwtPayload.userId
-			req.body.clientId = jwtPayload.clientId
+			req.auth = {
+				userId: jwtPayload.userId,
+				clientId: jwtPayload.clientId
+			}
 
 			log.debug(`🔑  cbJWTStrategy for verified userId: ${jwtPayload.userId} - token is OK`)
 			return done(null, jwtPayload)

@@ -324,10 +324,20 @@ export default {
 				}
 			}
 
+			//displays the task item
 			data[i].isShowed = (data[i].level > 1) ? false : true
+			//shows that next subtasks are revealed
 			data[i].isSubtaskExpanded = 0
+			//shows more information on the task
 			data[i].isExpanded = false
+			//shows that the task is selected
 			data[i].isActive = false
+			/* shows the consistency of information
+				0 - consistently
+				1 - refresh
+				2 - not consistently */
+			data[i].consistency = 0
+			//nesting level
 			data[i].level = 1
 
 			if (data[i].parent === 0) {
@@ -375,7 +385,7 @@ export default {
 		const element = recursiveFind(taskList, el => el.task_id === obj.task_id)
 
 		for (const key in obj) {
-			if (key === 'task_id' || key === 'reorder' || key === 'list_id') continue
+			if (key === 'task_id' || key === 'list_id') continue
 
 			if (element.hasOwnProperty(key)) {
 				element[key] = obj[key]

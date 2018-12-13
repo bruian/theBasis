@@ -10,14 +10,10 @@ const srvPath = process.cwd() + '/server/'
 const log     = require(srvPath + 'log')(module)
 const router = express.Router();
 
-router.get('/hello', (req, res) => {
-	res.send('Hello')
-})
-
 //get authenticated user
 router.get('/main-user', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		packet: ('packet' in req.headers) ? req.headers.packet : null
 	}
 
@@ -35,7 +31,7 @@ router.get('/main-user', (req, res) => {
 /*** -USERS API- */
 router.get('/users/:id', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		user_id: req.params.id,
 		like: ('like' in req.query) ? req.query.like : null,
 		whose: ('whose' in req.query) ? req.query.whose : null,
@@ -53,7 +49,7 @@ router.get('/users/:id', (req, res) => {
 
 router.get('/users', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		user_id: null,
 		like: ('like' in req.query) ? req.query.like : null,
 		whose: ('whose' in req.query) ? req.query.whose : null,
@@ -74,7 +70,7 @@ router.get('/users', (req, res) => {
 
 router.post('/users', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		user_id: ('user_id' in req.query) ? req.query.user_id : null
 	}
 
@@ -87,7 +83,7 @@ router.post('/users', (req, res) => {
 
 router.delete('/users', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		user_id: ('user_id' in req.query) ? req.query.user_id : null
 	}
 
@@ -101,7 +97,7 @@ router.delete('/users', (req, res) => {
 /*** -GROUPS API- */
 router.get('/groups/:id', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		group_id: req.params.id,
 		user_id: ('user_id' in req.query) ? req.query.user_id : null,
 		like: ('like' in req.query) ? req.query.like : null,
@@ -120,7 +116,7 @@ router.get('/groups/:id', (req, res) => {
 
 router.get('/groups', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		group_id: null,
 		user_id: ('user_id' in req.query) ? req.query.user_id : null,
 		like: ('like' in req.query) ? req.query.like : null,
@@ -143,7 +139,7 @@ router.get('/groups', (req, res) => {
 
 router.post('/groups', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		group_id: ('group_id' in req.query) ? req.query.group_id : null
 	}
 
@@ -156,7 +152,7 @@ router.post('/groups', (req, res) => {
 
 router.delete('/groups', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		group_id: ('group_id' in req.query) ? req.query.group_id : null
 	}
 
@@ -170,7 +166,7 @@ router.delete('/groups', (req, res) => {
 /*** -TASKS API- */
 router.get('/tasks', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		group_id: ('group_id' in req.query) ? req.query.group_id : null,
 		user_id: ('user_id' in req.query) ? req.query.user_id : null,
 		parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
@@ -191,9 +187,25 @@ router.get('/tasks', (req, res) => {
 	})
 })
 
+router.put('/tasks', (req, res) => {
+	const condition = {
+		mainUser_id: req.auth.userId,
+		task_id: ('task_id' in req.query) ? req.query.task_id : null,
+		values: req.body
+	}
+
+	TaskController.updateTask(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		log.debug(`/tasks:update task |-> data`)
+
+		return res.json({ data: data })
+	})
+})
+
 router.put('/tasks/order', (req, res) => {
 	const condition = {
-		mainUser_id: req.body.userId,
+		mainUser_id: req.auth.userId,
 		group_id: ('group_id' in req.query) ? req.query.group_id : null,
 		task_id: ('task_id' in req.query) ? req.query.task_id : null,
 		parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
@@ -201,7 +213,7 @@ router.put('/tasks/order', (req, res) => {
 		isBefore: ('isBefore' in req.query) ? req.query.isBefore : null
 	}
 
-	TaskController.setPosition(condition, (err, data) => {
+	TaskController.updatePosition(condition, (err, data) => {
 		if (err) return res.json(err)
 
 		log.debug(`/tasks/order:return |-> data`)

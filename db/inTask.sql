@@ -359,6 +359,22 @@ WHERE tl.group_id IN (SELECT * FROM main_visible_groups) --AND tsk.parent is nul
 ORDER BY tl.group_id, (tl.p::float8/tl.q);
 */
 
+/* Test: data manipulations for UPDATE task_fields
+select * from groups_list;
+DELETE FROM groups_list WHERE (group_id = 1) AND (user_id = 1);
+INSERT INTO groups_list (group_id, user_id, user_type) VALUES (1,1,1);
+*/
+
+/* UPDATE task fields 
+WITH main_visible_task AS (
+SELECT tl.task_id FROM groups_list AS gl
+	LEFT JOIN groups AS grp ON gl.group_id = grp.id
+	RIGHT JOIN tasks_list AS tl ON gl.group_id = tl.group_id AND tl.task_id = 1
+	WHERE grp.reading >= gl.user_type AND grp.updating >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = 1)
+)
+UPDATE tasks SET name = 'dИзучение цикла событий Node.js - общий обзор' WHERE id IN (SELECT * FROM main_visible_task);
+*/
+
 /* return 0 - moving a record to its own position is a no-op
           1 - operation complete
 		  2 - user is not assigned this group or this group no public

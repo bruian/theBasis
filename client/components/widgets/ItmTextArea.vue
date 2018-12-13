@@ -1,7 +1,11 @@
 <template>
-	<div class="ItmTextAreaBox">
-		<textarea @focus="resize" v-model="val" :style="computedStyle" class="ItmTextArea effect-3" rows="1"></textarea>
-		<span class="focus-border"></span>
+	<div class="ItmTextAreaLine">
+		<div class="ItmTextAreaBox">
+			<textarea @change="onChange" @focus="resize" v-model="val" :style="computedStyle" class="ItmTextArea effect-3" rows="1"></textarea>
+			<span class="focus-border"></span>
+			<!-- <i href="#" class="input-change" @click.prevent="removeTag(index)"></i> -->
+		</div>
+		<v-icon v-if="changeButton" @click="onChangeButton" color="primary" style="align-self: flex-start;">done</v-icon>
 	</div>
 </template>
 
@@ -39,7 +43,8 @@ export default {
 	data () {
 		return {
 			val: null,
-			maxHeightScroll: false
+			maxHeightScroll: false,
+			changeButton: false
 		}
 	},
 	computed: {
@@ -69,16 +74,23 @@ export default {
 		}
 	},
 	methods: {
+		onChange: function(e) {
+			this.changeButton = false
+			this.$emit('change', e.target.value)
+		},
+		onChangeButton: function() {
+			this.changeButton = false
+			this.$emit('change', this.val)
+		},
 		updateVal () {
 			this.val = this.value
 		},
 		resize () {
-			//debugger
 			const important = this.isHeightImportant ? 'important' : ''
 
 			this.$el.children[0].style.setProperty('height', 'auto', important)
 
-			let contentHeight = this.$el.children[0].scrollHeight + 1
+			let contentHeight = this.$el.children[0].children[0].scrollHeight + 1
 
 			if (this.minHeight) {
 				contentHeight = contentHeight < this.minHeight ? this.minHeight : contentHeight
@@ -102,6 +114,7 @@ export default {
 	watch: {
 		value () {
 			this.updateVal()
+			this.changeButton = true
 		},
 		val (val) {
 			this.$nextTick(this.resize)
@@ -112,11 +125,17 @@ export default {
 </script>
 
 <style lang="css">
+.ItmTextAreaLine {
+	display: flex;
+	flex-direction: row;
+}
+
 .ItmTextAreaBox {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
 	margin-top: 1px;
+	align-content: flex-start;
 }
 
 .ItmTextArea {

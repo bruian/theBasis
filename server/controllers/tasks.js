@@ -232,7 +232,7 @@ async function getTasks(condition, done) {
  * Set new position in tasks_list OR change group for task
  * condition = { mainUser_id,	group_id,	task_id, parent_id,	position,	isBefore }
  */
-async function setPosition(condition, done) {
+async function updatePosition(condition, done) {
 	let client, queryText, isBefore = false
 
 	try {
@@ -271,11 +271,61 @@ async function setPosition(condition, done) {
 	}
 }
 
+async function updateTask(condition, done) {
+	let client, queryText, attributes = ''
+
+	if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
+		return done(new PgError('For database operations, a main user token is required'))
+	}
+
+	if (!condition.task_id) {
+		return done(new PgError('Condition must contain <task_id> field (from task) and value must be not null'))
+	}
+
+	for (var prop in condition.values) {
+		switch (prop) {
+			case 'name':
+				attributes = attributes + `name = '${condition.values[prop]}'`
+				break;
+			default:
+				break;
+		}
+	}
+
+	if (attributes.length === 0) {
+		return done(new PgError('Condition must contain in body <object> with task attributes '))
+	}
+
+	queryText = `WITH main_visible_task AS (
+		SELECT tl.task_id FROM groups_list AS gl
+			LEFT JOIN groups AS grp ON gl.group_id = grp.id
+			RIGHT JOIN tasks_list AS tl ON gl.group_id = tl.group_id AND tl.task_id = ${condition.task_id}
+			WHERE grp.reading >= gl.user_type AND grp.updating >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
+		)
+		UPDATE tasks SET ${attributes} WHERE id IN (SELECT * FROM main_visible_task);`
+
+	try {
+		client = await pg.pool.connect()
+
+		const { rowCount, rows } = await client.query(queryText)
+		if (rowCount === 0) {
+			return done({ message: `No datas with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
+		} else {
+			return done(null, rows)
+		}
+	} catch (error) {
+		return done(new PgError(error))
+	} finally {
+		client.release()
+	}
+}
+
 module.exports = {
 	_create,
 	_read,
 	_update,
 	_delete,
 	getTasks,
-	setPosition
+	updatePosition,
+	updateTask
 }

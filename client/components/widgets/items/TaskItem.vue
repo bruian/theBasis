@@ -9,9 +9,15 @@
 		<div v-bind:class="classObject"
 			v-if="!item.isDivider && item.isShowed"
 			@click="onBodyClick">
-			<div v-bind:class="{ 'task-handle': true, 'task-handle-active': item.isActive }"
-				@mousedown="dragHandleDown"
-				@mouseup="dragHandleUp"></div>
+
+			<div class="task-clmn2">
+				<div v-bind:class="{ 'task-handle': true, 'task-handle-active': item.isActive }"
+					@mousedown="dragHandleDown"
+					@mouseup="dragHandleUp">
+				</div>
+				<VCircle dot small :color="taskIndicator(item.consistency)"></VCircle>
+			</div>
+
 			<div class="task-clmn1">
 				<v-speed-dial
 					:direction="direction"
@@ -93,7 +99,8 @@
 					placeholder="Task name"
 					v-model="item.name"
 					:min-height="21"
-					:max-height="84">
+					:max-height="84"
+					@change="onNameChange">
 				</ItmTextArea>
 
 				<TagsInput :element-id="'#'+item.tid"
@@ -163,6 +170,7 @@
 import Treeselect from '@riophae/vue-treeselect'
 import ItmTextArea from '../ItmTextArea.vue'
 import TagsInput from '../../VoerroTagsInput/VoerroTagsInput.vue'
+import VCircle from '../../VCircle/VCircle.js'
 import { recursiveFind } from '../../../util/helpers.js'
 
 import draggable from 'vuedraggable'
@@ -181,10 +189,11 @@ export default {
 	name: 'task-item',
 	components: {
 		TaskItem: () => import('./TaskItem.vue'),
+		VCircle,
 		Treeselect,
 		TagsInput,
 		ItmTextArea,
-		draggable
+		draggable,
 	},
 	props: ['item', 'list_id'],
 	// props: {
@@ -234,6 +243,23 @@ export default {
 		// }
 	},
 	methods: {
+		onNameChange: function(text) {
+			this.$store.dispatch('UPDATE_TASK_VALUES', {
+				list_id: this.list_id,
+				task_id: this.item.task_id,
+				name: text
+			})
+			.then((res) => {
+				console.log('updating name Ok')
+			})
+			.catch((err) => {
+				console.warn(err)
+			})
+		},
+		taskIndicator: function(itm) {
+			const status = ['success', 'yellow', 'error']
+			return status[itm]
+		},
 		getDraggableOptions: function() {
 			return { group:this.list_id, handle:'.task-handle' }
 		},
@@ -385,7 +411,7 @@ export default {
   content: '...';
   width: 10px;
 	max-width: 10px;
-  /* height: 20px; */
+  height: 40px;
   /* display: inline-block; */
   overflow: hidden;
   line-height: 5px;

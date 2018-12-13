@@ -1,4 +1,3 @@
-
 <template>
 	<div class="tasks-list">
 		<v-expansion-panel class="mb-0">
