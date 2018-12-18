@@ -58,7 +58,8 @@ export function createStore () {
 			mainUsersMini: [],
 			mainGroups: [],
 			mainGroupsMini: [],
-			mainContext: [],
+			mainContexts: [],
+			mainExistingContexts: {},
 
 			/* -SELECTED DATAS- */
 			theUser: {},

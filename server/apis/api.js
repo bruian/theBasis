@@ -2,6 +2,7 @@ import express from 'express'
 import UserController from '../controllers/users'
 import GroupController from '../controllers/groups'
 import TaskController from '../controllers/tasks'
+import ContextController from '../controllers/contexts'
 import faker from 'faker'
 import crypto from 'crypto'
 import pg from '../db/postgres'
@@ -160,6 +161,45 @@ router.delete('/groups', (req, res) => {
 		if (err) return res.json(err)
 
 		return res.send(data)
+	})
+})
+
+/*** -CONTEXTS API- */
+router.get('/contexts', (req, res) => {
+	const condition = {
+		mainUser_id: req.auth.userId,
+		user_id: ('user_id' in req.query) ? req.query.user_id : null,
+		task_id: ('task_id' in req.query) ? req.query.task_id : null,
+		searchText: ('searchText' in req.query) ? req.query.searchText : null,
+		limit: ('limit' in req.headers) ? req.headers.limit : null,
+		offset: ('offset' in req.headers) ? req.headers.offset : null,
+		packet: ('packet' in req.headers) ? req.headers.packet : null
+	}
+
+	ContextController.getContexts(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		log.debug(`/contexts:return |-> `)
+		const ids = data.map((el) => el.context_id).toString()
+		console.log(ids)
+
+		return res.json({ data: data, packet: condition.packet })
+	})
+})
+
+router.post('/contexts', (req, res) => {
+	const condition = {
+		mainUser_id: req.auth.userId,
+		task_id: ('task_id' in req.query) ? req.query.task_id : null,
+		values: req.body
+	}
+
+	ContextController.addContext(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		log.debug(`/contexts:add |-> `)
+
+		return res.json({ data: data })
 	})
 })
 

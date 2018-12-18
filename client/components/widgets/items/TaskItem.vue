@@ -104,12 +104,11 @@
 				</ItmTextArea>
 
 				<TagsInput :element-id="'#'+item.tid"
-					v-model="item.context"
-					:existing-tags="{
-						'web-development': 'Web Development',
-						'php': 'PHP',
-						'javascript': 'JavaScript',
-					}"
+					v-model="contexts"
+					:existing-tags="mainExistingContexts"
+					@initialized="onInitialized"
+					@tag-added="onTagAdded"
+    			@tag-removed="onTagRemoved"
 					:typeahead="true"
 					:placeholder="'Add a context'">
 				</TagsInput>
@@ -173,7 +172,7 @@ import Treeselect from '@riophae/vue-treeselect'
 import ItmTextArea from '../ItmTextArea.vue'
 import TagsInput from '../../VoerroTagsInput/VoerroTagsInput.vue'
 import VCircle from '../../VCircle/VCircle.js'
-import { recursiveFind } from '../../../util/helpers.js'
+import { recursiveFind, isNumeric } from '../../../util/helpers.js'
 
 import draggable from 'vuedraggable'
 
@@ -198,12 +197,6 @@ export default {
 		draggable,
 	},
 	props: ['item', 'list_id'],
-	// props: {
-	// 	item: {
-	// 		type: Object,
-	// 		default: () => { return {} }
-	// 	}
-	// },
 	data: () => ({
 		direction: 'right',
 		hover: false,
@@ -213,15 +206,19 @@ export default {
 			{ title: 'Collapse subtask' }
 		],
 		groupChangeStart: false,
-		prevNote: ''
+		prevNote: '',
+		isTagsInitialized: false
 	}),
 	computed: {
 		items: {
-			get() {
-				return this.item.children
-			},
+			get() {	return this.item.children	},
 			set(value) {}
 		},
+		contexts: {
+			get() { return this.item.context },
+			set() {}
+		},
+		mainExistingContexts() { return this.$store.state.mainExistingContexts },
 		mainGroupsMini() { return this.$store.state.mainGroupsMini },
 		classObject() {
 			const classObj = {
@@ -249,16 +246,37 @@ export default {
 		this.prevNote = this.item.note
 	},
 	methods: {
-		// onNoteChangeCb: function(e) {
-		// 	console.log('onNoteChangeCb')
-		// 	this.$store.dispatch('UPDATE_TASK_VALUES', {
-		// 		list_id: this.list_id,
-		// 		task_id: this.item.task_id,
-		// 		note: this.item.note
-		// 	})
-		// 	.then((res) => {})
-		// 	.catch((err) => { console.warn(err) })
-		// },
+		onInitialized() {
+			this.isTagsInitialized = true
+		},
+		onTagAdded(slug) {
+			if (!this.isTagsInitialized) return
+
+			const options = {
+				list_id: this.list_id,
+				task_id: this.item.task_id
+			}
+
+			if (isNumeric(slug)) {
+				const context = this.$store.getters.getContextByExistingTag(slug)
+				if (this.item.context.findIndex(el => el === context.value)) {
+					return
+				}
+
+				options.context_id = context.context_id
+			} else {
+				options.context_value = slug
+			}
+
+			this.$store.dispatch('ADD_TASK_CONTEXT', options)
+			.then((res) => {
+				console.log(`Tag added: ${slug}`)
+			})
+			.catch((err) => { console.warn(err) })
+		},
+		onTagRemoved(slug) {
+			console.log(`Tag removed: ${slug}`)
+		},
 		onNoteChange: function() {
 			if (this.prevNote !== this.item.note) {
 				this.$store.dispatch('UPDATE_TASK_VALUES', {
@@ -388,10 +406,6 @@ export default {
 				})
 			}
 		}
-		// getContext(id) {
-		// 	let thisContext = this.$store.getters.context(id)
-		// 	return thisContext
-		// },
 	}
 }
 </script>

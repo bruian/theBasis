@@ -94,8 +94,17 @@ function _delete(condition) {
 async function getTasks(condition, done) {
 	let client,
 		limit = 'null', offset = 'null',
-		queryText = '',
-		selectTask = false
+		selectTask = false,
+		queryTextTasks,
+		pgСonditions = '',
+		pgUserGroups = '',
+		pgGroups = 'main_visible_groups', //tasks visible only for main user
+		pgParentCondition = ' AND tsk.parent = 0', //select Top level tasks
+		pgParentCondition2 = 'parent = 0',
+		pgTaskCondition = '',
+		pgGroupCondition = '',
+		pgSearchText = '',
+		pgLimit = ''
 
 	try {
 		if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
@@ -109,16 +118,6 @@ async function getTasks(condition, done) {
 		if (isNumeric(condition.offset)) {
 			offset = condition.offset
 		}
-
-		let pgСonditions = '',
-				pgUserGroups = '',
-				pgGroups = 'main_visible_groups', //tasks visible only for main user
-				pgParentCondition = ' AND tsk.parent = 0', //select Top level tasks
-				pgParentCondition2 = 'parent = 0',
-				pgTaskCondition = '',
-				pgGroupCondition = '',
-				pgSearchText = '',
-				pgLimit = ''
 
 		if (isNumeric(condition.parent_id) && condition.parent_id > 0) {
 			selectTask = true
@@ -158,7 +157,7 @@ async function getTasks(condition, done) {
 		// if condition.whose = 'user' SELECT user-groups from [mainUser-groups] filter on: user_id
 		//	SELECT tasks IN [mainUser-groups] OR [user-groups if condition.whose = 'user'] filter on: tasks.parent = task_id
 
-		queryText = `WITH RECURSIVE main_visible_groups AS (
+		queryTextTasks = `WITH RECURSIVE main_visible_groups AS (
 			SELECT group_id FROM groups_list AS gl
 				LEFT JOIN groups AS grp ON gl.group_id = grp.id
 				WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
@@ -178,50 +177,43 @@ async function getTasks(condition, done) {
 			JOIN (SELECT max(depth) AS depth, descendants.path[1] AS parent_id FROM descendants GROUP BY descendants.path[1]) AS dsc ON tl.task_id = dsc.parent_id
 			WHERE tl.group_id IN (SELECT * FROM ${pgGroups}) ${pgСonditions}
 			ORDER BY tl.group_id, (tl.p::float8/tl.q) ${pgLimit};`
+
+		// queryTextContext = `SELECT cl.task_id, cl.context_id FROM context_list AS cl
+		// 	LEFT JOIN context AS c ON c.id = cl.context_id
+		// 	LEFT JOIN context_setting AS cs ON cs.context_id = cl.context_id AND cs.user_id = ${condition.mainUser_id}
+		// 	WHERE cl.task_id = ANY($1::int[]);`
 	} catch (error) {
 		return done(error)
 	}
 
+	client = await pg.pool.connect()
+
 	try {
-		client = await pg.pool.connect()
+		await client.query('BEGIN')
 
-		const { rowCount, rows } = await client.query(queryText)
+		const { rowCount:tasksCount, rows: tasks } = await client.query(queryTextTasks)
 
-		if (rowCount === 0) {
-			return done({ message: `No datas with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
-		} else {
-			// let hierarchicalRows = []
-
-			// function constructHierarchy (rows, parentId) {
-			// 	let hRows = []
-
-			// 	for (let i = 0; i < rows.length; i++) {
-			// 		let record = Object.assign({}, rows[i])
-			// 		if ((parentId === null && record.parent === null) || (record.parent === parentId)) {
-			// 			const innerRows = constructHierarchy(rows, record.task_id)
-			// 			if (innerRows.length > 0) {
-			// 				record.children = innerRows
-			// 				record.havechild = 1
-			// 			} else {
-			// 				record.havechild = 0
-			// 			}
-
-			// 			hRows.push(record)
-			// 		}
-			// 	}
-
-			// 	return hRows
-			// }
-			// hierarchicalRows = constructHierarchy(rows, null)
-
-			// return done(null, hierarchicalRows)
-			rows.forEach(el => {
-				el.havechild = parseInt(el.havechild, 10)
-				if (el.havechild) el.children = []
-			})
-			return done(null, rows)
+		if (tasksCount === 0) {
+			await client.query('ROLLBACK')
+			return done({ message: `No tasks with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
 		}
+
+		//const taskIds = tasks.map(el => el.task_id)
+
+		//const { rows:contexts } = await client.query(queryTextContext, [taskIds])
+
+		tasks.forEach(el => {
+			//el.context = contexts.filter(fe => fe.task_id === el.task_id).map(function(me) { return me.context_id } )
+
+			el.havechild = parseInt(el.havechild, 10)
+			if (el.havechild) el.children = []
+		})
+
+		await client.query('commit')
+
+		return done(null, tasks)
 	} catch (error) {
+		await client.query('ROLLBACK')
 		return done(new PgError(error))
 	} finally {
 		client.release()
@@ -291,7 +283,7 @@ async function updateTask(condition, done) {
 				attributes = attributes + ` note = '${condition.values[prop]}'`
 				break
 			default:
-				break
+				break;
 		}
 	}
 

@@ -14,6 +14,10 @@ export function recursiveFind(list, cb) {
 	return result
 }
 
+export function isNumeric(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n)
+}
+
 export function recursiveSet(list, key, value) {
 	for (let i = 0; i < list.length; i++) {
 		if (list[i].hasOwnProperty(key)) {

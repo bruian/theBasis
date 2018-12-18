@@ -18,11 +18,13 @@ export default {
 	AUTH_REQUEST: (state) => {
 		setApiStatus(state, 'AUTH_REQUEST', null)
 	},
+
 	AUTH_SUCCESS: (state, token) => {
 		setApiStatus(state, 'AUTH_SUCCESS', null)
 
 		state.auth.token = token
 	},
+
 	AUTH_LOGOUT: (state) => {
 		setApiStatus(state, 'AUTH_LOGOUT', null)
 
@@ -47,6 +49,7 @@ export default {
 	REG_REQUEST: (state) => {
 		setApiStatus(state, 'REG_REQUEST', null)
 	},
+
 	REG_SUCCESS: (state, token) => {
 		setApiStatus(state, 'REG_SUCCESS', null)
 
@@ -57,16 +60,19 @@ export default {
 	MAINUSER_REQUEST: (state) => {
 		setApiStatus(state, 'MAINUSER_REQUEST', null)
 	},
+
 	MAINUSER_SUCCESS: (state, user) => {
 		setApiStatus(state, 'MAINUSER_SUCCESS', null)
 
 		state.mainUser = Object.assign({}, user)
 	},
+
 	MAINGROUPS_SUCCESS: (state, groups) => {
 		setApiStatus(state, 'MAINGROUPS_SUCCESS', null)
 
 		//debugger
 		state.mainGroups = groups
+		if (!Array.isArray(state.mainGroups)) state.mainGroups = new Array
 
 		let hierarchicalRows = []
 		function constructHierarchy (rows, parentId) {
@@ -102,6 +108,7 @@ export default {
 		hierarchicalRows = constructHierarchy(groups, null)
 
 		state.mainGroupsMini = hierarchicalRows
+		if (!Array.isArray(state.mainGroupsMini)) state.mainGroupsMini = new Array
 	},
 
 	CHANGE_APP_READY: (state, ready) => {
@@ -112,6 +119,7 @@ export default {
 	THEUSER_REQUEST: (state) => {
 		setApiStatus(state, 'THEUSER_REQUEST', null)
 	},
+
 	THEUSER_SUCCESS: (state, user) => {
 		setApiStatus(state, 'THEUSER_SUCCESS', null)
 		//debugger
@@ -130,6 +138,7 @@ export default {
 		state[state.activeUsersList.list].list = state[state.activeUsersList.list].list.concat(data)
 		state[state.activeUsersList.list].offset = state[state.activeUsersList.list].offset + data.length
 	},
+
 	SET_ACTIVE_USERS_LIST: (state, activeID) => {
 		let temp = state.activeUsersList
 
@@ -147,6 +156,7 @@ export default {
 			}
 		}
 	},
+
 	SET_PARAMS_USERS_LIST: (state, params) => {
 		const ul = state[state.activeUsersList.list]
 
@@ -156,6 +166,7 @@ export default {
 			}
 		}
 	},
+
 	RESET_USERS_LIST: (state) => {
 		const ul = state[state.activeUsersList.list]
 		ul.list = []
@@ -163,6 +174,7 @@ export default {
 		ul.limit = 10
 		ul.searchText = ''
 	},
+
 	RESET_INACTIVE_USERS_LIST: (state) => {
 		let ul
 		for (let i = 0; i < state.availableUsersList.length; i++) {
@@ -173,6 +185,7 @@ export default {
 			ul.searchText = ''
 		}
 	},
+
 	UPDATE_VALUES_USERS_LIST: (state, values) => {
 		setApiStatus(state, 'UPDATE_VALUES_USERS_LIST', null)
 
@@ -188,6 +201,7 @@ export default {
 			}
 		}
 	},
+
 	REMOVE_VALUES_USERS_LIST: (state, values) => {
 		setApiStatus(state, 'REMOVE_VALUES_USERS_LIST', null)
 
@@ -203,6 +217,7 @@ export default {
 		state[state.activeGroupsList.list].list = state[state.activeGroupsList.list].list.concat(data)
 		state[state.activeGroupsList.list].offset = state[state.activeGroupsList.list].offset + data.length
 	},
+
 	SET_ACTIVE_GROUPS_LIST: (state, activeID) => {
 		let temp = state.activeGroupsList
 
@@ -220,6 +235,7 @@ export default {
 			}
 		}
 	},
+
 	SET_SUBGROUPS: (state, data) => {
 		setApiStatus(state, 'SET_SUBGROUPS', null)
 
@@ -240,6 +256,7 @@ export default {
 			}
 		}
 	},
+
 	SET_PARAMS_GROUPS_LIST: (state, params) => {
 		const gl = state[state.activeGroupsList.list]
 
@@ -249,6 +266,7 @@ export default {
 			}
 		}
 	},
+
 	RESET_GROUPS_LIST: (state) => {
 		const gl = state[state.activeGroupsList.list]
 		gl.list = []
@@ -256,6 +274,7 @@ export default {
 		gl.limit = 10
 		gl.searchText = ''
 	},
+
 	RESET_INACTIVE_GROUPS_LIST: (state) => {
 		setApiStatus(state, 'RESET_INACTIVE_GROUPS_LIST', null)
 
@@ -268,6 +287,7 @@ export default {
 			gl.searchText = ''
 		}
 	},
+
 	UPDATE_VALUES_GROUPS_LIST: (state, values) => {
 		setApiStatus(state, 'UPDATE_VALUES_GROUPS_LIST', null)
 
@@ -282,6 +302,7 @@ export default {
 			}
 		}
 	},
+
 	REMOVE_VALUES_GROUPS_LIST: (state, values) => {
 		setApiStatus(state, 'REMOVE_VALUES_GROUPS_LIST', null)
 
@@ -290,73 +311,63 @@ export default {
 		gl.list.splice(idx, 1)
 	},
 
-	//*** Tasks mutations */
+//*** Tasks mutations */
 	SET_TASKS: (state, obj) => {
 		//debugger
 		setApiStatus(state, 'SET_TASKS', null)
 
 		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
 		const taskList = activeList.list
-		const data = obj.data
+		const tasks = obj.data
 
 		let prevGroupId, prevParentId, prevParent
-		for (let i = 0; i < data.length; i++) {
-			if (prevGroupId !== data[i].group_id && data[i].parent === 0) {
-				let grp = findGroup(state.mainGroups, data[i].group_id)
+		for (let i = 0; i < tasks.length; i++) {
+			if (prevGroupId !== tasks[i].group_id && tasks[i].parent === 0) {
+				let grp = findGroup(state.mainGroups, tasks[i].group_id)
 				taskList.push({ isDivider: true,
-					group_id: data[i].group_id,
+					group_id: tasks[i].group_id,
 					name: grp.name,
 					isActive: false })
-				prevGroupId = data[i].group_id
+				prevGroupId = tasks[i].group_id
 			}
 
-			if (data[i].task_id) {
-				switch (data[i].task_id) {
-					case 1:
-						data[i].context = ['maus', 'santa']
-						break
-					case 3:
-						data[i].context = ['klaus', 'ganta']
-						break
-					default:
-						data[i].context = new Array
-						break
-				}
+			if (tasks[i].task_id) {
+				tasks[i].context = state.mainContexts.filter(el => el.task_id === tasks[i].task_id).map(cont => { return cont.value })
+				if (!tasks[i].context) tasks[i].context = new Array
 			}
 
 			//displays the task item
-			data[i].isShowed = (data[i].level > 1) ? false : true
+			tasks[i].isShowed = (tasks[i].level > 1) ? false : true
 			//shows that next subtasks are revealed
-			data[i].isSubtaskExpanded = 0
+			tasks[i].isSubtaskExpanded = 0
 			//shows more information on the task
-			data[i].isExpanded = false
+			tasks[i].isExpanded = false
 			//shows that the task is selected
-			data[i].isActive = false
+			tasks[i].isActive = false
 			/* shows the consistency of information
 				0 - consistently
 				1 - refresh
 				2 - not consistently */
-			data[i].consistency = 0
+			tasks[i].consistency = 0
 			//nesting level
-			data[i].level = 1
+			tasks[i].level = 1
 
-			if (data[i].parent === 0) {
+			if (tasks[i].parent === 0) {
 				activeList.offset++
-				taskList.push(data[i])
+				taskList.push(tasks[i])
 			} else {
 				if (!prevParentId) {
-					if (prevParent !== data[i].parent) {
-						prevParent = recursiveFind(taskList, el => el.task_id === data[i].parent)
+					if (prevParent !== tasks[i].parent) {
+						prevParent = recursiveFind(taskList, el => el.task_id === tasks[i].parent)
 					}
 				}
 
 				if (prevParent) {
-					data[i].level = prevParent.level + 1
-					prevParent.children.push(data[i])
+					tasks[i].level = prevParent.level + 1
+					prevParent.children.push(tasks[i])
 				}
 			}
 		}
-
 		//activeList.offset = activeList.offset + data.length
 	},
 
@@ -406,30 +417,50 @@ export default {
 		}
 	},
 
-	UPDATE_LUST_CONDITION: ({ commit, state }, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+//*** Contexts mutations */
+	MAINCONTEXTS_SUCCESS: (state, contexts) => {
+		setApiStatus(state, 'MAINCONTEXTS_SUCCESS', null)
 
-		for (const key in options) {
-			if (key === 'list_id') continue
+		let existingContexts = []
+		state.mainContexts = contexts
 
-			activeList.condition[key] = options[key]
+		for (let i = 0; i < contexts.length; i++) {
+			if (existingContexts.findIndex(el => el === contexts[i].value) === -1) {
+				existingContexts.push(contexts[i].value)
+			}
 		}
+		state.mainExistingContexts = Object.assign({}, existingContexts)
+
+		if (!Array.isArray(state.mainContexts)) state.mainContexts = new Array
+	},
+
+	ADD_TASK_CONTEXT: (state, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		let taskList = activeList.list
+		const element = recursiveFind(taskList, el => el.task_id === options.task_id)
+
+		//mainExistingContexts
+		//mainContexts
+		//element.context
 	},
 
 	//*** Other mutations */
   SET_ACTIVE_TYPE: (state, { type }) => {
     state.activeType = type
-  },
+	},
+
   SET_LIST: (state, { type, ids }) => {
     state.lists[type] = ids
-  },
+	},
+
   SET_ITEMS: (state, { items }) => {
     items.forEach(item => {
       if (item) {
         Vue.set(state.items, item.id, item)
       }
     })
-  },
+	},
+
   SET_TGMUSER_ITEMS: (state, { items }) => {
     items.forEach(item => {
       if (item) {
@@ -438,16 +469,19 @@ export default {
         Vue.set(state.theItems, idx == -1 ? state.theItems.length : idx, item)
       }
     })
-  },
+	},
+
   SET_TGMUSER_ITEM: (state, item) => {
     const idx = state.theItems.findIndex((element) => { item.id == element.id })
 
     Vue.set(state.theItems, idx == -1 ? state.theItems.length : idx, item)
-  },
+	},
+
   DELETE_ITEM: (state, item) => {
     var items = state.theItems
     items.splice(items.indexOf(item), 1)
-  },
+	},
+
   SET_USER: (state, { id, user }) => {
     Vue.set(state.users, id, user || false) /* false means user not found */
   }

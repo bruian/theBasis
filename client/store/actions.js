@@ -21,6 +21,13 @@ const mainPacket = [{
 		headers: { packet: 1 }
 	},
 	mutations: ['MAINGROUPS_SUCCESS']
+},{
+	fetchQuery: {
+		url: 'contexts',
+		method: 'GET',
+		headers: { packet: 2 }
+	},
+	mutations: ['MAINCONTEXTS_SUCCESS']
 }]
 
 function getTokensFromSessionStorage() {
@@ -648,13 +655,61 @@ export default {
 
 	},
 
+	ADD_TASK_CONTEXT: ({ commit, state }, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
+					taskList = activeList.list,
+					element = recursiveFind(taskList, el => el.task_id === options.task_id),
+					values = {}
+
+		element.consistency = 1
+
+		if ('context_id' in options) {
+			values.context_id = options.context_id
+		}
+
+		if ('context_value' in options) {
+			values.context_value = options.context_value
+		}
+
+		const fetchQuery = {
+			url: 'contexts',
+			method: 'POST',
+			params: {
+				task_id: options.task_id
+			},
+			data: querystring.stringify(values)
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			element.consistency = 0
+
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(false)
+			} else {
+				const data = Object.assign({}, dataFromSrv.data)
+				data.list_id = options.list_id
+
+				commit('ADD_TASK_CONTEXT', data)
+				return Promise.resolve(true)
+			}
+		})
+		.catch((err) => {
+			debugger
+			element.consistency = 2
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+
 	//*** User actions */
 	MAINUSER_REQUEST: ({ commit, state }) => {
 		commit('MAINUSER_REQUEST')
 
 		return Promise.all([
 			fetchSrv(mainPacket[0].fetchQuery),
-			fetchSrv(mainPacket[1].fetchQuery)
+			fetchSrv(mainPacket[1].fetchQuery),
+			fetchSrv(mainPacket[2].fetchQuery)
 		]).then(datasFromSrv => {
 			//debugger
 			for (const dataFromSrv of datasFromSrv) {
@@ -743,7 +798,7 @@ export default {
 	},
 
 	//*** Registration actions */
-	REG_REQUEST: ({ commit, dispatch }, userData) => {
+	REG_REQUEST: ({ commit }, userData) => {
 		return new Promise((resolve, reject) => {
 			const payload = {
 				username: '',

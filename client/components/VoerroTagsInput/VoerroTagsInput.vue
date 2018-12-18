@@ -194,7 +194,7 @@ export default {
 			}
 
 			// Attach the tag if it hasn't been attached yet
-			if (!this.tagSelected(slug)) {
+			if (!this.tagSelected(text)) {
 				this.tagBadges.push(text.replace(/\s/g, '&nbsp;'))
 				this.tags.push(slug)
 			}

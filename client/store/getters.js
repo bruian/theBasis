@@ -20,18 +20,9 @@ export default {
 		return state.listOfList.find(el => el.list_id === list_id).list
 	},
 
-	/*
-	context: state => id => {
-		debugger
-		const context = state[state.activeTasksList.list].context
-		const foundContext = context.find(el => el.id === id)
-		if (foundContext) {
-			return foundContext.tags
-		} else {
-			return []
-		}
+	getContextByExistingTag: state => index => {
+		return state.mainContexts.find(el => el.value === state.mainExistingContexts[index])
 	},
-	*/
 
 	taskByIndex: state => obj => {
 		const currentList = state.listOfList.find(el => el.list_id === obj.list_id).list
