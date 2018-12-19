@@ -397,6 +397,7 @@ UPDATE tasks SET name = 'Hello people' WHERE id IN (SELECT * FROM main_visible_t
 */
 
 --SELECT add_task_context(1, 1, 3, '');
+SELECT delete_task_context(1, 1, 7);
 SELECT * FROM context;
 SELECT * FROM context_setting;
 SELECT * FROM context_list;
@@ -405,6 +406,64 @@ DELETE FROM context WHERE (id = 41);
 DELETE FROM context_list WHERE (context_id = 41);
 DELETE FROM context_setting WHERE (context_id = 41);
 */
+
+/* DELETE context from task */
+CREATE OR REPLACE FUNCTION delete_task_context(
+	main_user_id INTEGER,
+	inner_task_id INTEGER,
+	context_id INTEGER)
+RETURNS INTEGER
+LANGUAGE plpgsql
+VOLATILE CALLED ON NULL INPUT
+AS $f$
+  DECLARE
+    main_group_id INTEGER;
+	main_user_type INTEGER;
+	main_group_reading INTEGER;
+	main_task_reading INTEGER;
+	main_task_updating INTEGER;
+	inner_context_id INTEGER;
+BEGIN
+	SELECT tl.group_id, gl.user_type, g.reading, g.task_reading, g.task_updating
+	  INTO main_group_id, main_user_type, main_group_reading, main_task_reading, main_task_updating FROM tasks_list AS tl
+	RIGHT JOIN groups_list AS gl ON gl.group_id = tl.group_id AND (gl.user_id = main_user_id OR gl.user_id = 0)
+	RIGHT JOIN groups AS g ON gl.group_id = g.id
+	WHERE tl.task_id = inner_task_id;
+
+	IF NOT FOUND THEN
+	  RETURN 0;
+	END IF;
+
+    IF main_group_id IS NULL THEN
+	  RETURN 0; 
+    END IF;
+
+	IF main_group_reading < main_user_type THEN
+	  RETURN -1;
+	END IF;
+
+	IF main_task_reading < main_user_type THEN
+	  RETURN -2;
+	END IF;
+
+	IF main_task_updating < main_user_type THEN
+	  RETURN -3;
+	END IF;	
+
+	IF context_id is null THEN
+		RETURN -4;
+	END IF;
+
+	SELECT id INTO inner_context_id FROM context WHERE id = context_id;
+	IF NOT FOUND THEN
+		RETURN -5;
+	END IF;
+	
+	DELETE FROM context_list AS cl WHERE (cl.context_id = inner_context_id AND cl.task_id = inner_task_id);
+	
+	RETURN inner_context_id;
+  END;
+$f$;
 
 /* ADD context to task ***
 CREATE OR REPLACE FUNCTION add_task_context(

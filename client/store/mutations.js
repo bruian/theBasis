@@ -435,13 +435,17 @@ export default {
 	},
 
 	ADD_TASK_CONTEXT: (state, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		let taskList = activeList.list
-		const element = recursiveFind(taskList, el => el.task_id === options.task_id)
+		// const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		// let taskList = activeList.list
+		// const element = recursiveFind(taskList, el => el.task_id === options.task_id)
 
 		//mainExistingContexts
 		//mainContexts
 		//element.context
+	},
+
+	REMOVE_TASK_CONTEXT: (state, options) => {
+
 	},
 
 	//*** Other mutations */

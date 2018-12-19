@@ -158,7 +158,81 @@ async function addContext(condition, done) {
 	}
 }
 
+async function deleteContext(condition, done) {
+	let client,
+		queryText = '',
+		context_id = null
+
+	if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
+		return done(new PgError('For database operations, a main user token is required'))
+	}
+
+	if (!condition.task_id && !isNumeric(condition.task_id)) {
+		return done(new PgError('For database operations, a <task_id> is required'))
+	}
+
+	if ('context_id' in condition.values) {
+		context_id = condition.values.context_id
+	}
+
+	if (context_id === null) {
+		return done(new PgError('For context update need, a <context_id> or <context_value> in body req'))
+	}
+
+	queryText = `SELECT delete_task_context($1, $2, $3)`
+	const params = [condition.mainUser_id, condition.task_id, context_id]
+
+	client = await pg.pool.connect()
+
+	try {
+		await client.query('BEGIN')
+
+		const { rowsCount, rows: result } = await client.query(queryText, params)
+
+		if (rowsCount === 0) {
+			await client.query('ROLLBACK')
+			return done({ message: `No tasks with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
+		}
+
+		if (result[0].delete_task_context <= 0) {
+			let errMessage = ''
+			switch (result[0].delete_task_context) {
+				case 0:
+					errMessage = 'There is no group or task that matches the specified <task-id> or main user token'
+					break
+				case -1:
+					errMessage = 'No rights to read the group containing the task'
+					break
+				case -2:
+					errMessage = 'No rights to read the task by the ID'
+					break
+				case -3:
+					errMessage = 'No rights to update the task by the ID'
+					break
+				case -4:
+					errMessage = 'Values must contain either the name of the context or its id'
+					break
+				case -5:
+					errMessage = 'There is no context with such an id and the name of the context for its creation is not specified'
+			}
+
+			await client.query('ROLLBACK')
+			return done({ message: errMessage, status: 400, code: 'no_datas', name: 'ApiMessage' })
+		}
+
+		await client.query('commit')
+
+		return done(null, result[0].delete_task_context)
+	} catch (error) {
+		await client.query('ROLLBACK')
+		return done(new PgError(error))
+	} finally {
+		client.release()
+	}
+}
+
 module.exports = {
 	getContexts,
-	addContext
+	addContext,
+	deleteContext
 }

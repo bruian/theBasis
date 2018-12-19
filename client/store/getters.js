@@ -20,8 +20,12 @@ export default {
 		return state.listOfList.find(el => el.list_id === list_id).list
 	},
 
-	getContextByExistingTag: state => index => {
+	contextByExistingTag: state => (index) => {
 		return state.mainContexts.find(el => el.value === state.mainExistingContexts[index])
+	},
+
+	contextByValue: state => (value, task_id) => {
+		return state.mainContexts.find(el => el.value === value && el.task_id === task_id)
 	},
 
 	taskByIndex: state => obj => {

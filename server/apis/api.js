@@ -203,6 +203,22 @@ router.post('/contexts', (req, res) => {
 	})
 })
 
+router.delete('/contexts', (req, res) => {
+	const condition = {
+		mainUser_id: req.auth.userId,
+		task_id: ('task_id' in req.query) ? req.query.task_id : null,
+		values: req.body
+	}
+
+	ContextController.deleteContext(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		log.debug(`/context:remove |-> `)
+
+		return res.json({ data: data })
+	})
+})
+
 /*** -TASKS API- */
 router.get('/tasks', (req, res) => {
 	const condition = {

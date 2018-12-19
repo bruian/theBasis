@@ -246,36 +246,46 @@ export default {
 		this.prevNote = this.item.note
 	},
 	methods: {
-		onInitialized() {
-			this.isTagsInitialized = true
-		},
-		onTagAdded(slug) {
-			if (!this.isTagsInitialized) return
-
+		tagChange(slug, command) {
+			let context
 			const options = {
 				list_id: this.list_id,
 				task_id: this.item.task_id
 			}
 
 			if (isNumeric(slug)) {
-				const context = this.$store.getters.getContextByExistingTag(slug)
-				if (this.item.context.findIndex(el => el === context.value)) {
+				context = this.$store.getters.contextByExistingTag(slug)
+				if (command === 'ADD_TASK_CONTEXT' &&
+						this.item.context.findIndex(el => el === context.value) >= 0) {
 					return
 				}
 
 				options.context_id = context.context_id
 			} else {
-				options.context_value = slug
+				if (command === 'REMOVE_TASK_CONTEXT') {
+					context = this.$store.getters.contextByValue(slug, this.item.task_id)
+					options.context_id = context.context_id
+				} else {
+					options.context_value = slug
+				}
 			}
 
-			this.$store.dispatch('ADD_TASK_CONTEXT', options)
+			this.$store.dispatch(command, options)
 			.then((res) => {
-				console.log(`Tag added: ${slug}`)
+				console.log(`${command}: ${slug}`)
 			})
 			.catch((err) => { console.warn(err) })
 		},
+		onInitialized() {
+			this.isTagsInitialized = true
+		},
+		onTagAdded(slug) {
+			if (!this.isTagsInitialized) return
+
+			this.tagChange(slug, 'ADD_TASK_CONTEXT')
+		},
 		onTagRemoved(slug) {
-			console.log(`Tag removed: ${slug}`)
+			this.tagChange(slug, 'REMOVE_TASK_CONTEXT')
 		},
 		onNoteChange: function() {
 			if (this.prevNote !== this.item.note) {
