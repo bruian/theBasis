@@ -172,7 +172,7 @@ import Treeselect from '@riophae/vue-treeselect'
 import ItmTextArea from '../ItmTextArea.vue'
 import TagsInput from '../../VoerroTagsInput/VoerroTagsInput.vue'
 import VCircle from '../../VCircle/VCircle.js'
-import { recursiveFind, isNumeric } from '../../../util/helpers.js'
+import { isNumeric } from '../../../util/helpers.js'
 
 import draggable from 'vuedraggable'
 

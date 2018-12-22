@@ -358,7 +358,7 @@ export default {
 			} else {
 				if (!prevParentId) {
 					if (prevParent !== tasks[i].parent) {
-						prevParent = recursiveFind(taskList, el => el.task_id === tasks[i].parent)
+						prevParent = recursiveFind(taskList, el => el.task_id === tasks[i].parent).element
 					}
 				}
 
@@ -371,29 +371,11 @@ export default {
 		//activeList.offset = activeList.offset + data.length
 	},
 
-	SET_ACTIVE_TASKS_LIST: (state, activeID) => {
-		let temp = state.activeTasksList
-
-		state.activeTasksList = state.availableTasksList.splice(state.availableTasksList.findIndex(el => el.id == activeID), 1)[0]
-		if (temp.id > -1) {
-			if (temp.id === 0) {
-				state.availableTasksList.unshift(temp)
-			} else {
-				let fIndex = state.availableTasksList.findIndex(el => el.id > temp.id)
-				if (fIndex > -1) {
-					state.availableTasksList.splice(fIndex, 0, temp)
-				} else {
-					state.availableTasksList.push(temp)
-				}
-			}
-		}
-	},
-
 	//values must contain task_id of element task_id:id
 	UPDATE_TASK_VALUES: (state, obj) => {
 		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
 		let taskList = activeList.list
-		const element = recursiveFind(taskList, el => el.task_id === obj.task_id)
+		const element = recursiveFind(taskList, el => el.task_id === obj.task_id).element
 
 		for (const key in obj) {
 			if (key === 'task_id' || key === 'list_id') continue
@@ -406,15 +388,26 @@ export default {
 
 	SET_ACTIVE_TASK: (state, obj) => {
 		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
-		let activedTask = recursiveFind(activeList.list, el => el.isActive === true)
+		let activedTask = recursiveFind(activeList.list, el => el.isActive === true).element
 		if (activedTask) {
 			activedTask.isActive = false
 		}
 
-		let activeTask = recursiveFind(activeList.list, el => el.task_id === obj.task_id)
+		let activeTask = recursiveFind(activeList.list, el => el.task_id === obj.task_id).element
 		if (activeTask) {
 			activeTask.isActive = true
+			activeList.selectedItem = activeTask.task_id
+			activeList.selectedList = false
 		}
+	},
+
+	SET_ACTIVE_LIST: ({ listOfList }, options) => {
+		const activeList = listOfList.find(el => el.list_id === options.list_id)
+		activeList.selectedList = true
+		activeList.selectedItem = null
+
+		const activeTask = recursiveFind(activeList.list, el => el.isActive).element
+		if (activeTask) activeTask.isActive = false
 	},
 
 //*** Contexts mutations */
@@ -437,7 +430,7 @@ export default {
 	ADD_TASK_CONTEXT: (state, options) => {
 		// const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		// let taskList = activeList.list
-		// const element = recursiveFind(taskList, el => el.task_id === options.task_id)
+		// const element = recursiveFind(taskList, el => el.task_id === options.task_id).element
 
 		//mainExistingContexts
 		//mainContexts
@@ -449,14 +442,6 @@ export default {
 	},
 
 	//*** Other mutations */
-  SET_ACTIVE_TYPE: (state, { type }) => {
-    state.activeType = type
-	},
-
-  SET_LIST: (state, { type, ids }) => {
-    state.lists[type] = ids
-	},
-
   SET_ITEMS: (state, { items }) => {
     items.forEach(item => {
       if (item) {

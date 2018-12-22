@@ -1,28 +1,43 @@
 <template>
 	<div class="tasks-list">
-		<v-expansion-panel class="mb-0">
+		<div class="task-list-header">
+			<v-icon style="cursor: pointer;"
+				v-bind:color="selectedList"
+				@click="onSelectList">bookmark</v-icon>
+			<v-btn small icon>
+				<v-icon color="primary">add_circle</v-icon>
+			</v-btn>
+			<v-btn small icon v-show="isAllowedOperation & 1">
+				<v-icon color="primary">add_circle_outline</v-icon>
+			</v-btn>
+			<v-btn small icon v-show="isAllowedOperation & 2">
+				<v-icon color="primary">delete</v-icon>
+			</v-btn>
+			<v-btn small icon v-show="isAllowedOperation & 4">
+				<v-icon color="primary">arrow_upward</v-icon>
+			</v-btn>
+			<v-btn small icon v-show="isAllowedOperation & 8">
+				<v-icon color="primary">arrow_downward</v-icon>
+			</v-btn>
+			<v-btn small icon v-show="isAllowedOperation & 16" @click="onMoveIn">
+				<v-icon color="primary">arrow_forward</v-icon>
+			</v-btn>
+			<v-btn small icon v-show="isAllowedOperation & 32">
+				<v-icon color="primary">arrow_back</v-icon>
+			</v-btn>
+			<div style="margin: auto;">
+				<p style="margin: auto;">Me tasks</p>
+			</div>
+		</div>
+		<!-- <v-expansion-panel class="mb-0">
 			<v-expansion-panel-content class="list-header"
 				expand
 				expand-icon="search">
 
 				<div slot="header">
 					<v-toolbar card dense color="transparent">
-						<div class="activeTasksListbox">
-							<span v-bind:class="{ opacIn: showActiveTasksList }">{{ activeTasksList.text }}</span>
-							<span style="margin-left: 5px;">users</span>
-						</div>
-
-						<v-spacer></v-spacer>
-
-						<transition-group name="list">
-							<span v-for="tlitem in availableTasksList" v-bind:key="tlitem.id">
-								<a class="activeitem"
-									v-show="tlitem.visible"
-									href=""
-									@click.prevent.stop="activeClick(tlitem.id)">{{ tlitem.text }}
-								</a>
-							</span>
-						</transition-group>
+						<v-btn small>Add</v-btn>
+						<v-btn small>Add in</v-btn>
 					</v-toolbar>
 				</div>
 
@@ -35,7 +50,7 @@
           ></v-text-field>
       	</v-card>
 			</v-expansion-panel-content>
-		</v-expansion-panel>
+		</v-expansion-panel> -->
 		<v-divider class="ma-0"></v-divider>
 		<div class="tasks-list-body">
 			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="list_id">
@@ -61,6 +76,7 @@
 import TaskItem from '../items/TaskItem.vue'
 import VuePerfectScrollbar from '../../Perfect-scrollbar.vue'
 import InfiniteLoading from '../../InfiniteLoading'
+import { recursiveFind } from '../../../util/helpers'
 
 import draggable from 'vuedraggable'
 
@@ -94,12 +110,67 @@ export default {
 			},
 			set(value) {}
 		},
-		activeTasksList() { return this.$store.state.activeTasksList },
-		availableTasksList() { return this.$store.state.availableTasksList }
+		selectedList() {
+			const activeList = this.$store.state.listOfList.find(el => el.list_id === this.list_id)
+			return (activeList.selectedList) ? 'primary' : ''
+		},
+		/* 1 - add subtask    000001
+			 2 - delete task    000010
+			 4 - move up        000100
+			 8 - move down      001000
+			 16 - move in task  010000
+			 32 - move out task 100000
+		*/
+		isAllowedOperation() {
+			let result = 0
+			const activeList = this.$store.state.listOfList.find(el => el.list_id === this.list_id)
+
+			if (activeList.selectedItem) {
+				result += 2
+
+				function recurr(list, task_id) {
+					let res = 0
+
+					for (let i = 0; i < list.length; i++) {
+						if (list[i].task_id === task_id) {
+							if (list[i].level === 1) {
+								res += 1
+
+								if (i > 1 && !list[i-1].isDivider) res += 4
+								if (i < list.length && i < list.length - 1 && !list[i+1].isDivider) res += 8
+							} else if (list[i].level > 1 && list[i].level < 3) {
+								res += 1
+
+								if (i > 0) res += 4
+								if (i < list.length - 1) res += 8
+							}
+
+							if (i > 0 && !list[i - 1].isDivider & list[i].level < 3) {
+								if (list[i].level + (list[i].depth - 1) < 3) res += 16
+							}
+							if (list[i].level > 1) res += 32
+						} else if (list[i].children && list[i].children.length > 0) {
+							res = recurr(list[i].children, task_id)
+						}
+
+						if (res) break
+					}
+
+					return res
+				}
+
+				result = result + recurr(activeList.list, activeList.selectedItem)
+			}
+
+			return result
+		}
 	},
   methods: {
 		getDraggableOptions: function() {
 			return { group:this.list_id, handle:'.task-handle' }
+		},
+		onSelectList: function() {
+			this.$store.commit('SET_ACTIVE_LIST', { list_id: this.list_id })
 		},
 		onChange: function(value) {
 			console.log('changed searchText: ' + value)
@@ -149,6 +220,33 @@ export default {
 				console.warn(err)
 			})
 		},
+		onMoveIn: function() {
+			const activeList = this.$store.state.listOfList.find(el => el.list_id === this.list_id)
+			if (activeList.selectedItem) {
+				let toParent
+				const { index, element } = recursiveFind(activeList.list, el => el.isActive)
+				if (element.parent === 0) {
+					toParent = activeList.list[index - 1].task_id
+				} else {
+					const parent = recursiveFind(activeList.list, el => el.task_id === element.parent).element
+					toParent = parent.children[index - 1].task_id
+				}
+
+				this.$store.dispatch('REORDER_TASKS', {
+					oldIndex: index,
+					newIndex: 0,
+					fromParent: element.parent,
+					toParent: toParent,
+					list_id: this.list_id
+				})
+				.then((res) => {
+					console.log('move in')
+				})
+				.catch((err) => {
+					console.warn(err)
+				})
+			}
+		},
 		infiniteHandler($state) {
 			if (this.countEl == 0) {
 				this.countEl++
@@ -195,6 +293,10 @@ export default {
 	text-decoration: none; */
 	min-width: 550;
   transition: .3s cubic-bezier(.25,.8,.5,1);
+}
+
+.task-list-header {
+	display: flex;
 }
 
 .tasks-list-body {

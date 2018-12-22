@@ -369,6 +369,7 @@ export default {
 	REORDER_TASKS: ({ commit, state }, options) => {
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		const taskList = activeList.list
+		//debugger
 
 		let fromTask, toTask, fromParent, toParent, newGroupId,
 			isBefore = (options.oldIndex > options.newIndex)
@@ -376,7 +377,7 @@ export default {
 		if (options.fromParent === 0) {
 			fromTask = taskList[options.oldIndex]
 		} else {
-			fromParent = recursiveFind(taskList, el => el.task_id === options.fromParent)
+			fromParent = recursiveFind(taskList, el => el.task_id === options.fromParent).element
 			fromTask = fromParent.children[options.oldIndex]
 		}
 		fromTask.consistency = 1
@@ -413,18 +414,24 @@ export default {
 				}
 			}
 		} else {
-			toParent = recursiveFind(taskList, el => el.task_id === options.toParent)
-			if (toParent.children.length === options.newIndex) {
-				toTask = toParent.children[options.newIndex - 1]
-			} else {
-				toTask = toParent.children[options.newIndex]
-			}
-
-			if ( ((fromTask.parent === 0) && (toTask.parent !== 0)) ||
-					 ((fromTask.parent !== 0) && (toTask.parent === 0)) ) {
+			toParent = recursiveFind(taskList, el => el.task_id === options.toParent).element
+			if (!toParent.children) {
+				//toParent.children = []
+				toTask = null
 				newGroupId = fromTask.group_id
 			} else {
-				newGroupId = toTask.group_id
+				if (toParent.children.length === options.newIndex) {
+					toTask = toParent.children[options.newIndex - 1]
+				} else {
+					toTask = toParent.children[options.newIndex]
+				}
+
+				if ( ((fromTask.parent === 0) && (toTask.parent !== 0)) ||
+						 ((fromTask.parent !== 0) && (toTask.parent === 0)) ) {
+					newGroupId = fromTask.group_id
+				} else {
+					newGroupId = toTask.group_id
+				}
 			}
 		}
 
@@ -484,10 +491,15 @@ export default {
 					fromParent.havechild--
 				}
 
+				if (movedItem) movedItem.isShowed = true
+
 				if (options.toParent === 0) {
 					taskList.splice((options.newIndex === 0) ? 1 : options.newIndex, 0, movedItem)
 				} else {
-					if (toParent.children.length === options.newIndex) {
+					if (!toParent.children) {
+						Vue.set(toParent, 'children', new Array)
+						Vue.set(toParent.children, 0, movedItem)
+					} else if (toParent.children.length === options.newIndex) {
 						if (toParent.children.length > 0) {
 							toParent.children.splice(options.newIndex, 0, movedItem)
 						} else {
@@ -502,20 +514,48 @@ export default {
 					}
 
 					toParent.havechild++
+					toParent.isSubtaskExpanded = 2
 				}
 
-				movedItem.level = ((toParent === undefined) ? 0 : toParent.level) + 1
-				if (movedItem.children && movedItem.children.length > 0) {
-					for (let i = 0; i < movedItem.children.length; i++) {
-						const subItem = movedItem.children[i]
-						subItem.level = subItem.level + 1
-						if (subItem.children && subItem.children.length > 0) {
-							for (let j = 0; j < subItem.children.length; j++) {
-								subItem.children[j].level = subItem.children[j].level + 1;
+				function recalculationDepth(el, level) {
+					let res = 0
+					el.level = level
+
+					if (el.children && el.children.length > 0) {
+						for (let i = 0; i < el.children.length; i++) {
+							let locRes = recalculationDepth(el.children[i], level + 1)
+							if (locRes > res) {
+								res = locRes
 							}
 						}
+					} else {
+						res = level
+					}
+
+					if (res)
+						el.depth = (res - level) + 1
+
+					return res
+				}
+
+				for (let topEl = 0; topEl < taskList.length; topEl++) {
+					if (!taskList[topEl].isDivider) {
+						recalculationDepth(taskList[topEl], 1, 0)
 					}
 				}
+
+				// movedItem.level = ((toParent === undefined) ? 0 : toParent.level) + 1
+				// if (movedItem.children && movedItem.children.length > 0) {
+				// 	for (let i = 0; i < movedItem.children.length; i++) {
+				// 		const subItem = movedItem.children[i]
+				// 		subItem.level = subItem.level + 1
+				// 		if (subItem.children && subItem.children.length > 0) {
+				// 			for (let j = 0; j < subItem.children.length; j++) {
+				// 				subItem.children[j].level = subItem.children[j].level + 1;
+				// 			}
+				// 		}
+				// 	}
+				// }
 
 				//изменение значения группы на новую группу, если она задана
 				if (newGroupId !== undefined) {
@@ -528,6 +568,7 @@ export default {
 		})
 		.catch((err) => {
 			debugger
+			movedItem.consistency = 2
 			commit('API_ERROR', err.response.data)
 			return Promise.reject(err.response.data)
 		})
@@ -537,7 +578,7 @@ export default {
 	UPDATE_TASK_GROUP: ({ commit, state }, options) => {
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
 		taskList = activeList.list,
-		element = recursiveFind(taskList, el => el.task_id === options.task_id)
+		element = recursiveFind(taskList, el => el.task_id === options.task_id).element
 		element.consistency = 1
 
 		const fetchQuery = {
@@ -582,7 +623,7 @@ export default {
 				} else {
 					/* Для элементов последующих уровней необходимо найти самый первый элемент
 						 принадлежащий искомой группе и поместить нашу задачу выше этого элемента */
-					const parent = recursiveFind(taskList, el => el.task_id === element.parent)
+					const parent = recursiveFind(taskList, el => el.task_id === element.parent).element
 					idxTask = parent.children.findIndex(el => el.task_id == options.task_id)
 					movedItem = parent.children.splice(idxTask, 1)[0]
 
@@ -610,7 +651,7 @@ export default {
 	UPDATE_TASK_VALUES: ({ commit, state }, options) => {
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
 					taskList = activeList.list,
-					element = recursiveFind(taskList, el => el.task_id === options.task_id),
+					element = recursiveFind(taskList, el => el.task_id === options.task_id).element,
 					values = {}
 
 		element.consistency = 1
@@ -658,7 +699,7 @@ export default {
 	ADD_TASK_CONTEXT: ({ commit, state }, options) => {
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
 					taskList = activeList.list,
-					element = recursiveFind(taskList, el => el.task_id === options.task_id),
+					element = recursiveFind(taskList, el => el.task_id === options.task_id).element,
 					values = {}
 
 		element.consistency = 1
@@ -705,7 +746,7 @@ export default {
 	REMOVE_TASK_CONTEXT: ({commit, state}, options) => {
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
 					taskList = activeList.list,
-					element = recursiveFind(taskList, el => el.task_id === options.task_id),
+					element = recursiveFind(taskList, el => el.task_id === options.task_id).element,
 					values = {}
 
 		element.consistency = 1

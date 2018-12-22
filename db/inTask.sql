@@ -332,10 +332,10 @@ ORDER BY (tl.p::float8/tl.q);
 */
 /*main_user, to_group_id, task_id, to_task_id, isBefore, to_parent*/
 --SELECT reorder_task(1, 1, 4, null, FALSE, 0);
---SELECT reorder_task(1, 50, 3, null, FALSE, 0);
+--SELECT reorder_task(1, 50, 6, 7, FALSE, 1);
 --SELECT reorder_task(1, 50, 6, null, FALSE, 5);
 --UPDATE tasks_list SET group_id = 1 WHERE task_id = 4;
-
+select * from tasks
 /* tasks by parent id getTasks ***
 CREATE TEMP TABLE temp_task ON COMMIT DROP AS WITH RECURSIVE main_visible_groups AS (
 SELECT group_id FROM groups_list AS gl
@@ -397,7 +397,7 @@ UPDATE tasks SET name = 'Hello people' WHERE id IN (SELECT * FROM main_visible_t
 */
 
 --SELECT add_task_context(1, 1, 3, '');
-SELECT delete_task_context(1, 1, 7);
+--SELECT delete_task_context(1, 1, 7);
 SELECT * FROM context;
 SELECT * FROM context_setting;
 SELECT * FROM context_list;
@@ -407,7 +407,7 @@ DELETE FROM context_list WHERE (context_id = 41);
 DELETE FROM context_setting WHERE (context_id = 41);
 */
 
-/* DELETE context from task */
+/* DELETE context from task 
 CREATE OR REPLACE FUNCTION delete_task_context(
 	main_user_id INTEGER,
 	inner_task_id INTEGER,
@@ -463,7 +463,8 @@ BEGIN
 	
 	RETURN inner_context_id;
   END;
-$f$;
+$f$;*/
+
 
 /* ADD context to task ***
 CREATE OR REPLACE FUNCTION add_task_context(

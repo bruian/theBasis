@@ -1,14 +1,18 @@
 export function recursiveFind(list, cb) {
-	let result
+	let result = {
+		index: null,
+		element: null
+	}
 
 	for (let i = 0; i < list.length; i++) {
 		if (cb(list[i])) {
-			result = list[i]
+			result.index = i
+			result.element = list[i]
 		} else if (list[i].children && list[i].children.length > 0) {
 			result = recursiveFind(list[i].children, cb)
 		}
 
-		if (result) break
+		if (result.element) break
 	}
 
 	return result

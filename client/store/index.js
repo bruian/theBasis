@@ -117,18 +117,6 @@ export function createStore () {
 				searchText: ''
 			},
 
-			/* -TASKS LIST DATAS- *//* api request: /tasks */
-			activeTasksList: { text: 'all', whose: 'user', id: 0, list: 'tasksList', visible: true, condition: [] },
-			availableTasksList: [
-				{ text: 'complete', whose: 'user', id: 0, list: 'tasksList', visible: true, condition: [] }
-			],
-			tasksList: {
-				list: [],
-				limit: 10,
-				offset: 0,
-				searchText: ''
-			},
-
 			theList: 0,
 			listOfList: [
 				{
@@ -140,25 +128,13 @@ export function createStore () {
 						task_id: null,
 						searchText: null
 					},
+					selectedList: true,
+					selectedItem: null,
 					list: [],
 					limit: 10,
 					offset: 0,
 				}
 			],
-
-			/* -OTHERS DATAS- */
-      activeType: null,
-      itemsPerPage: 20,
-      items: {/* [id: number]: Item */},
-      users: {/* [id: string]: User */},
-      theItems: [/* [id: number]: Item */],
-      lists: {
-        tgmUsers: [],
-        new: [],
-        show: [],
-        ask: [],
-        job: []
-			},
     },
     actions,
     mutations,
