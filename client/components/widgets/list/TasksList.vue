@@ -22,35 +22,13 @@
 			<v-btn small icon v-show="isAllowedOperation & 16" @click="onMoveIn">
 				<v-icon color="primary">arrow_forward</v-icon>
 			</v-btn>
-			<v-btn small icon v-show="isAllowedOperation & 32">
+			<v-btn small icon v-show="isAllowedOperation & 32" @click="onMoveOut">
 				<v-icon color="primary">arrow_back</v-icon>
 			</v-btn>
 			<div style="margin: auto;">
 				<p style="margin: auto;">Me tasks</p>
 			</div>
 		</div>
-		<!-- <v-expansion-panel class="mb-0">
-			<v-expansion-panel-content class="list-header"
-				expand
-				expand-icon="search">
-
-				<div slot="header">
-					<v-toolbar card dense color="transparent">
-						<v-btn small>Add</v-btn>
-						<v-btn small>Add in</v-btn>
-					</v-toolbar>
-				</div>
-
-				<v-card class="list-body">
-          <v-text-field class=""
-            label="Solo"
-            solo
-						hide-details
-						@input="onChange"
-          ></v-text-field>
-      	</v-card>
-			</v-expansion-panel-content>
-		</v-expansion-panel> -->
 		<v-divider class="ma-0"></v-divider>
 		<div class="tasks-list-body">
 			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="list_id">
@@ -245,6 +223,21 @@ export default {
 				.catch((err) => {
 					console.warn(err)
 				})
+			}
+		},
+		onMoveOut: function() {
+			const activeList = this.$store.state.listOfList.find(el => el.list_id === this.list_id)
+			if (activeList.selected) {
+				let toParent
+				const { index, element } = recursiveFind(activeList.list, el => el.isActive)
+				if (element.parent !== 0) {
+					const parent = recursiveFind(activeList.list, el => el.task_id === element.parent).element
+					toParent = parent.parent
+				}
+
+				// this.$store.dispatch('REORDER_TASKS', {
+				// 	oldIndex: index
+				// })
 			}
 		},
 		infiniteHandler($state) {
