@@ -36,11 +36,11 @@
 					:options="getDraggableOptions()"
 					@start="onDragStart"
 					@end="onDrop"
-					v-bind:data-parent="0">
+					v-bind:data-parent_id="0">
 					<div v-for="(item, index) in items"
 						:key="item.id"
 						v-bind:data-task_id="item.task_id"
-						v-bind:data-parent="item.parent">
+						v-bind:data-parent_id="(item.parent) ? item.parent.task_id : 0">
 						<TaskItem :list_id="list_id" :item="item" ></TaskItem>
 					</div>
 				</draggable>
@@ -179,7 +179,7 @@ export default {
 		onDrop: function(dropResult) {
 			const { newIndex, oldIndex, from, to } = dropResult
 
-			if (from.dataset.parent === to.dataset.parent) {
+			if (from.dataset.parent_id === to.dataset.parent_id) {
 				if (oldIndex === newIndex) {
 					return
 				}
@@ -188,8 +188,8 @@ export default {
 			this.$store.dispatch('REORDER_TASKS', {
 				oldIndex: oldIndex,
 				newIndex: newIndex,
-				fromParent: Number.parseInt(from.dataset.parent, 10),
-				toParent: Number.parseInt(to.dataset.parent, 10),
+				fromParent_id: Number.parseInt(from.dataset.parent_id, 10),
+				toParent_id: Number.parseInt(to.dataset.parent_id, 10),
 				list_id: this.list_id })
 			.then((res) => {
 				console.log('reordering list')
@@ -201,20 +201,21 @@ export default {
 		onMoveIn: function() {
 			const activeList = this.$store.state.listOfList.find(el => el.list_id === this.list_id)
 			if (activeList.selectedItem) {
-				let toParent
+				let toParent_id
 				const { index, element } = recursiveFind(activeList.list, el => el.isActive)
-				if (element.parent === 0) {
-					toParent = activeList.list[index - 1].task_id
+				if (element.parent === null) {
+					toParent_id = activeList.list[index - 1].task_id
 				} else {
-					const parent = recursiveFind(activeList.list, el => el.task_id === element.parent).element
-					toParent = parent.children[index - 1].task_id
+					if (element.parent.children && element.parent.children.length > 1) {
+						toParent_id = element.parent.children[index - 1].task_id
+					}
 				}
 
 				this.$store.dispatch('REORDER_TASKS', {
 					oldIndex: index,
 					newIndex: 0,
-					fromParent: element.parent,
-					toParent: toParent,
+					fromParent_id: element.parent,
+					toParent_id: toParent,
 					list_id: this.list_id
 				})
 				.then((res) => {
@@ -230,9 +231,8 @@ export default {
 			if (activeList.selected) {
 				let toParent
 				const { index, element } = recursiveFind(activeList.list, el => el.isActive)
-				if (element.parent !== 0) {
-					const parent = recursiveFind(activeList.list, el => el.task_id === element.parent).element
-					toParent = parent.parent
+				if (element.parent !== null) {
+					toParent = element.parent.parent
 				}
 
 				// this.$store.dispatch('REORDER_TASKS', {

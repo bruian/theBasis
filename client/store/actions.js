@@ -369,20 +369,22 @@ export default {
 	REORDER_TASKS: ({ commit, state }, options) => {
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		const taskList = activeList.list
+		if (options.fromParent_id === 0) options.fromParent_id = null
+		if (options.toParent_id === 0) options.toParent_id = null
 		//debugger
 
 		let fromTask, toTask, fromParent, toParent, newGroupId,
 			isBefore = (options.oldIndex > options.newIndex)
 
-		if (options.fromParent === 0) {
+		if (options.fromParent_id === null) {
 			fromTask = taskList[options.oldIndex]
 		} else {
-			fromParent = recursiveFind(taskList, el => el.task_id === options.fromParent).element
+			fromParent = recursiveFind(taskList, el => el.task_id === options.fromParent_id).element
 			fromTask = fromParent.children[options.oldIndex]
 		}
 		fromTask.consistency = 1
 
-		if (options.toParent === 0) {
+		if (options.toParent_id === null) {
 			if (taskList.length === options.newIndex) {
 				toTask = taskList[options.newIndex - 1]
 				newGroupId = toTask.group_id
@@ -414,9 +416,8 @@ export default {
 				}
 			}
 		} else {
-			toParent = recursiveFind(taskList, el => el.task_id === options.toParent).element
+			toParent = recursiveFind(taskList, el => el.task_id === options.toParent_id).element
 			if (!toParent.children) {
-				//toParent.children = []
 				toTask = null
 				newGroupId = fromTask.group_id
 			} else {
@@ -426,8 +427,8 @@ export default {
 					toTask = toParent.children[options.newIndex]
 				}
 
-				if ( ((fromTask.parent === 0) && (toTask.parent !== 0)) ||
-						 ((fromTask.parent !== 0) && (toTask.parent === 0)) ) {
+				if ( ((fromTask.parent === null) && (toTask.parent !== null)) ||
+						 ((fromTask.parent !== null) && (toTask.parent === null)) ) {
 					newGroupId = fromTask.group_id
 				} else {
 					newGroupId = toTask.group_id
@@ -436,7 +437,7 @@ export default {
 		}
 
 		if (toTask !== null) {
-			if ( ((fromTask.parent !== 0) && (toTask.parent !== 0)) &&
+			if ( ((fromTask.parent !== null) && (toTask.parent !== null)) &&
 		  			(fromTask.parent === toTask.parent) ) {
 				if (fromTask.group_id !== toTask.group_id) {
 					return Promise.resolve(false)
@@ -446,11 +447,13 @@ export default {
 
 		//Определим куда переместить задачау (до или после)
 		//при перемещении между разными родителями
-		if (toTask !== null && options.toParent !== options.fromParent) {
-			if (fromTask.parent === toTask.task_id) {
+		if (toTask !== null && options.toParent_id !== options.fromParent_id) {
+			// if (fromTask.parent === toTask.task_id) { TODO: отдебажь сравнение объектов
+			debugger
+			if (fromTask.parent.task_id === toTask.task_id) {
 				isBefore = true
 			} else {
-				if (toTask.parent === 0) {
+				if (toTask.parent === null) {
 					//Если до новой позиции сразу стоит разделитель группы, то ставим на позицию выше
 					if (options.newIndex > 0 && taskList[options.newIndex - 1].isDivider) {
 						isBefore = true
@@ -484,7 +487,7 @@ export default {
 			} else {
 				let movedItem
 
-				if (options.fromParent === 0) {
+				if (options.fromParent_id === null) {
 					movedItem = taskList.splice(options.oldIndex, 1)[0]
 				} else {
 					movedItem = fromParent.children.splice(options.oldIndex, 1)[0]
@@ -493,7 +496,7 @@ export default {
 
 				if (movedItem) movedItem.isShowed = true
 
-				if (options.toParent === 0) {
+				if (options.toParent_id === null) {
 					taskList.splice((options.newIndex === 0) ? 1 : options.newIndex, 0, movedItem)
 				} else {
 					if (!toParent.children) {
@@ -544,19 +547,6 @@ export default {
 					}
 				}
 
-				// movedItem.level = ((toParent === undefined) ? 0 : toParent.level) + 1
-				// if (movedItem.children && movedItem.children.length > 0) {
-				// 	for (let i = 0; i < movedItem.children.length; i++) {
-				// 		const subItem = movedItem.children[i]
-				// 		subItem.level = subItem.level + 1
-				// 		if (subItem.children && subItem.children.length > 0) {
-				// 			for (let j = 0; j < subItem.children.length; j++) {
-				// 				subItem.children[j].level = subItem.children[j].level + 1;
-				// 			}
-				// 		}
-				// 	}
-				// }
-
 				//изменение значения группы на новую группу, если она задана
 				if (newGroupId !== undefined) {
 					commit('UPDATE_TASK_VALUES', { list_id: options.list_id, task_id: movedItem.task_id, group_id: newGroupId })
@@ -589,7 +579,7 @@ export default {
 				task_id: element.task_id,
 				position: null,
 				isBefore: false,
-				parent_id: element.parent
+				parent_id: element.parent.task_id
 			}
 		}
 
@@ -623,14 +613,14 @@ export default {
 				} else {
 					/* Для элементов последующих уровней необходимо найти самый первый элемент
 						 принадлежащий искомой группе и поместить нашу задачу выше этого элемента */
-					const parent = recursiveFind(taskList, el => el.task_id === element.parent).element
-					idxTask = parent.children.findIndex(el => el.task_id == options.task_id)
-					movedItem = parent.children.splice(idxTask, 1)[0]
+					debugger
+					idxTask = element.parent.children.findIndex(el => el.task_id == options.task_id)
+					movedItem = element.parent.children.splice(idxTask, 1)[0]
 
-					idxGroup = parent.children.findIndex(el => (el.group_id === options.group_id))
+					idxGroup = element.parent.children.findIndex(el => (el.group_id === options.group_id))
 					idxGroup = (idxGroup === -1 || idxGroup === 0) ? 0 : idxGroup--
 
-					parent.children.splice(idxGroup, 0, movedItem)
+					element.parent.children.splice(idxGroup, 0, movedItem)
 				}
 
 				//изменение значения группы на новую группу

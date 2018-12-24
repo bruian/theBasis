@@ -156,11 +156,11 @@
 			:options="getDraggableOptions()"
 			@start="onDragStart"
 			@end="onDrop"
-			v-bind:data-parent="item.task_id">
+			v-bind:data-parent_id="item.task_id">
 			<div v-for="(children, index) in items"
 				:key="children.task_id"
 				v-bind:data-task_id="children.task_id"
-				v-bind:data-parent="children.parent">
+				v-bind:data-parent_id="children.parent.task_id">
 				<TaskItem :list_id="list_id" :item="children"></TaskItem>
 			</div>
 		</draggable>
@@ -324,7 +324,7 @@ export default {
 		onDrop: function(dropResult) {
 			const { newIndex, oldIndex, from, to } = dropResult
 
-			if (from.dataset.parent === to.dataset.parent) {
+			if (from.dataset.parent_id === to.dataset.parent_id) {
 				if (oldIndex === newIndex) {
 					return
 				}
@@ -333,8 +333,8 @@ export default {
 			this.$store.dispatch('REORDER_TASKS', {
 				oldIndex: oldIndex,
 				newIndex: newIndex,
-				fromParent: Number.parseInt(from.dataset.parent, 10),
-				toParent: Number.parseInt(to.dataset.parent, 10),
+				fromParent_id: Number.parseInt(from.dataset.parent_id, 10),
+				toParent_id: Number.parseInt(to.dataset.parent_id, 10),
 				list_id: this.list_id })
 			.then((res) => {
 				console.log('reordering item')

@@ -320,7 +320,7 @@ export default {
 		const taskList = activeList.list
 		const tasks = obj.data
 
-		let prevGroupId, prevParentId, prevParent
+		let prevGroupId, tempParent, tempParent_id
 		for (let i = 0; i < tasks.length; i++) {
 			if (prevGroupId !== tasks[i].group_id && tasks[i].parent === 0) {
 				let grp = findGroup(state.mainGroups, tasks[i].group_id)
@@ -350,25 +350,26 @@ export default {
 				2 - not consistently */
 			tasks[i].consistency = 0
 			//nesting level
-			tasks[i].level = 1
 
+			//ids to object link
 			if (tasks[i].parent === 0) {
+				tasks[i].parent = null
+				tasks[i].level = 1
 				activeList.offset++
 				taskList.push(tasks[i])
 			} else {
-				if (!prevParentId) {
-					if (prevParent !== tasks[i].parent) {
-						prevParent = recursiveFind(taskList, el => el.task_id === tasks[i].parent).element
-					}
+				if (!tempParent || tempParent_id !== tasks[i].parent) {
+					tempParent = recursiveFind(taskList, el => el.task_id === tasks[i].parent).element
+					tempParent_id = tempParent.task_id
 				}
 
-				if (prevParent) {
-					tasks[i].level = prevParent.level + 1
-					prevParent.children.push(tasks[i])
+				if (tempParent) {
+					tasks[i].parent = tempParent
+					tasks[i].level = tempParent.level + 1
+					tempParent.children.push(tasks[i])
 				}
 			}
 		}
-		//activeList.offset = activeList.offset + data.length
 	},
 
 	//values must contain task_id of element task_id:id
