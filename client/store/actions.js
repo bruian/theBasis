@@ -371,7 +371,8 @@ export default {
 		const taskList = activeList.list
 		if (options.fromParent_id === 0) options.fromParent_id = null
 		if (options.toParent_id === 0) options.toParent_id = null
-		//debugger
+		debugger
+		//return Promise.resolve(true)
 
 		let fromTask, toTask, fromParent, toParent, newGroupId,
 			isBefore = (options.oldIndex > options.newIndex)
@@ -417,7 +418,7 @@ export default {
 			}
 		} else {
 			toParent = recursiveFind(taskList, el => el.task_id === options.toParent_id).element
-			if (!toParent.children) {
+			if (!toParent.children || toParent.children.length === 0) {
 				toTask = null
 				newGroupId = fromTask.group_id
 			} else {
@@ -449,15 +450,15 @@ export default {
 		//при перемещении между разными родителями
 		if (toTask !== null && options.toParent_id !== options.fromParent_id) {
 			// if (fromTask.parent === toTask.task_id) { TODO: отдебажь сравнение объектов
-			debugger
-			if (fromTask.parent.task_id === toTask.task_id) {
+			//debugger
+			if (fromTask.parent !== null && fromTask.parent.task_id === toTask.task_id) {
 				isBefore = true
 			} else {
 				if (toTask.parent === null) {
 					//Если до новой позиции сразу стоит разделитель группы, то ставим на позицию выше
-					if (options.newIndex > 0 && taskList[options.newIndex - 1].isDivider) {
+					//if (options.newIndex > 0 && taskList[options.newIndex - 1].isDivider) {
 						isBefore = true
-					}
+					//}
 				} else {
 					isBefore = !(options.newIndex === toParent.children.length)
 				}
@@ -520,6 +521,8 @@ export default {
 					toParent.isSubtaskExpanded = 2
 				}
 
+				movedItem.parent = (toParent) ? toParent : null
+
 				function recalculationDepth(el, level) {
 					let res = 0
 					el.level = level
@@ -540,12 +543,35 @@ export default {
 
 					return res
 				}
+				debugger
 
-				for (let topEl = 0; topEl < taskList.length; topEl++) {
-					if (!taskList[topEl].isDivider) {
-						recalculationDepth(taskList[topEl], 1, 0)
+				let prevParent
+				if (fromParent) {
+					prevParent = fromParent
+					while(prevParent.parent) {
+						prevParent = prevParent.parent
+					}
+
+					if (prevParent) {
+						recalculationDepth(prevParent, 1, 0)
 					}
 				}
+
+				prevParent = (toParent) ? toParent : movedItem
+				while(prevParent.parent) {
+					prevParent = prevParent.parent
+				}
+
+				if (prevParent) {
+					recalculationDepth(prevParent, 1, 0)
+				} else {
+					recalculationDepth(movedItem, 1, 0)
+				}
+				// for (let topEl = 0; topEl < taskList.length; topEl++) {
+				// 	if (!taskList[topEl].isDivider) {
+				// 		recalculationDepth(taskList[topEl], 1, 0)
+				// 	}
+				// }
 
 				//изменение значения группы на новую группу, если она задана
 				if (newGroupId !== undefined) {

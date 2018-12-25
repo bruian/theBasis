@@ -160,7 +160,7 @@
 			<div v-for="(children, index) in items"
 				:key="children.task_id"
 				v-bind:data-task_id="children.task_id"
-				v-bind:data-parent_id="children.parent.task_id">
+				v-bind:data-parent_id="(children.parent) ? children.parent.task_id : 0">
 				<TaskItem :list_id="list_id" :item="children"></TaskItem>
 			</div>
 		</draggable>
@@ -247,6 +247,7 @@ export default {
 	},
 	methods: {
 		tagChange(slug, command) {
+			debugger
 			let context
 			const options = {
 				list_id: this.list_id,
@@ -281,6 +282,7 @@ export default {
 		},
 		onTagAdded(slug) {
 			if (!this.isTagsInitialized) return
+						debugger
 
 			this.tagChange(slug, 'ADD_TASK_CONTEXT')
 		},

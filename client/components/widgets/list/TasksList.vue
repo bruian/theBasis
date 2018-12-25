@@ -214,8 +214,8 @@ export default {
 				this.$store.dispatch('REORDER_TASKS', {
 					oldIndex: index,
 					newIndex: 0,
-					fromParent_id: element.parent,
-					toParent_id: toParent,
+					fromParent_id: (element.parent) ? element.parent.task_id : null,
+					toParent_id: toParent_id,
 					list_id: this.list_id
 				})
 				.then((res) => {
@@ -227,17 +227,38 @@ export default {
 			}
 		},
 		onMoveOut: function() {
+			debugger
 			const activeList = this.$store.state.listOfList.find(el => el.list_id === this.list_id)
-			if (activeList.selected) {
-				let toParent
+			if (activeList.selectedItem) {
+				let toParent,	lastParentIndex
 				const { index, element } = recursiveFind(activeList.list, el => el.isActive)
 				if (element.parent !== null) {
 					toParent = element.parent.parent
+
+					if (toParent === null) {
+						lastParentIndex = recursiveFind(activeList.list, el => el.task_id === element.parent.task_id).index
+						if (lastParentIndex < activeList.list.length) lastParentIndex++
+					} else {
+						lastParentIndex = recursiveFind(toParent.children, el => el.task_id === element.parent.task_id).index
+						// if (lastParentIndex < toParent.children.length) lastParentIndex++
+					}
+				} else {
+					return
 				}
 
-				// this.$store.dispatch('REORDER_TASKS', {
-				// 	oldIndex: index
-				// })
+				this.$store.dispatch('REORDER_TASKS', {
+					oldIndex: index,
+					newIndex: lastParentIndex,
+					fromParent_id: element.parent.task_id,
+					toParent_id: (toParent) ? toParent.task_id : 0,
+					list_id: this.list_id
+				})
+				.then((res) => {
+					console.log('move out')
+				})
+				.catch((err) => {
+					console.warn(err)
+				})
 			}
 		},
 		infiniteHandler($state) {
