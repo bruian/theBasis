@@ -38,7 +38,7 @@
 					@end="onDrop"
 					v-bind:data-parent_id="0">
 					<div v-for="(item, index) in items"
-						:key="item.id"
+						:key="item.task_id"
 						v-bind:data-task_id="item.task_id"
 						v-bind:data-parent_id="(item.parent) ? item.parent.task_id : 0">
 						<TaskItem :list_id="list_id" :item="item" ></TaskItem>
@@ -227,7 +227,7 @@ export default {
 			}
 		},
 		onMoveOut: function() {
-			debugger
+			//debugger
 			const activeList = this.$store.state.listOfList.find(el => el.list_id === this.list_id)
 			if (activeList.selectedItem) {
 				let toParent,	lastParentIndex
@@ -240,7 +240,7 @@ export default {
 						if (lastParentIndex < activeList.list.length) lastParentIndex++
 					} else {
 						lastParentIndex = recursiveFind(toParent.children, el => el.task_id === element.parent.task_id).index
-						// if (lastParentIndex < toParent.children.length) lastParentIndex++
+						if (lastParentIndex < toParent.children.length) lastParentIndex++
 					}
 				} else {
 					return
@@ -251,6 +251,7 @@ export default {
 					newIndex: lastParentIndex,
 					fromParent_id: element.parent.task_id,
 					toParent_id: (toParent) ? toParent.task_id : 0,
+					move_out: true,
 					list_id: this.list_id
 				})
 				.then((res) => {

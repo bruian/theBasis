@@ -320,14 +320,16 @@ export default {
 		const taskList = activeList.list
 		const tasks = obj.data
 
-		let prevGroupId, tempParent, tempParent_id
+		let prevGroupId, tempParent, tempParent_id, divId = 0
 		for (let i = 0; i < tasks.length; i++) {
 			if (prevGroupId !== tasks[i].group_id && tasks[i].parent === 0) {
 				let grp = findGroup(state.mainGroups, tasks[i].group_id)
 				taskList.push({ isDivider: true,
+					task_id: 'div'+divId,
 					group_id: tasks[i].group_id,
 					name: grp.name,
 					isActive: false })
+				divId++
 				prevGroupId = tasks[i].group_id
 			}
 

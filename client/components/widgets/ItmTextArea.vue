@@ -113,8 +113,11 @@ export default {
 	},
 	watch: {
 		value () {
-			this.updateVal()
-			this.changeButton = true
+			debugger
+			if (this.val !== this.value) {
+				this.updateVal()
+				this.changeButton = true
+			}
 		},
 		val (val) {
 			this.$nextTick(this.resize)

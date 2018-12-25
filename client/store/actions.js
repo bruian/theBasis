@@ -365,15 +365,23 @@ export default {
 		})
 	},
 
-	/** options = {	oldIndex,	newIndex,	fromParent,	toParent,	list_id } */
+	/** Перемещение элементов в списке list принадлежащему множеству списков listOfList по list_id
+	 * обязательные входящие опции: options = {	oldIndex,	newIndex,	fromParent,	toParent,	list_id }
+	 * Эта action - функция меняет позицию на клиенте и на сервере по различным правилам:
+	 * - на клиенте список древовидной структуры, а на сервере плоский - поэтому индексация разная
+	 * - на клиенте в списке присутствуют dividers, которые делят список на группы, на сервере нет
+	 * dividers индексация не совпадает, только порядок следования в разрезе группы
+	 * - порядок следования на сервере задается следованием групп в порядке возрастания id-группы
+	 * (т.е. порядка создания) и соотношением чисел p/q которое задает порядок внутри этой группы
+	 * - клиент ориентирует положение элемента относительно idx, сервер относительно id элементов
+	 * */
 	REORDER_TASKS: ({ commit, state }, options) => {
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		const taskList = activeList.list
 		if (options.fromParent_id === 0) options.fromParent_id = null
 		if (options.toParent_id === 0) options.toParent_id = null
-		debugger
-		//return Promise.resolve(true)
 
+		//debugger
 		let fromTask, toTask, fromParent, toParent, newGroupId,
 			isBefore = (options.oldIndex > options.newIndex)
 
@@ -446,11 +454,13 @@ export default {
 			}
 		}
 
-		//Определим куда переместить задачау (до или после)
-		//при перемещении между разными родителями
+		//Определим куда переместить задачау (до или после) при перемещении между разными родителями
 		if (toTask !== null && options.toParent_id !== options.fromParent_id) {
-			// if (fromTask.parent === toTask.task_id) { TODO: отдебажь сравнение объектов
-			//debugger
+			if (fromTask.parent === toTask) {
+				//TODO: отдебажь сравнение объектов
+				debugger
+			}
+
 			if (fromTask.parent !== null && fromTask.parent.task_id === toTask.task_id) {
 				isBefore = true
 			} else {
@@ -465,10 +475,44 @@ export default {
 			}
 		}
 
+		/* Особое поведение при перемещение из родителя при помощи кнопки на панели инструментов
+			это обусловлено тем, что при нажатии кнопки не задается новая позиция элемента, как при
+			перетаскивании с помощью drag&drop, она всегда по-умолчанию сразу следует после родительского
+			элемента. В этом случае группы, у новой позиции и родителя старой позиции, должны совпадать.
+			А значит при несовпадении групп, у перемещаемого элемента меняется группа на группу рядом
+			стоящего предыдущего элемента, что бы не нарушался порядок следования. Если же сохранять группу,
+			то положение нового элемента должно будет соответствовать положению dividers в списке, а это
+			может быть положение вне поля видимости списка и элемент потеряется из виду.
+		*/
+		if ('move_out' in options && options.move_out === true) {
+			debugger
+			if (fromTask.parent && fromTask.parent.group_id !== fromTask.group_id) {
+				toTask = fromTask.parent
+				isBefore = false
+				newGroupId = toTask.group_id
+			}
+		}
+
+		/* Серверу всегда необходимо передавать в запрос id группы новой позиции элемента */
 		if (newGroupId === undefined) {
 			newGroupId = toTask.group_id
 		}
 
+		/* api сервера размещает элементы в списке по следующим правилам:
+			Все атрибуты обязательны
+			а) Необходимо указать <group_id>, id группы относительно которой позиционируется элемент
+			б) Необходимо указать <task_id>, id перемещаемого элемента
+			в) Необходимо указать <position>, id элемента на который помещается перемещаемый элемент,
+				значения: null - предполагает начало списка при isBefore = false
+									null - предполагает конец списка при isBefore = true
+									id - предполагает id элемента относительно которого будет позиционироваться
+									новый элемент
+			г) Необходимо указать <isBefore>, позиционирование относительно <position>
+				значения: true - до элемента (before)
+									false - после элемента (after)
+			д) Необходимо указать <parent_id>, id родителя новой позиции перемещаемого элемента,
+				если верхний уровень то значение 0
+		*/
 		const fetchQuery = {
 			url: 'tasks/order',
 			method: 'PUT',
@@ -501,7 +545,7 @@ export default {
 					taskList.splice((options.newIndex === 0) ? 1 : options.newIndex, 0, movedItem)
 				} else {
 					if (!toParent.children) {
-						Vue.set(toParent, 'children', new Array)
+							Vue.set(toParent, 'children', new Array)
 						Vue.set(toParent.children, 0, movedItem)
 					} else if (toParent.children.length === options.newIndex) {
 						if (toParent.children.length > 0) {

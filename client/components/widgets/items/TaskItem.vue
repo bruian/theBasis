@@ -247,7 +247,6 @@ export default {
 	},
 	methods: {
 		tagChange(slug, command) {
-			debugger
 			let context
 			const options = {
 				list_id: this.list_id,
@@ -282,7 +281,7 @@ export default {
 		},
 		onTagAdded(slug) {
 			if (!this.isTagsInitialized) return
-						debugger
+			//debugger
 
 			this.tagChange(slug, 'ADD_TASK_CONTEXT')
 		},
@@ -303,6 +302,7 @@ export default {
 			}
 		},
 		onNameChange: function(text) {
+			debugger
 			this.$store.dispatch('UPDATE_TASK_VALUES', {
 				list_id: this.list_id,
 				task_id: this.item.task_id,
