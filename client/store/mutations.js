@@ -313,7 +313,6 @@ export default {
 
 //*** Tasks mutations */
 	SET_TASKS: (state, obj) => {
-		//debugger
 		setApiStatus(state, 'SET_TASKS', null)
 
 		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
@@ -368,7 +367,12 @@ export default {
 				if (tempParent) {
 					tasks[i].parent = tempParent
 					tasks[i].level = tempParent.level + 1
-					tempParent.children.push(tasks[i])
+					let existElement = tempParent.children.findIndex(el => el.task_id === tasks[i].task_id)
+					if (existElement === -1) {
+						tempParent.children.push(tasks[i])
+					} else {
+						Vue.set(tempParent.children, existElement, tasks[i])
+					}
 				}
 			}
 		}

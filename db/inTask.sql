@@ -333,9 +333,9 @@ ORDER BY (tl.p::float8/tl.q);
 /*main_user, to_group_id, task_id, to_task_id, isBefore, to_parent*/
 --SELECT reorder_task(1, 1, 4, null, FALSE, 0);
 --SELECT reorder_task(1, 50, 6, 7, FALSE, 1);
---SELECT reorder_task(1, 50, 6, null, FALSE, 5);
+--SELECT reorder_task(1, 50, 5, 7, FALSE, 1);
 --UPDATE tasks_list SET group_id = 1 WHERE task_id = 4;
-select * from tasks
+select * from tasks_list tl ORDER BY tl.group_id, (tl.p::float8/tl.q)
 /* tasks by parent id getTasks ***
 CREATE TEMP TABLE temp_task ON COMMIT DROP AS WITH RECURSIVE main_visible_groups AS (
 SELECT group_id FROM groups_list AS gl
@@ -464,7 +464,6 @@ BEGIN
 	RETURN inner_context_id;
   END;
 $f$;*/
-
 
 /* ADD context to task ***
 CREATE OR REPLACE FUNCTION add_task_context(

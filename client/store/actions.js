@@ -381,7 +381,6 @@ export default {
 		if (options.fromParent_id === 0) options.fromParent_id = null
 		if (options.toParent_id === 0) options.toParent_id = null
 
-		//debugger
 		let fromTask, toTask, fromParent, toParent, newGroupId,
 			isBefore = (options.oldIndex > options.newIndex)
 
@@ -445,10 +444,14 @@ export default {
 			}
 		}
 
+		/* Проверка на перемещение элемента внутри родителя за пределы своей группы
+			т.к. вложенные элементы не содержат divider разделение по группам идёт только
+			в порядке сортировки элементов */
 		if (toTask !== null) {
 			if ( ((fromTask.parent !== null) && (toTask.parent !== null)) &&
 		  			(fromTask.parent === toTask.parent) ) {
 				if (fromTask.group_id !== toTask.group_id) {
+					fromTask.consistency = 0
 					return Promise.resolve(false)
 				}
 			}
@@ -456,12 +459,7 @@ export default {
 
 		//Определим куда переместить задачау (до или после) при перемещении между разными родителями
 		if (toTask !== null && options.toParent_id !== options.fromParent_id) {
-			if (fromTask.parent === toTask) {
-				//TODO: отдебажь сравнение объектов
-				debugger
-			}
-
-			if (fromTask.parent !== null && fromTask.parent.task_id === toTask.task_id) {
+			if (fromTask.parent !== null && fromTask.parent === toTask) {
 				isBefore = true
 			} else {
 				if (toTask.parent === null) {
@@ -485,11 +483,12 @@ export default {
 			может быть положение вне поля видимости списка и элемент потеряется из виду.
 		*/
 		if ('move_out' in options && options.move_out === true) {
-			debugger
-			if (fromTask.parent && fromTask.parent.group_id !== fromTask.group_id) {
+			// if (fromTask.parent && fromTask.parent.group_id !== fromTask.group_id) {
+			// }
+			if (fromTask.parent) {
 				toTask = fromTask.parent
 				isBefore = false
-				newGroupId = toTask.group_id
+				newGroupId = fromTask.parent.group_id
 			}
 		}
 
@@ -545,7 +544,7 @@ export default {
 					taskList.splice((options.newIndex === 0) ? 1 : options.newIndex, 0, movedItem)
 				} else {
 					if (!toParent.children) {
-							Vue.set(toParent, 'children', new Array)
+						Vue.set(toParent, 'children', new Array)
 						Vue.set(toParent.children, 0, movedItem)
 					} else if (toParent.children.length === options.newIndex) {
 						if (toParent.children.length > 0) {
@@ -554,7 +553,7 @@ export default {
 							toParent.children.splice(0, 0, movedItem)
 						}
 					} else {
-						if (toParent.children[options.newIndex].group_id === movedItem.group_id) {
+						if (toParent.children[(options.newIndex > 0) ? options.newIndex - 1 : options.newIndex].group_id === movedItem.group_id) {
 							toParent.children.splice(options.newIndex, 0, movedItem)
 						} else {
 							toParent.children.splice(0, 0, movedItem)
@@ -587,35 +586,30 @@ export default {
 
 					return res
 				}
-				debugger
+				//debugger
 
-				let prevParent
+				let tempParent, tempParentTwo
 				if (fromParent) {
-					prevParent = fromParent
-					while(prevParent.parent) {
-						prevParent = prevParent.parent
+					tempParent = fromParent
+					while(tempParent.parent) {
+						tempParent = tempParent.parent
 					}
 
-					if (prevParent) {
-						recalculationDepth(prevParent, 1, 0)
+					if (tempParent) {
+						recalculationDepth(tempParent, 1, 0)
 					}
 				}
 
-				prevParent = (toParent) ? toParent : movedItem
-				while(prevParent.parent) {
-					prevParent = prevParent.parent
+				tempParentTwo = (toParent) ? toParent : movedItem
+				while(tempParentTwo.parent) {
+					tempParentTwo = tempParentTwo.parent
 				}
 
-				if (prevParent) {
-					recalculationDepth(prevParent, 1, 0)
+				if (tempParentTwo) {
+					recalculationDepth(tempParentTwo, 1, 0)
 				} else {
 					recalculationDepth(movedItem, 1, 0)
 				}
-				// for (let topEl = 0; topEl < taskList.length; topEl++) {
-				// 	if (!taskList[topEl].isDivider) {
-				// 		recalculationDepth(taskList[topEl], 1, 0)
-				// 	}
-				// }
 
 				//изменение значения группы на новую группу, если она задана
 				if (newGroupId !== undefined) {
@@ -649,7 +643,7 @@ export default {
 				task_id: element.task_id,
 				position: null,
 				isBefore: false,
-				parent_id: element.parent.task_id
+				parent_id: (element.parent) ? element.parent.task_id : 0
 			}
 		}
 
@@ -683,7 +677,7 @@ export default {
 				} else {
 					/* Для элементов последующих уровней необходимо найти самый первый элемент
 						 принадлежащий искомой группе и поместить нашу задачу выше этого элемента */
-					debugger
+					//debugger
 					idxTask = element.parent.children.findIndex(el => el.task_id == options.task_id)
 					movedItem = element.parent.children.splice(idxTask, 1)[0]
 

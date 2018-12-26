@@ -211,19 +211,25 @@ export default {
 					}
 				}
 
-				this.$store.dispatch('REORDER_TASKS', {
+				const options = {
 					oldIndex: index,
 					newIndex: 0,
 					fromParent_id: (element.parent) ? element.parent.task_id : null,
 					toParent_id: toParent_id,
 					list_id: this.list_id
-				})
-				.then((res) => {
-					console.log('move in')
-				})
-				.catch((err) => {
-					console.warn(err)
-				})
+				}
+
+				if (Array.isArray(element.children) && element.children.length > 0) {
+					this.$store.dispatch('REORDER_TASKS', options)
+				} else {
+					this.$store.dispatch('FETCH_TASKS', { list_id: this.list_id, parent_id: toParent_id })
+					.then((count) => {
+						this.$store.dispatch('REORDER_TASKS', options)
+					})
+					.catch((err) => {
+						console.warn(err)
+					})
+				}
 			}
 		},
 		onMoveOut: function() {
