@@ -302,7 +302,7 @@ export default {
 			}
 		},
 		onNameChange: function(text) {
-			debugger
+			//debugger
 			this.$store.dispatch('UPDATE_TASK_VALUES', {
 				list_id: this.list_id,
 				task_id: this.item.task_id,

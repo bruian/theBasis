@@ -13,10 +13,10 @@
 			<v-btn small icon v-show="isAllowedOperation & 2">
 				<v-icon color="primary">delete</v-icon>
 			</v-btn>
-			<v-btn small icon v-show="isAllowedOperation & 4">
+			<v-btn small icon v-show="isAllowedOperation & 4" @click="onMove">
 				<v-icon color="primary">arrow_upward</v-icon>
 			</v-btn>
-			<v-btn small icon v-show="isAllowedOperation & 8">
+			<v-btn small icon v-show="isAllowedOperation & 8" @click="onMove(false)">
 				<v-icon color="primary">arrow_downward</v-icon>
 			</v-btn>
 			<v-btn small icon v-show="isAllowedOperation & 16" @click="onMoveIn">
@@ -255,7 +255,7 @@ export default {
 				this.$store.dispatch('REORDER_TASKS', {
 					oldIndex: index,
 					newIndex: lastParentIndex,
-					fromParent_id: element.parent.task_id,
+					fromParent_id: (element.parent) ? element.parent.task_id : 0,
 					toParent_id: (toParent) ? toParent.task_id : 0,
 					move_out: true,
 					list_id: this.list_id
@@ -265,6 +265,79 @@ export default {
 				})
 				.catch((err) => {
 					console.warn(err)
+				})
+			}
+		},
+		onMove: function(UP = true) {
+			const activeList = this.$store.state.listOfList.find(el => el.list_id === this.list_id)
+			if (activeList.selectedItem) {
+				let newIndex
+				const { index, element } = recursiveFind(activeList.list, el => el.isActive)
+debugger
+				/* Выбор новой позиции для перемещаемого элемента, перемещаем вверх/вниз, из-за наличия
+					divider на первом уровне, логика для первого и вложенного уровней различна */
+				newIndex = index
+				if (element.parent === null) {
+					/* divider в списке является разделителем групп, если наткнулись на разделитель выше,
+						значит достигнуто начало списка и элемент по кругу необходимо переместить в конец
+						списка, для этого прокрутим список назад до конца или следующего разделителя */
+					if (UP && index > 0 && activeList.list[index - 1].isDivider) {
+						/* бежим вниз до границы */
+						for (let i = index; i < activeList.list.length; i++) {
+							if (activeList.list[i].isDivider) break
+
+							newIndex = i
+						}
+					} else if ( (!UP) && ( (index === activeList.list.length)
+														  || (index < activeList.list.length && activeList.list[index + 1].isDivider))) {
+						/* перемещаемся на позицию ниже, если достигли конца списка или достигли divider
+							необходимо переместить элемент по кругу в начало divider этой группы
+							бежим вверх по списку, пока не обнаружим начало */
+						for (let i = index; i >= 0; i--) {
+							if (activeList.list[i].isDivider) break
+
+							newIndex = i
+						}
+					} else {
+						/* свободно двигаемся на позицию выше / ниже*/
+						newIndex = (UP) ? index - 1 : index + 1
+					}
+				} else {
+					/* вложенные уровни не содержат divider поэтому элементы сортируются в порядке группы
+						иная группа у следующего элемента свидетельствует об окончании пределов перемещения
+						текущего элемента */
+					if ( (UP)	&& ( (index === 0)
+											|| (element.parent.children.length > 0 && element.parent.children[index - 1].group_id !== element.group_id))) {
+						/* бежим вниз до границы */
+						for (let i = index; i < element.parent.children.length; i++) {
+							if (element.parent.children[i].group_id !== element.group_id) break
+
+							newIndex = i
+						}
+					} else if ( (!UP) && ( (index === element.parent.children.length)
+															|| (index < element.parent.children.length && element.parent.children[index + 1].group_id !== element.group_id))) {
+						/* бежим вверх пока не обнаружим начало */
+						for (let i = index; i >= 0; i--) {
+							if (element.parent.children[i].group_id !== element.group_id) break
+
+							newIndex = i
+						}
+					} else {
+						/* свободно двигаемся на позицию выше / ниже */
+						newIndex = (UP) ? index - 1 : index + 1
+					}
+				}
+
+				/* нет смысла перемещать элемент у которого не изменилась позиция */
+				if (newIndex === index) return
+
+				/* передаем хранилищу смещение элемента */
+				this.$store.dispatch('REORDER_TASKS', {
+					oldIndex: index,
+					newIndex: newIndex,
+					fromParent_id: (element.parent) ? element.parent.task_id : 0,
+					toParent_id: (element.parent) ? element.parent.task_id : 0,
+					list_id: this.list_id
 				})
 			}
 		},

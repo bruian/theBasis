@@ -113,7 +113,6 @@ export default {
 	},
 	watch: {
 		value () {
-			debugger
 			if (this.val !== this.value) {
 				this.updateVal()
 				this.changeButton = true
