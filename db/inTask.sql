@@ -469,6 +469,68 @@ BEGIN
 $f$;
 */
 
+/* Delete task in tasks table, and add it in tasks_list table 
+	0 - Group for main user not found
+   -1 - No rights to read the group
+   -2 - No rights to read the task by the ID
+   -3 - No rights to delete the task in the group
+   -4 - Can not delete. Task have subelement
+CREATE OR REPLACE FUNCTION delete_task(
+	main_user_id INTEGER,
+	in_task_id INTEGER,
+	in_group_id INTEGER,
+	isOnlyFromList BOOL)
+RETURNS INTEGER
+LANGUAGE plpgsql
+VOLATILE CALLED ON NULL INPUT
+AS $f$
+DECLARE
+	main_user_type INTEGER;
+	main_group_reading INTEGER;
+	main_task_reading INTEGER;
+	main_task_deleting INTEGER;
+	countchild INTEGER;
+BEGIN
+	SELECT gl.user_type, g.reading, g.task_deleting, g.task_reading 
+	  INTO main_user_type, main_group_reading, main_task_deleting, main_task_reading FROM groups_list AS gl
+	LEFT JOIN groups AS g ON gl.group_id = g.id
+	WHERE (gl.user_id = main_user_id OR gl.user_id = 0) AND (gl.group_id = in_group_id);
+
+	IF NOT FOUND THEN
+	  RETURN 0;
+	END IF;
+
+	IF main_group_reading < main_user_type THEN
+	  RETURN -1;
+	END IF;
+
+	IF main_task_reading < main_user_type THEN
+	  RETURN -2;
+	END IF;
+
+	IF main_task_deleting < main_user_type THEN
+	  RETURN -3;
+	END IF;	
+
+	SELECT count(id) INTO countchild FROM tasks WHERE parent = in_task_id;
+	IF countchild > 0 THEN
+	  RETURN -4;
+	END IF;
+
+	IF isOnlyFromList = TRUE THEN
+	  DELETE FROM tasks_list WHERE (task_id = in_task_id) AND (group_id = in_group_id);
+	  UPDATE tasks SET parent = 0 WHERE (id = in_task_id);
+	ELSE
+	  DELETE FROM tasks_list WHERE (task_id = in_task_id);
+	  DELETE FROM tasks WHERE (id = in_task_id);
+	  DELETE FROM context_list WHERE (task_id = in_task_id);
+	END IF;
+
+	RETURN 1;
+  END;
+$f$;
+*/
+
 --SELECT add_task_context(1, 1, 3, '');
 --SELECT delete_task_context(1, 1, 7);
 --SELECT * FROM context;

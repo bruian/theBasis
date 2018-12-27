@@ -345,7 +345,9 @@ export default {
 			this.$store.dispatch('CREATE_ELEMENT', { list_id: this.list_id, isSubelement, isStart: true })
 		},
 		onDeleteItem() {
-			this.$store.dispatch('DELETE_ELEMENT', { list_id: this.list_id })
+			this.$store.dispatch('DELETE_ELEMENT', { list_id: this.list_id }).catch(err => {
+				console.log(err)
+			})
 		},
 		infiniteHandler($state) {
 			if (this.countEl == 0) {

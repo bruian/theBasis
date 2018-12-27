@@ -257,6 +257,21 @@ router.post('/tasks', (req, res) => {
 	})
 })
 
+router.delete('/tasks', (req, res) => {
+	const condition = {
+		mainUser_id: req.auth.userId,
+		task_id: ('task_id' in req.query) ? req.query.task_id : null,
+		group_id: ('group_id' in req.query) ? req.query.group_id : null
+	}
+
+	TaskController.deleteTask(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		log.debug(`/tasks:delete |-> id:${condition.task_id} | for user: ${condition.mainUser_id}`)
+		return res.json({ data: data })
+	})
+})
+
 router.put('/tasks', (req, res) => {
 	const condition = {
 		mainUser_id: req.auth.userId,

@@ -427,7 +427,46 @@ export default {
 	 * обязательные входящие опции: options = { list_id:string }
 	 */
 	DELETE_ELEMENT: ({ commit, state }, options) => {
-		return Promise.resolve(true)
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		const thisList = activeList.list
+
+		let task_id = null, group_id = null
+
+		const activeElement = recursiveFind(thisList, el => el.isActive).element
+		if (activeElement) {
+			if (activeElement.havechild) {
+				return Promise.reject('I can not delete an element containing other elements')
+			}
+
+			task_id = activeElement.task_id
+			group_id = activeElement.group_id
+		} else {
+			return Promise.resolve('No item selected for deletion')
+		}
+
+		const fetchQuery = {
+			url: 'tasks',
+			method: 'DELETE',
+			params: {
+				task_id: task_id,
+				group_id: group_id
+			}
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(false)
+			} else {
+				commit('DELETE_TASK', { list_id: options.list_id, task_id: task_id })
+				return Promise.resolve(true)
+			}
+		})
+		.catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
 	},
 
 	/** Перемещение элементов в списке list принадлежащему множеству списков listOfList по list_id

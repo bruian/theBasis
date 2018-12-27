@@ -398,6 +398,77 @@ async function addTask(condition, done) {
 	}
 }
 
+async function deleteTask(condition, done) {
+	let client,
+			onlyFromList = true,
+			queryText,
+			params,
+			errMessage = ''
+
+	if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
+		return done(new PgError('For database operations, a main user token is required'))
+	}
+
+	if (isNumeric(condition.task_id) && condition.task_id >= 0) {
+	} else {
+		return done(new PgError('For delete task need: <task_id> attribut >= 0'))
+	}
+
+	if (isNumeric(condition.group_id) && condition.group_id > 0) {
+	} else {
+		return done(new PgError('For delete task need: <group_id> attribut >= 0'))
+	}
+
+	queryText = `SELECT delete_task($1, $2, $3, $4);`
+	params = [condition.mainUser_id, condition.task_id, condition.group_id, onlyFromList]
+
+	client = await pg.pool.connect()
+
+	try {
+		await client.query('BEGIN')
+
+		const { rowCount, rows } = await client.query(queryText, params)
+
+		if (rowCount === 0) {
+			await client.query('ROLLBACK')
+			return done({ message: `No tasks with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
+		}
+
+		let result = rows[0].delete_task
+		if (result <= 0) {
+			switch(result) {
+				case 0:
+					errMessage = 'Group for main user not found'
+					break
+				case -1:
+					errMessage = 'No rights to read the group'
+					break
+				case -2:
+					errMessage = 'No rights to read the task by the ID'
+					break
+				case -3:
+					errMessage = 'No rights to delete the task from the group'
+					break
+				case -4:
+					errMessage = 'Can not delete. Task have subelement'
+					break
+			}
+
+			await client.query('ROLLBACK')
+			return done({ message: errMessage, status: 400, code: 'no_datas', name: 'ApiMessage' })
+		}
+
+		await client.query('commit')
+
+		return done(null, true)
+	} catch (error) {
+		await client.query('ROLLBACK')
+		return done(new PgError(error))
+	} finally {
+		client.release()
+	}
+}
+
 module.exports = {
 	_create,
 	_read,
@@ -406,5 +477,6 @@ module.exports = {
 	getTasks,
 	updatePosition,
 	updateTask,
-	addTask
+	addTask,
+	deleteTask
 }

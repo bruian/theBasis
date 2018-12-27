@@ -405,17 +405,32 @@ export default {
 		}
 	},
 
-	//values must contain task_id of element task_id:id
-	UPDATE_TASK_VALUES: (state, obj) => {
-		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
-		let taskList = activeList.list
-		const element = recursiveFind(taskList, el => el.task_id === obj.task_id).element
+	DELETE_TASK: (state, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		const taskList = activeList.list
+		const { index, element } = recursiveFind(taskList, el => el.task_id === options.task_id)
 
-		for (const key in obj) {
+		if (element.parent === null) {
+			taskList.splice(index, 1)
+		} else {
+			if (element.parent.children && element.parent.children.length > 0) {
+				element.parent.havechild--
+				element.parent.children.splice(index, 1)
+			}
+		}
+	},
+
+	//values must contain task_id of element task_id:id
+	UPDATE_TASK_VALUES: (state, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		let taskList = activeList.list
+		const element = recursiveFind(taskList, el => el.task_id === options.task_id).element
+
+		for (const key in options) {
 			if (key === 'task_id' || key === 'list_id') continue
 
 			if (element.hasOwnProperty(key)) {
-				element[key] = obj[key]
+				element[key] = options[key]
 			}
 		}
 	},
