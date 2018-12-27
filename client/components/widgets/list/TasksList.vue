@@ -4,16 +4,16 @@
 			<v-icon style="cursor: pointer;"
 				v-bind:color="selectedList"
 				@click="onSelectList">bookmark</v-icon>
-			<v-btn small icon>
+			<v-btn small icon @click="onAddItem(false)">
 				<v-icon color="primary">add_circle</v-icon>
 			</v-btn>
-			<v-btn small icon v-show="isAllowedOperation & 1">
+			<v-btn small icon v-show="isAllowedOperation & 1" @click="onAddItem(true)">
 				<v-icon color="primary">add_circle_outline</v-icon>
 			</v-btn>
-			<v-btn small icon v-show="isAllowedOperation & 2">
+			<v-btn small icon v-show="isAllowedOperation & 2" @click="onDeleteItem">
 				<v-icon color="primary">delete</v-icon>
 			</v-btn>
-			<v-btn small icon v-show="isAllowedOperation & 4" @click="onMove">
+			<v-btn small icon v-show="isAllowedOperation & 4" @click="onMove(true)">
 				<v-icon color="primary">arrow_upward</v-icon>
 			</v-btn>
 			<v-btn small icon v-show="isAllowedOperation & 8" @click="onMove(false)">
@@ -273,7 +273,7 @@ export default {
 			if (activeList.selectedItem) {
 				let newIndex
 				const { index, element } = recursiveFind(activeList.list, el => el.isActive)
-debugger
+
 				/* Выбор новой позиции для перемещаемого элемента, перемещаем вверх/вниз, из-за наличия
 					divider на первом уровне, логика для первого и вложенного уровней различна */
 				newIndex = index
@@ -340,6 +340,12 @@ debugger
 					list_id: this.list_id
 				})
 			}
+		},
+		onAddItem(isSubelement = false) {
+			this.$store.dispatch('CREATE_ELEMENT', { list_id: this.list_id, isSubelement, isStart: true })
+		},
+		onDeleteItem() {
+			this.$store.dispatch('DELETE_ELEMENT', { list_id: this.list_id })
 		},
 		infiniteHandler($state) {
 			if (this.countEl == 0) {

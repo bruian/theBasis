@@ -335,7 +335,7 @@ ORDER BY (tl.p::float8/tl.q);
 --SELECT reorder_task(1, 50, 6, 7, FALSE, 1);
 --SELECT reorder_task(1, 50, 5, 7, FALSE, 1);
 --UPDATE tasks_list SET group_id = 1 WHERE task_id = 4;
-select * from tasks_list tl ORDER BY tl.group_id, (tl.p::float8/tl.q)
+
 /* tasks by parent id getTasks ***
 CREATE TEMP TABLE temp_task ON COMMIT DROP AS WITH RECURSIVE main_visible_groups AS (
 SELECT group_id FROM groups_list AS gl
@@ -365,6 +365,8 @@ LEFT JOIN context AS c ON c.id = cl.context_id
 LEFT JOIN context_setting AS cs ON cs.context_id = cl.context_id AND cs.user_id = 1
 WHERE cl.task_id in (select task_id from temp_task);
 */
+
+select * from tasks_list tl ORDER BY tl.group_id, (tl.p::float8/tl.q);
 
 /* Context by user ***
 WITH main_visible_groups AS (
@@ -396,11 +398,82 @@ SELECT tl.task_id FROM groups_list AS gl
 UPDATE tasks SET name = 'Hello people' WHERE id IN (SELECT * FROM main_visible_task);
 */
 
+
+/* Create new task in tasks table, and add it in tasks_list table 
+	0 - Group for main user not found
+   -1 - No rights to read the group
+   -2 - No rights to read the task by the ID
+   -3 - No rights to create the task in the group
+
+SELECT add_task(1, 1, 0);
+SELECT * from tasks;
+SELECT * from tasks_list;
+DELETE FROM tasks WHERE id = 9;
+DELETE FROM tasks_list where task_id = 9;
+   
+CREATE OR REPLACE FUNCTION add_task(
+	main_user_id INTEGER,
+	in_group_id INTEGER,
+	in_parent_id INTEGER,
+	isStart BOOL)
+RETURNS INTEGER
+LANGUAGE plpgsql
+VOLATILE CALLED ON NULL INPUT
+AS $f$
+DECLARE
+	main_user_type INTEGER;
+	main_group_reading INTEGER;
+	main_task_reading INTEGER;
+	main_task_creating INTEGER;
+	task_id INTEGER;
+	tid INTEGER;
+	parent INTEGER;
+BEGIN
+	SELECT gl.user_type, g.reading, g.task_creating, g.task_reading 
+	  INTO main_user_type, main_group_reading, main_task_creating, main_task_reading FROM groups_list AS gl
+	LEFT JOIN groups AS g ON gl.group_id = g.id
+	WHERE (gl.user_id = main_user_id OR gl.user_id = 0) AND (gl.group_id = in_group_id);
+
+	IF NOT FOUND THEN
+	  RETURN 0;
+	END IF;
+
+	IF main_group_reading < main_user_type THEN
+	  RETURN -1;
+	END IF;
+
+	IF main_task_reading < main_user_type THEN
+	  RETURN -2;
+	END IF;
+
+	IF main_task_creating < main_user_type THEN
+	  RETURN -3;
+	END IF;	
+
+	SELECT count(id) INTO tid FROM tasks WHERE (owner = main_user_type);
+	tid := tid + 1;
+
+	INSERT INTO tasks (id, tid, name, owner, status, duration, note, parent) 
+		VALUES (DEFAULT, tid, '', main_user_type, 0, 0, '', in_parent_id)
+		RETURNING id INTO task_id;
+
+	parent := in_parent_id;
+	IF in_parent_id = 0 THEN
+		parent := null;
+	END IF;
+
+	PERFORM task_place_list(in_group_id, task_id, parent, NOT isStart);
+
+	RETURN task_id;
+  END;
+$f$;
+*/
+
 --SELECT add_task_context(1, 1, 3, '');
 --SELECT delete_task_context(1, 1, 7);
-SELECT * FROM context;
-SELECT * FROM context_setting;
-SELECT * FROM context_list;
+--SELECT * FROM context;
+--SELECT * FROM context_setting;
+--SELECT * FROM context_list;
 /*
 DELETE FROM context WHERE (id = 41);
 DELETE FROM context_list WHERE (context_id = 41);

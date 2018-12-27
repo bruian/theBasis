@@ -312,23 +312,28 @@ export default {
 	},
 
 //*** Tasks mutations */
-	SET_TASKS: (state, obj) => {
+	SET_TASKS: (state, options) => {
 		setApiStatus(state, 'SET_TASKS', null)
 
-		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		const taskList = activeList.list
-		const tasks = obj.data
+		const tasks = options.data
 
-		let prevGroupId, tempParent, tempParent_id, divId = 0
+		let prevGroupId, tempParent, tempParent_id, existElement = -1
 		for (let i = 0; i < tasks.length; i++) {
 			if (prevGroupId !== tasks[i].group_id && tasks[i].parent === 0) {
 				let grp = findGroup(state.mainGroups, tasks[i].group_id)
-				taskList.push({ isDivider: true,
-					task_id: 'div'+divId,
-					group_id: tasks[i].group_id,
-					name: grp.name,
-					isActive: false })
-				divId++
+				let divId = 'div' + grp.id
+
+				existElement = taskList.findIndex(el => el.task_id === divId)
+				if (existElement === -1) {
+					taskList.push({ isDivider: true,
+						task_id: divId,
+						group_id: tasks[i].group_id,
+						name: grp.name,
+						isActive: false })
+				}
+
 				prevGroupId = tasks[i].group_id
 			}
 
@@ -356,8 +361,18 @@ export default {
 			if (tasks[i].parent === 0) {
 				tasks[i].parent = null
 				tasks[i].level = 1
-				activeList.offset++
-				taskList.push(tasks[i])
+
+				existElement = taskList.findIndex(el => el.task_id === tasks[i].task_id)
+				if (existElement === -1) {
+					activeList.offset++
+					if ('isStart' in options && options.isStart && taskList.length > 1) {
+						taskList.splice(1, 0, tasks[i])
+					} else {
+						taskList.push(tasks[i])
+					}
+				} else {
+					Vue.set(taskList, existElement, tasks[i])
+				}
 			} else {
 				if (!tempParent || tempParent_id !== tasks[i].parent) {
 					tempParent = recursiveFind(taskList, el => el.task_id === tasks[i].parent).element
@@ -367,11 +382,23 @@ export default {
 				if (tempParent) {
 					tasks[i].parent = tempParent
 					tasks[i].level = tempParent.level + 1
-					let existElement = tempParent.children.findIndex(el => el.task_id === tasks[i].task_id)
-					if (existElement === -1) {
-						tempParent.children.push(tasks[i])
+
+					if (!tempParent.children) {
+						tempParent.havechild++
+
+						Vue.set(tempParent, 'children', new Array)
+						Vue.set(tempParent.children, 0, tasks[i])
 					} else {
-						Vue.set(tempParent.children, existElement, tasks[i])
+						existElement = tempParent.children.findIndex(el => el.task_id === tasks[i].task_id)
+						if (existElement === -1) {
+							if ('isStart' in options && options.isStart && tempParent.children.length > 1) {
+								tempParent.children.splice(1, 0, tasks[i])
+							} else {
+								tempParent.children.push(tasks[i])
+							}
+						} else {
+							Vue.set(tempParent.children, existElement, tasks[i])
+						}
 					}
 				}
 			}

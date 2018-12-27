@@ -179,9 +179,8 @@ router.get('/contexts', (req, res) => {
 	ContextController.getContexts(condition, (err, data) => {
 		if (err) return res.json(err)
 
-		log.debug(`/contexts:return |-> `)
 		const ids = data.map((el) => el.context_id).toString()
-		console.log(ids)
+		log.debug(`/contexts:get |-> task_id:${condition.task_id} | offset:${condition.offset} | limit:${condition.limit} | for user:${condition.mainUser_id} | elements:[${ids}]`)
 
 		return res.json({ data: data, packet: condition.packet })
 	})
@@ -197,7 +196,7 @@ router.post('/contexts', (req, res) => {
 	ContextController.addContext(condition, (err, data) => {
 		if (err) return res.json(err)
 
-		log.debug(`/contexts:add |-> `)
+		log.debug(`/contexts:post |-> task_id:${condition.task_id} | for user: ${condition.mainUser_id}`)
 
 		return res.json({ data: data })
 	})
@@ -213,7 +212,7 @@ router.delete('/contexts', (req, res) => {
 	ContextController.deleteContext(condition, (err, data) => {
 		if (err) return res.json(err)
 
-		log.debug(`/context:remove |-> `)
+		log.debug(`/context:delete |-> task_id:${condition.task_id} | for user: ${condition.mainUser_id}`)
 
 		return res.json({ data: data })
 	})
@@ -235,11 +234,26 @@ router.get('/tasks', (req, res) => {
 	TaskController.getTasks(condition, (err, data) => {
 		if (err) return res.json(err)
 
-		log.debug(`/tasks:return |-> like: ${condition.searchText} | offset: ${condition.offset} | partid: ${req.headers.partid}`)
 		const ids = data.map((el) => el.task_id).toString()
-		console.log(ids)
+		log.debug(`/tasks:get |-> like:${condition.searchText} | group_id:${condition.group_id} | parent_id:${condition.parent_id} | for user: ${condition.mainUser_id} | offset:${condition.offset} | partid:${req.headers.partid} | elements:[${ids}]`)
 
 		return res.json({ data: data, partid: req.headers.partid })
+	})
+})
+
+router.post('/tasks', (req, res) => {
+	const condition = {
+		mainUser_id: req.auth.userId,
+		group_id: ('group_id' in req.query) ? req.query.group_id : null,
+		parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
+		isStart: ('isStart' in req.query) ? req.query.isStart : true
+	}
+
+	TaskController.addTask(condition, (err, data) => {
+		if (err) return res.json(err)
+
+		log.debug(`/tasks:post |-> id:${data.task_id} | parent:${data.parent} | group:${data.group_id} | for user: ${condition.mainUser_id}`)
+		return res.json({ data: data })
 	})
 })
 
@@ -253,7 +267,7 @@ router.put('/tasks', (req, res) => {
 	TaskController.updateTask(condition, (err, data) => {
 		if (err) return res.json(err)
 
-		log.debug(`/tasks:update task |-> data`)
+		log.debug(`/tasks:put |-> id:${data.task_id} | for user:${condition.mainUser_id}`)
 
 		return res.json({ data: data })
 	})
@@ -272,7 +286,7 @@ router.put('/tasks/order', (req, res) => {
 	TaskController.updatePosition(condition, (err, data) => {
 		if (err) return res.json(err)
 
-		log.debug(`/tasks/order:return |-> data`)
+		log.debug(`/tasks/order |-> id:${condition.task_id} | parent:${condition.parent_id} | group:${condition.group_id} | position:${condition.position} | isBefore:${condition.isBefore} | for user: ${condition.mainUser_id}`)
 
 		return res.json({ data: data })
 	})

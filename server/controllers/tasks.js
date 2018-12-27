@@ -315,6 +315,89 @@ async function updateTask(condition, done) {
 	}
 }
 
+async function addTask(condition, done) {
+	let client,
+			isStart,
+			queryText,
+			params,
+			errMessage = ''
+
+	if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
+		return done(new PgError('For database operations, a main user token is required'))
+	}
+
+	if (isNumeric(condition.parent_id) && condition.parent_id >= 0) {
+	} else {
+		return done(new PgError('For add task need: <parent_id> attribut >= 0'))
+	}
+
+	if (isNumeric(condition.group_id) && condition.group_id > 0) {
+	} else {
+		return done(new PgError('For add task need: <group_id> attribut >= 0'))
+	}
+
+	if (condition.isStart !== null) {
+		isStart = (condition.isStart === 'true') ? true : false
+	}
+
+	queryText = `SELECT add_task($1, $2, $3, $4);`
+	params = [condition.mainUser_id, condition.group_id, condition.parent_id, isStart]
+
+	client = await pg.pool.connect()
+
+	try {
+		await client.query('BEGIN')
+
+		const { rowCount, rows } = await client.query(queryText, params)
+
+		if (rowCount === 0) {
+			await client.query('ROLLBACK')
+			return done({ message: `No tasks with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
+		}
+
+		let result = rows[0].add_task
+		if (result <= 0) {
+			switch(result) {
+				case 0:
+					errMessage = 'Group for main user not found'
+					break
+				case -1:
+					errMessage = 'No rights to read the group'
+					break
+				case -2:
+					errMessage = 'No rights to read the task by the ID'
+					break
+				case -3:
+					errMessage = 'No rights to create the task in the group'
+					break
+			}
+
+			await client.query('ROLLBACK')
+			return done({ message: errMessage, status: 400, code: 'no_datas', name: 'ApiMessage' })
+		}
+
+		queryText = `SELECT tl.task_id, tl.group_id, tl.p, tl.q,
+			tsk.tid, tsk.name, tsk.owner AS tskowner,
+			tsk.status, tsk.duration, tsk.note, tsk.parent,
+			0 AS havechild,	1 as depth
+		FROM tasks_list AS tl
+		RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
+		WHERE tl.task_id = $1 AND tl.group_id = $2`
+		params = [result, condition.group_id]
+
+		const { rows: tasks } = await client.query(queryText, params)
+
+		await client.query('commit')
+
+		return done(null, tasks)
+	} catch (error) {
+		await client.query('ROLLBACK')
+		return done(new PgError(error))
+	} finally {
+		client.release()
+	}
+}
+
 module.exports = {
 	_create,
 	_read,
@@ -322,5 +405,6 @@ module.exports = {
 	_delete,
 	getTasks,
 	updatePosition,
-	updateTask
+	updateTask,
+	addTask
 }

@@ -75,7 +75,8 @@ async function addContext(condition, done) {
 	let client,
 		queryText = '',
 		value = '',
-		context_id = null
+		context_id = null,
+		errMessage = ''
 
 	if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
 		return done(new PgError('For database operations, a main user token is required'))
@@ -113,7 +114,6 @@ async function addContext(condition, done) {
 		}
 
 		if (result[0].add_task_context <= 0) {
-			let errMessage = ''
 			switch (result[0].add_task_context) {
 				case 0:
 					errMessage = 'There is no group or task that matches the specified <task-id> or main user token'
@@ -132,6 +132,7 @@ async function addContext(condition, done) {
 					break
 				case -5:
 					errMessage = 'There is no context with such an id and the name of the context for its creation is not specified'
+					break
 			}
 
 			await client.query('ROLLBACK')

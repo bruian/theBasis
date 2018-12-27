@@ -365,6 +365,71 @@ export default {
 		})
 	},
 
+	/** Создание нового элемента в списке list принадлежащему множеству списков listOfList по list_id
+	 * обязательные входящие опции: options = { list_id:string, isSubelement:bool, isStart:bool }
+	 */
+	CREATE_ELEMENT: ({ commit, state }, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		const thisList = activeList.list
+
+		let group_id, parent_id = 0
+
+		/* Определим, что добавляется элемент или субэлемент */
+		if (options.isSubelement) {
+			const activeElement = recursiveFind(thisList, el => el.isActive).element
+			if (activeElement) {
+				if (activeElement.level < 3) {
+					parent_id = activeElement.task_id
+					group_id = activeElement.group_id
+				} else {
+					return Promise.reject('Maximum is 3 levels')
+				}
+			} else {
+				return Promise.reject('To add an unselected item')
+			}
+		} else {
+			if (thisList.length > 0) {
+				group_id = thisList[0].group_id
+			} else {
+				/* Если список элементов пуст, найдем primary group в которую по-умолчанию добавим элемент */
+				group_id = state.mainGroups.find(el => el.group_type === 1).id
+			}
+		}
+
+		const fetchQuery = {
+			url: 'tasks',
+			method: 'POST',
+			params: {
+				group_id: group_id,
+				parent_id: parent_id,
+				isStart: options.isStart
+			}
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(0)
+			} else {
+				console.log(`Actions add item recieve datas:`)
+				commit('SET_TASKS', { list_id: options.list_id, data: dataFromSrv.data, isStart: options.isStart })
+				return Promise.resolve(dataFromSrv.data.length)
+			}
+		})
+		.catch((err) => {
+			debugger
+			commit('API_ERROR', err.response.data)
+			return Promise.reject(err.response.data)
+		})
+	},
+
+	/** Удаление текущего элемента в списке list принадлежащему множеству списков listOfList по list_id
+	 * обязательные входящие опции: options = { list_id:string }
+	 */
+	DELETE_ELEMENT: ({ commit, state }, options) => {
+		return Promise.resolve(true)
+	},
+
 	/** Перемещение элементов в списке list принадлежащему множеству списков listOfList по list_id
 	 * обязательные входящие опции: options = {	oldIndex,	newIndex,	fromParent,	toParent,	list_id }
 	 * Эта action - функция меняет позицию на клиенте и на сервере по различным правилам:
