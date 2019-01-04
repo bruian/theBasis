@@ -1,6 +1,6 @@
 {
-  "name": "theBasis",
-  "short_name": "Vue HN",
+  "name": "inTask.me",
+  "short_name": "inTask",
   "icons": [{
       "src": "/public/appLogo.png",
       "sizes": "120x120",

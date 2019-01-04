@@ -12,5 +12,6 @@ server/config-private.js
 server/keys/
 mochawesome-report/
 old&remove/
+out/
 .idea
 *.iml

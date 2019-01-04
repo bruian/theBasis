@@ -80,3 +80,41 @@ export function treeDepth(tree) {
 
 	return depth + childrenDepth
 }
+
+export const taskStatus = [
+	{
+		name: 'Assigned', //Назначено - 0
+		action: 'Assign', //Назначить
+		icon: 'queue'
+	},
+	{
+		name: 'Started', //Начато - 1
+		action: 'Start', //Начать
+		icon: 'play_circle_filled'
+	},
+	{
+		name: 'Completed',	//Завершено - 2
+		action: 'Complete',	//Завершить
+		icon: 'done'
+	},
+	{
+		name: 'Suspended', //Приостановлено - 3
+		action: 'Suspend', //Приостановить
+		icon: 'pause'
+	},
+	{
+		name: 'Canceled', //Отменено - 4
+		action: 'Cancel', //Отклонить
+		icon: 'cancel'
+	},
+	{
+		name: 'Continued', //Продолжено - 5
+		action: 'Continue',//Продолжить
+		icon: 'play_arrow'
+	},
+	{
+		name: 'Removed',  //Удалено - 6
+		action: 'Remove', //Удалить
+		icon: 'delete'
+	}
+]

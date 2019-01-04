@@ -1,4 +1,22 @@
 {
 	"debug.node.autoAttach": "on",
-	"debug.allowBreakpointsEverywhere": true
+	"debug.allowBreakpointsEverywhere": true,
+	"LineCount.includes": [
+		"**/*"
+	],
+	"LineCount.excludes": [
+		"**/.vscode/**",
+		"**/node_modules/**",
+		"**/.github/**",
+		"**/dist/**",
+		"**/example/**",
+		"**/logs/**",
+		"**/mochawesome-report/**",
+		"**/old&remove/**",
+		"**/public/**",
+		"**/server/keys/**",
+		"**/package-lock.json",
+		"**/yarn.lock",
+		"**/out/**"
+	],
 }

@@ -36,21 +36,21 @@
 						fab
 						dark
 						small
-						color="green">
+						color="success">
 						<v-icon>play_arrow</v-icon>
 					</v-btn>
 					<v-btn
 						fab
 						dark
 						small
-						color="green">
+						color="success">
 						<v-icon>not_interested</v-icon>
 					</v-btn>
 					<v-btn
 						fab
 						dark
 						small
-						color="green">
+						color="success">
 						<v-icon>delete_forever</v-icon>
 					</v-btn>
 				</v-speed-dial>
@@ -138,18 +138,20 @@
 		</div> <!-- task-body -->
 
 		<div class="task-expander" v-show="item.isExpanded">
-			<v-textarea style="padding-left: 6px; padding-right: 6px; margin-bottom: 2px;"
-				hide-details
-				no-resize
-				clearable
-				rows="3"
-				name="input-7-1"
-				label="Примечание"
-				v-model="item.note"
-				@change="onNoteChange"
-				append-icon="done"
-				@click:append="onNoteChange"
-				placeholder="Введите сюда любую сопутствующую задаче текстовую информацию"></v-textarea>
+			<v-tabs slot="extension" slider-color="primary" v-model="currentTab">
+				<v-tabs-slider></v-tabs-slider>
+				<v-tab v-for="(tab, index) in tabs" :key="index">
+					{{ tab.name }}
+				</v-tab>
+			</v-tabs>
+			<v-tabs-items v-model="currentTab">
+				<v-tab-item v-for="(tab, index) in tabs" :key="index">
+					<component v-bind:is="currentTabComponent"
+						:item="item"
+						:list_id="list_id"
+						:activity="demoItems"></component>
+				</v-tab-item>
+			</v-tabs-items>
 		</div>
 
 		<draggable v-model="items" v-show="(item.isSubtaskExpanded > 1)"
@@ -174,17 +176,84 @@ import TagsInput from '../../VoerroTagsInput/VoerroTagsInput.vue'
 import VCircle from '../../VCircle/VCircle.js'
 import { isNumeric } from '../../../util/helpers.js'
 
+// import { VTabs } from 'vuetify/lib'
+
 import draggable from 'vuedraggable'
 
-const taskStatus = [
-	'Assigned', //Назначено - 0
-	'Started', //Начато - 1
-	'Done', //Выполнено - 2
-	'Suspended', //Приостановлено - 3
-	'Cancel', //Отменено - 4
-	'Continued', //Продолжено - 5
-	'Performed' //Выполняется - 6
+//tabitems: ['Note', 'Activity', 'Comments', 'List', 'Options']
+const tabs = [
+  {
+		name: 'Note',
+		component: () => import('../itemElements/NoteElement.vue')
+  },
+  {
+    name: 'Activity',
+    component: () => import('../itemElements/ActivityLogElement.vue')
+	},
+	{
+		name: 'List',
+		component: { template: '<div>Very soon</div>'}
+	},
+	{
+		name: 'Comments',
+		component: { template: '<div>Coming soon</div>' }
+	}
 ]
+
+const demoItems = [
+	{
+		id: 'rf331',
+		status: 0,
+		group: 1,
+		user: 1,
+		avatar: 'https://cdn.vuetifyjs.com/images/lists/2.jpg',
+		start: new Date('2019-01-04T01:10:00'),
+		end: new Date('2019-01-04T01:20:00')
+	},
+	{
+		id: 'rf231',
+		status: 1,
+		group: 1,
+		user: 1,
+		avatar: 'https://cdn.vuetifyjs.com/images/lists/2.jpg',
+		start: new Date('2019-01-04T01:20:00'),
+		end: new Date('2019-01-04T01:25:00')
+	},
+	{
+		id: 'xf3e1',
+		status: 0,
+		group: 50,
+		user: 1,
+		avatar: 'https://cdn.vuetifyjs.com/images/lists/2.jpg',
+		start: new Date('2019-01-04T01:25:00'),
+		end: new Date('2019-01-04T01:25:05')
+	},
+	{
+		id: 'rdq3g',
+		status: 1,
+		group: 50,
+		user: 1,
+		avatar: 'https://cdn.vuetifyjs.com/images/lists/4.jpg',
+		start: new Date('2019-01-04T01:25:05'),
+		end: new Date()
+	}
+]
+
+// const VTabsMix = {
+// 	name: 'v-tabs-modify',
+// 	data: function () {
+// 		return {
+// 			refresh: false
+// 		}
+// 	},
+// 	watch: {
+// 		refresh: 'updateTabsView'
+// 	}
+// }
+
+// const VTabsModify = VTabs.extend({
+// 	mixins: [VTabsMix]
+// })
 
 export default {
 	name: 'task-item',
@@ -194,7 +263,7 @@ export default {
 		Treeselect,
 		TagsInput,
 		ItmTextArea,
-		draggable,
+		draggable
 	},
 	props: ['item', 'list_id'],
 	data: () => ({
@@ -206,10 +275,16 @@ export default {
 			{ title: 'Collapse subtask' }
 		],
 		groupChangeStart: false,
-		prevNote: '',
-		isTagsInitialized: false
+		isTagsInitialized: false,
+		tabs: tabs,
+		currentTab: 1,
+		timeoutID: null,
+		demoItems: demoItems
 	}),
 	computed: {
+		currentTabComponent: function () {
+			return this.tabs[this.currentTab].component
+		},
 		items: {
 			get() {	return this.item.children	},
 			set(value) {}
@@ -242,8 +317,18 @@ export default {
 		// 	this.item = this.value
 		// }
 	},
-	created () {
-		this.prevNote = this.item.note
+	mounted () {
+		// this.timeoutID = setInterval(() => {
+		// 	console.log(`Tik-tik-tik: ${this.item.task_id}`)
+
+		// 	this.$nextTick(() => {
+		// 		demoItems[3].end = new Date()
+		// 	})
+		// }, 1000)
+		//this.currentTab = null
+	},
+	beforeDestroy () {
+		// clearTimeout(this.timeoutID)
 	},
 	methods: {
 		tagChange(slug, command) {
@@ -287,19 +372,6 @@ export default {
 		},
 		onTagRemoved(slug) {
 			this.tagChange(slug, 'REMOVE_TASK_CONTEXT')
-		},
-		onNoteChange: function() {
-			if (this.prevNote !== this.item.note) {
-				this.$store.dispatch('UPDATE_TASK_VALUES', {
-					list_id: this.list_id,
-					task_id: this.item.task_id,
-					note: this.item.note
-				})
-				.then((res) => {
-					this.prevNote = this.item.note
-				})
-				.catch((err) => { console.warn(err) })
-			}
 		},
 		onNameChange: function(text) {
 			//debugger
@@ -398,7 +470,9 @@ export default {
 			return `${hours>9 ? '' : '0'}${hours}:${minutes>9 ? '' : '0'}${minutes}:${seconds>9 ? '' : '0'}${seconds}`
 		},
 		onExpandMore() {
-			console.log(`onExpandMore taskId !{ this.item.task_id }`)
+			if (!this.item.isExpanded) {
+				this.currentTab = 0
+			}
 			this.$store.commit('UPDATE_TASK_VALUES', { list_id: this.list_id, task_id: this.item.task_id, isExpanded: !this.item.isExpanded })
 		},
 		onExpandSubtasks() {
@@ -555,7 +629,6 @@ export default {
 }
 
 .task-status .v-icon {
-	/* color: #007bff; */
 	color: #5dc282;
 	font-size: 1.1rem;
 }
@@ -572,6 +645,25 @@ export default {
 .expand-ico {
 	flex: 1;
 	text-align: right;
+}
+
+.task-expander {
+	margin-left: 0.3em;
+	margin-right: 0.3em;
+	margin-top: 1px;
+}
+
+.task-expander .v-tabs__bar {
+	background: none;
+}
+
+.task-expander .v-tabs__container {
+	height: auto;
+}
+
+.task-expander .v-card {
+	background: none;
+	border: none;
 }
 
 .vue-treeselect__control {

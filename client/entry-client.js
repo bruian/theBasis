@@ -59,8 +59,6 @@ router.onReady(() => {
   // the data that we already have. Using router.beforeResolve() so that all
 	// async components are resolved.
 	router.beforeResolve((to, from, next) => {
-		//debugger
-    logRequests && console.log(`onResolve ${from}...${to}`)
     const matched = router.getMatchedComponents(to)
     const prevMatched = router.getMatchedComponents(from)
     let diffed = false
