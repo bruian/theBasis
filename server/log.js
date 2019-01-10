@@ -9,7 +9,7 @@ Winston.emitErrs = true
 const _winston = new Winston.Logger({
   transports: [
     new Winston.transports.File({
-      level: 'info',
+      level: ['info'],
       filename: process.cwd() + '/logs/all.log',
       handleExceptions: true,
       json: true,
@@ -23,7 +23,7 @@ const _winston = new Winston.Logger({
       handleExceptions: true,
       json: false,
       colorize: true
-    }),
+		})
   ],
   exitOnError: false
 })

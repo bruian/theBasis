@@ -123,46 +123,46 @@ async function getGroups(condition, done) {
 		} else if (condition.whose === 'group') {
 			if (isNumeric(condition.group_id) && condition.group_id > 0) {
 				selectGroup = true
-				whose = `T1gl.group_id = ${condition.group_id}`
+				whose = `gl_one.group_id = ${condition.group_id}`
 			}
 		} else if (condition.whose === 'main') {
 			selectGroup = true
-			whose = `T1gl.user_id = ${condition.mainUser_id}`
+			whose = `gl_one.user_id = ${condition.mainUser_id}`
 		}
 
 		if (selectGroup) {
 			queryText = `WITH RECURSIVE recursive_tree (id, parent, path, user_type, level) AS (
-				SELECT T1g.id, T1g.parent, CAST (T1g.id AS VARCHAR (50)) AS path, T1gl.user_type, 1
-					FROM groups_list AS T1gl
-				RIGHT JOIN groups AS T1g ON (T1gl.group_id = T1g.id)
-				WHERE T1g.parent IS NULL AND ${whose}
+				SELECT g_one.id, g_one.parent, CAST (g_one.id AS VARCHAR (50)) AS path, gl_one.user_type, 1
+					FROM groups_list AS gl_one
+				RIGHT JOIN groups AS g_one ON (gl_one.group_id = g_one.id)
+				WHERE g_one.parent IS NULL AND ${whose}
 					UNION
-				SELECT T2g.id, T2g.parent, CAST (recursive_tree.PATH ||'->'|| T2g.id AS VARCHAR(50)), T2gl.user_type, level + 1
-					FROM groups_list AS T2gl
-				RIGHT JOIN groups AS T2g ON (T2gl.group_id = T2g.id)
-				INNER JOIN recursive_tree ON (recursive_tree.id = T2g.parent)
+				SELECT g_two.id, g_two.parent, CAST (recursive_tree.PATH ||'->'|| g_two.id AS VARCHAR(50)), gl_two.user_type, level + 1
+					FROM groups_list AS gl_two
+				RIGHT JOIN groups AS g_two ON (gl_two.group_id = g_two.id)
+				INNER JOIN recursive_tree ON (recursive_tree.id = g_two.parent)
 			)
 			SELECT recursive_tree.id, recursive_tree.user_type, grp.name, recursive_tree.parent, recursive_tree.level, recursive_tree.path,
-					grp.creating, grp.reading, grp.updating, grp.deleting, grp.task_creating,
-					grp.task_reading, grp.task_updating, grp.task_deleting, grp.group_type FROM recursive_tree
+					grp.creating, grp.reading, grp.updating, grp.deleting, grp.el_creating,
+					grp.el_reading, grp.el_updating, grp.el_deleting, grp.group_type FROM recursive_tree
 			LEFT JOIN groups AS grp ON recursive_tree.id = grp.id
 			ORDER BY path;`
 		} else {
-			queryText = `SELECT group_id AS id, user_type, name, parent, creating, reading, updating, deleting, task_creating,
-					task_reading, task_updating, task_deleting, group_type, 0 AS haveChild, owner FROM groups_list AS gl
+			queryText = `SELECT group_id AS id, user_type, name, parent, creating, reading, updating, deleting,
+					el_creating, el_reading, el_updating, el_deleting, group_type, 0 AS haveChild, owner FROM groups_list AS gl
 				RIGHT JOIN groups AS grp ON gl.group_id = grp.id ${whose}
-				WHERE grp.parent IS null
-					AND gl.group_id NOT IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent)
-					AND grp.reading >= gl.user_type
+				WHERE (grp.parent IS null)
+					AND (gl.group_id NOT IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent))
+					AND (grp.reading >= gl.user_type)
 					AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
 					${condition1}
 			UNION
-			SELECT group_id AS id, user_type, name, parent, creating, reading, updating, deleting, task_creating,
-					task_reading, task_updating, task_deleting, group_type, 1 AS haveChild, owner FROM groups_list AS gl
+			SELECT group_id AS id, user_type, name, parent, creating, reading, updating, deleting,
+					el_creating, el_reading, el_updating, el_deleting, group_type, 1 AS haveChild, owner FROM groups_list AS gl
 				RIGHT JOIN groups AS grp ON gl.group_id = grp.id ${whose}
-				WHERE grp.parent IS null
-					AND gl.group_id IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent)
-					AND grp.reading >= gl.user_type
+				WHERE (grp.parent IS null)
+					AND (gl.group_id IN (SELECT parent FROM groups WHERE parent IS NOT null GROUP BY parent))
+					AND (grp.reading >= gl.user_type)
 					AND (gl.user_id = 0 OR gl.user_id = ${condition.mainUser_id})
 					${condition1}
 			LIMIT ${limit} OFFSET ${offset};`

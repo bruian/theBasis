@@ -30,10 +30,10 @@ const def = {
 		reading: 1,
 		updating: 1,
 		deleting: 1,
-		task_creating: 1,
-		task_reading:1 ,
-		task_updating: 1,
-		task_deleting: 1,
+		el_creating: 1,
+		el_reading:1 ,
+		el_updating: 1,
+		el_deleting: 1,
 		group_type: 2,
 		haveChild: 0
 	}

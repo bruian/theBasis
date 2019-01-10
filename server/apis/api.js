@@ -2,6 +2,7 @@ import express from 'express'
 import UserController from '../controllers/users'
 import GroupController from '../controllers/groups'
 import TaskController from '../controllers/tasks'
+import ActivityController from '../controllers/activity'
 import ContextController from '../controllers/contexts'
 import faker from 'faker'
 import crypto from 'crypto'
@@ -307,6 +308,108 @@ router.put('/tasks/order', (req, res) => {
 	})
 })
 
+
+/*** -ACTIVITY API- */
+router.get('/activity', (req, res) => {
+	// const condition = {
+	// 	mainUser_id: req.auth.userId,
+	// 	group_id: ('group_id' in req.query) ? req.query.group_id : null,
+	// 	user_id: ('user_id' in req.query) ? req.query.user_id : null,
+	// 	parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
+	// 	task_id: ('task_id' in req.query) ? req.query.task_id : null,
+	// 	searchText: ('searchText' in req.query) ? req.query.searchText : null,
+	// 	limit: ('limit' in req.headers) ? req.headers.limit : null,
+	// 	offset: ('offset' in req.headers) ? req.headers.offset : null
+	// }
+
+	// TaskController.getTasks(condition, (err, data) => {
+	// 	if (err) return res.json(err)
+
+	// 	const ids = data.map((el) => el.task_id).toString()
+	// 	log.debug(`/tasks:get |-> like:${condition.searchText} | group_id:${condition.group_id} | parent_id:${condition.parent_id} | for user: ${condition.mainUser_id} | offset:${condition.offset} | partid:${req.headers.partid} | elements:[${ids}]`)
+
+	// 	return res.json({ data: data, partid: req.headers.partid })
+	// })
+	return res.json({ error: 'Api get - not ready' })
+})
+
+/***
+ * @func router.post
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD for path from client
+ * Call api function "addActivity" and responce data: JSON
+*/
+router.post('/activity', (req, res) => {
+	const condition = Object.assign ({ mainUser_id: req.auth.userId }, req.query)
+
+	ActivityController.addActivity(condition, (err, data) => {
+		if (err) {
+			log.warn(`/activity:post |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
+			return res.status(err.jse_info.status).end(err.message)
+		}
+
+		log.debug(`/activity:post |-> id:${condition.task_id} | group:${condition.group_id} | type:${condition.type_el} | for user: ${condition.mainUser_id}`)
+		return res.json({ data: data })
+	})
+})
+
+router.delete('/activity', (req, res) => {
+	// const condition = {
+	// 	mainUser_id: req.auth.userId,
+	// 	task_id: ('task_id' in req.query) ? req.query.task_id : null,
+	// 	group_id: ('group_id' in req.query) ? req.query.group_id : null
+	// }
+
+	// TaskController.deleteTask(condition, (err, data) => {
+	// 	if (err) return res.json(err)
+
+	// 	log.debug(`/tasks:delete |-> id:${condition.task_id} | for user: ${condition.mainUser_id}`)
+	// 	return res.json({ data: data })
+	// })
+	return res.json({ error: 'Api delete - not ready' })
+})
+
+router.put('/activity', (req, res) => {
+	// const condition = {
+	// 	mainUser_id: req.auth.userId,
+	// 	task_id: ('task_id' in req.query) ? req.query.task_id : null,
+	// 	values: req.body
+	// }
+
+	// TaskController.updateTask(condition, (err, data) => {
+	// 	if (err) return res.json(err)
+
+	// 	log.debug(`/tasks:put |-> id:${data.task_id} | for user:${condition.mainUser_id}`)
+
+	// 	return res.json({ data: data })
+	// })
+
+	return res.json({ error: 'Api put - not ready' })
+})
+
+router.put('/activity/order', (req, res) => {
+	// const condition = {
+	// 	mainUser_id: req.auth.userId,
+	// 	group_id: ('group_id' in req.query) ? req.query.group_id : null,
+	// 	task_id: ('task_id' in req.query) ? req.query.task_id : null,
+	// 	parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
+	// 	position: ('position' in req.query) ? req.query.position : null,
+	// 	isBefore: ('isBefore' in req.query) ? req.query.isBefore : null
+	// }
+
+	// TaskController.updatePosition(condition, (err, data) => {
+	// 	if (err) return res.json(err)
+
+	// 	log.debug(`/tasks/order |-> id:${condition.task_id} | parent:${condition.parent_id} | group:${condition.group_id} | position:${condition.position} | isBefore:${condition.isBefore} | for user: ${condition.mainUser_id}`)
+
+	// 	return res.json({ data: data })
+	// })
+
+	return res.json({ error: 'Api put order - not ready' })
+})
+
 /*** -OTHER API- */
 router.get('/fakeSet', (req, res) => {
 	return res.end('Can not generates fake datas')
@@ -315,7 +418,7 @@ router.get('/fakeSet', (req, res) => {
 				usersAnchors = '$1, $2, $3, $4, $5, $6, $7, $8, $9, $10',
 				clientsFields = 'user_id, name, hashedsecret, salt',
 				clientsAnchors = '$1, $2, $3, $4',
-				groupsFields = 'name, parent, creating, reading, updating, deleting, task_creating, task_reading, task_updating, task_deleting, group_type',
+				groupsFields = 'name, parent, creating, reading, updating, deleting, el_creating, el_reading, el_updating, el_deleting, group_type',
 				groupsAnchors = '$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11',
 				personalityFields = 'user_id, name, dateofbirth, city, country, phone',
 				personalityAnchors = '$1, $2, $3, $4, $5, $6'
@@ -403,10 +506,10 @@ app.use('/api/tgmUsers', apiTgmUsers)
 				reading: 1,
 				updating: 1,
 				deleting: 1,
-				task_creating: 1,
-				task_reading: 1,
-				task_updating: 1,
-				task_deleting: 1,
+				el_creating: 1,
+				el_reading: 1,
+				el_updating: 1,
+				el_deleting: 1,
 				group_type: 1
 			},
 			groups_list: {

@@ -103,7 +103,7 @@ async function newUser(condition) {
 		const { rowCount: userCount, rows: user } = await client.query(`INSERT INTO users (${parametres.fields}) VALUES (${parametres.anchors}) RETURNING *`, parametres.values)
 
 		if (userCount === 1) {
-			fields = 'name, parent, creating, reading, updating, deleting, task_creating, task_reading, task_updating, task_deleting, group_type'
+			fields = 'name, parent, creating, reading, updating, deleting, el_creating, el_reading, el_updating, el_deleting, group_type'
 			datas  = ['personal', null, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 			anchors = '$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11'
 
