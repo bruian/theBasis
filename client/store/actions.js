@@ -402,6 +402,7 @@ export default {
 			params: {
 				group_id: group_id,
 				parent_id: parent_id,
+				start: new Date().toISOString(),
 				isStart: options.isStart
 			}
 		}
@@ -941,6 +942,121 @@ export default {
 			element.consistency = 2
 			commit('API_ERROR', err.response.data)
 			return Promise.reject(err.response.data)
+		})
+	},
+
+	/** options = { list_id, task_id } */
+	FETCH_ACTIVITY: ({ commit, state }, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
+			taskList = activeList.list,
+			element = recursiveFind(taskList, el => el.task_id === options.task_id).element
+
+		if (!element) return Promise.reject(null)
+
+		const fetchQuery = {
+			url: 'activity',
+			method: 'GET',
+			params: { task_id: element.task_id,	group_id: element.group_id, type_el: 1 },
+			headers: { limit: 100, offset: 0 }
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(null)
+			} else {
+				commit('SET_ACTIVITY', { list_id: options.list_id, task_id: options.task_id, data: dataFromSrv.data })
+				return Promise.resolve(dataFromSrv.data.length)
+			}
+		})
+		.catch((err) => {
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			debugger
+		})
+	},
+
+	/***
+	 * @func CREATE_ACTIVITY_ELEMENT
+	 * @param { VUEX action parametres: Object }
+	 * @param { { list_id, task_id, ...other options }: Object } - options
+	 * @returns { function(...args): Promise }
+	 * @description Функция для создания элемента активности, а так-же изменения статуса
+	 * у задачи, если в options переданы "task_id" и "status".
+	 * 	Процедура изменения статуса включает в себя 3 этапа:
+	 * 	1) Если имеется активность с "task_id" отличным от переданного в options.task_id
+	 *  и у этой активности "user_id" соответсвует "mainUser_id", а так же "ends" имеет
+	 * 	значение "null" и "status" имеет значения "Started-1" или "Continued-5", тогда в
+	 * 	такой активности "ends" присваивается значение "options.start". В DB обновляется
+	 * 	значениe этой активности.
+	 * 	1.1) Берется task_id активности из п.1. и создается новая активность для которой
+	 * 	присваивается значение статуса "Suspended-3", а для атрибута "start" присваивае-
+	 * 	тся значение "options.start". Активность создается в DB.
+	 * 	2) Ищется активность с "task_id" соответствующая "options.task_id". У этой акти-
+	 * 	вности значение атрибута в "ends" присваивается "options.start". В DB обновляет-
+	 * 	ся значениe этой активности.
+	 * 	2.1) Содается новая активность с "task_id" значением из "options.task_id" и зна-
+	 * 	чением "start" равным "options.start". Активность создается в DB.
+	 * 	3) Пересчитывается значение "duration" у задач из пункта 1 и 2. Обновляются ста-
+	 * 	тусы иконок
+	*/
+	CREATE_ACTIVITY_ELEMENT: ({ commit, state }, options) => {
+		//Получим элемент задачи относительно которой добавляется активность
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		const thisList = activeList.list
+		const activeElement = recursiveFind(thisList, el => el.task_id === options.task_id).element
+
+		let status, start, group_id = activeElement.group_id
+
+		//Определим меняется ли статус задачи или это обычное добавление активности
+		//Т.к. статус должен обязательно включать время смены, то заранее его зададим
+		if (options.hasOwnProperty('status')) {
+			status = options.status
+			start = new Date().toISOString()
+		}
+
+		//Убедимся не было ли передано иное время смены, отличное от автоматического
+		if (options.hasOwnProperty('start')) {
+			values.start = options.start
+		}
+
+		const fetchQuery = {
+			url: 'activity',
+			method: 'POST',
+			params: {
+				group_id: group_id,
+				type_el: 1,
+				task_id: activeElement.task_id,
+				start: start,
+				status: status
+			}
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(null)
+			} else {
+				commit('SET_ACTIVITY', { list_id: options.list_id, task_id: options.task_id, data: dataFromSrv.data })
+				return Promise.resolve(dataFromSrv.data.length)
+			}
+		})
+		.catch((err) => {
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			debugger
 		})
 	},
 

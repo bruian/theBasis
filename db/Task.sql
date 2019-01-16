@@ -189,10 +189,7 @@ CREATE OR REPLACE FUNCTION add_task(
 	in_group_id INTEGER,
 	in_parent_id INTEGER,
 	isStart BOOL)
-RETURNS INTEGER
-LANGUAGE plpgsql
-VOLATILE CALLED ON NULL INPUT
-AS $f$
+RETURNS text LANGUAGE plpgsql VOLATILE CALLED ON NULL INPUT AS $f$
 DECLARE
 	main_user_type INTEGER;
 	main_group_reading INTEGER;
@@ -208,19 +205,21 @@ BEGIN
 	WHERE (gl.user_id = main_user_id OR gl.user_id = 0) AND (gl.group_id = in_group_id);
 
 	IF NOT FOUND THEN
-	  RETURN 0;
+ 		/* if SELECT return nothing */
+		RAISE EXCEPTION 'Group for main user not found';
 	END IF;
 
+	/* SELECT return rows */
 	IF main_group_reading < main_user_type THEN
-	  RETURN -1;
+		RAISE EXCEPTION 'No rights to read the group';
 	END IF;
 
 	IF main_el_reading < main_user_type THEN
-	  RETURN -2;
+ 		RAISE EXCEPTION 'No rights to read the task by the ID';
 	END IF;
 
 	IF main_el_creating < main_user_type THEN
-	  RETURN -3;
+	  RAISE EXCEPTION 'No rights to create the task in the group';
 	END IF;
 
 	SELECT count(id) INTO tid FROM tasks WHERE (owner = main_user_type);
@@ -338,9 +337,9 @@ AS $f$
 	  RETURN 2;
 	END IF;
 
-    IF main_group_id IS NULL THEN
-	  RETURN 2;
-    END IF;
+	IF main_group_id IS NULL THEN
+		RETURN 2;
+	END IF;
 
 	IF main_group_reading < main_user_type THEN
 	  RETURN 3;

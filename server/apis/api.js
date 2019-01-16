@@ -219,42 +219,69 @@ router.delete('/contexts', (req, res) => {
 	})
 })
 
-/*** -TASKS API- */
+/* ------------------------------------------TASKS API------------------------------------------ */
+
+/***
+ * @func router.get("/tasks")
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD. Call api function "getTasks" and responce data: JSON
+*/
 router.get('/tasks', (req, res) => {
-	const condition = {
-		mainUser_id: req.auth.userId,
-		group_id: ('group_id' in req.query) ? req.query.group_id : null,
-		user_id: ('user_id' in req.query) ? req.query.user_id : null,
-		parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
-		task_id: ('task_id' in req.query) ? req.query.task_id : null,
-		searchText: ('searchText' in req.query) ? req.query.searchText : null,
-		limit: ('limit' in req.headers) ? req.headers.limit : null,
-		offset: ('offset' in req.headers) ? req.headers.offset : null
-	}
+	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+	condition = Object.assign(condition, req.headers)
 
-	TaskController.getTasks(condition, (err, data) => {
-		if (err) return res.json(err)
-
+	TaskController.getTasks(condition)
+	.then(data => {
 		const ids = data.map((el) => el.task_id).toString()
-		log.debug(`/tasks:get |-> like:${condition.searchText} | group_id:${condition.group_id} | parent_id:${condition.parent_id} | for user: ${condition.mainUser_id} | offset:${condition.offset} | partid:${req.headers.partid} | elements:[${ids}]`)
+		log.debug(`/tasks:get |-> like:${condition.searchText} | group_id:${condition.group_id}
+			| parent_id:${condition.parent_id} | for user: ${condition.mainUser_id}
+			| offset:${condition.offset} | partid:${req.headers.partid} | elements:[${ids}]`)
 
 		return res.json({ data: data, partid: req.headers.partid })
 	})
+	.catch(err => {
+		log.warn(`/task:get |-> name:${err.name} | status:${err.jse_info.status} | message:
+			${err.message}`)
+
+		return res.status(err.jse_info.status).end(err.message)
+	})
 })
 
+/***
+ * @func router.post('/tasks')
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD. Call api function "addTask"->"addActivity" and responce data: JSON
+*/
 router.post('/tasks', (req, res) => {
-	const condition = {
-		mainUser_id: req.auth.userId,
-		group_id: ('group_id' in req.query) ? req.query.group_id : null,
-		parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
-		isStart: ('isStart' in req.query) ? req.query.isStart : true
+	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+
+	const onTaskCreated = (taskData) => {
+		log.debug(`/tasks:post |-> id:${taskData[0].task_id} | parent:${taskData[0].parent}
+			| group:${taskData[0].group_id} | for user: ${condition.mainUser_id}`)
+
+		condition.status = 0
+		condition.type_el = 1
+		condition.task_id = taskData[0].task_id
+		condition.group_id = taskData[0].group_id
+
+		return ActivityController.addActivity(condition).then(activityData => {
+			log.debug(`/activity:post |-> id:${condition.task_id} | group:${condition.group_id}
+				| type:${condition.type_el} | for user: ${condition.mainUser_id}`)
+
+			return res.json({ data: taskData })
+		})
+		.catch(err => Promise.reject(err))
 	}
 
-	TaskController.addTask(condition, (err, data) => {
-		if (err) return res.json(err)
+	TaskController.addTask(condition).then(onTaskCreated)
+	.catch(err => {
+		log.warn(`/task:post |-> name:${err.name} | status:${err.jse_info.status}	| message:${err.message}`)
 
-		log.debug(`/tasks:post |-> id:${data.task_id} | parent:${data.parent} | group:${data.group_id} | for user: ${condition.mainUser_id}`)
-		return res.json({ data: data })
+		return res.status(err.jse_info.status).end(err.message)
 	})
 })
 
@@ -269,23 +296,32 @@ router.delete('/tasks', (req, res) => {
 		if (err) return res.json(err)
 
 		log.debug(`/tasks:delete |-> id:${condition.task_id} | for user: ${condition.mainUser_id}`)
+
 		return res.json({ data: data })
 	})
 })
 
+/***
+ * @func router.put('/tasks')
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD. Call api function "updateTask"->"addActivity" and responce data: JSON
+*/
 router.put('/tasks', (req, res) => {
-	const condition = {
-		mainUser_id: req.auth.userId,
-		task_id: ('task_id' in req.query) ? req.query.task_id : null,
-		values: req.body
-	}
+	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+	const values = Object.assign({}, req.body)
 
-	TaskController.updateTask(condition, (err, data) => {
-		if (err) return res.json(err)
+	TaskController.updateTask(condition, values)
+	.then(taskData => {
+		log.debug(`/tasks:put |-> id:${taskData.task_id} | for user:${condition.mainUser_id}`)
 
-		log.debug(`/tasks:put |-> id:${data.task_id} | for user:${condition.mainUser_id}`)
+		return res.json({ data: taskData })
+	})
+	.catch(err => {
+		log.warn(`/task:put |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
 
-		return res.json({ data: data })
+		return res.status(err.jse_info.status).end(err.message)
 	})
 })
 
@@ -302,58 +338,90 @@ router.put('/tasks/order', (req, res) => {
 	TaskController.updatePosition(condition, (err, data) => {
 		if (err) return res.json(err)
 
-		log.debug(`/tasks/order |-> id:${condition.task_id} | parent:${condition.parent_id} | group:${condition.group_id} | position:${condition.position} | isBefore:${condition.isBefore} | for user: ${condition.mainUser_id}`)
+		log.debug(`/tasks/order |-> id:${condition.task_id} | parent:${condition.parent_id}
+			| group:${condition.group_id} | position:${condition.position} | isBefore:${condition.isBefore}
+			| for	user: ${condition.mainUser_id}`)
 
 		return res.json({ data: data })
 	})
 })
 
-
-/*** -ACTIVITY API- */
-router.get('/activity', (req, res) => {
-	// const condition = {
-	// 	mainUser_id: req.auth.userId,
-	// 	group_id: ('group_id' in req.query) ? req.query.group_id : null,
-	// 	user_id: ('user_id' in req.query) ? req.query.user_id : null,
-	// 	parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
-	// 	task_id: ('task_id' in req.query) ? req.query.task_id : null,
-	// 	searchText: ('searchText' in req.query) ? req.query.searchText : null,
-	// 	limit: ('limit' in req.headers) ? req.headers.limit : null,
-	// 	offset: ('offset' in req.headers) ? req.headers.offset : null
-	// }
-
-	// TaskController.getTasks(condition, (err, data) => {
-	// 	if (err) return res.json(err)
-
-	// 	const ids = data.map((el) => el.task_id).toString()
-	// 	log.debug(`/tasks:get |-> like:${condition.searchText} | group_id:${condition.group_id} | parent_id:${condition.parent_id} | for user: ${condition.mainUser_id} | offset:${condition.offset} | partid:${req.headers.partid} | elements:[${ids}]`)
-
-	// 	return res.json({ data: data, partid: req.headers.partid })
-	// })
-	return res.json({ error: 'Api get - not ready' })
-})
+/* -----------------------------------------ACTIVITY API---------------------------------------- */
 
 /***
- * @func router.post
+ * @func router.get('/activity')
  * @param {String} path - http path from METHOD
  * @param {function(...args): Callback} response - to client
  * @returns { Response: Object }
- * @description Http METHOD for path from client
- * Call api function "addActivity" and responce data: JSON
+ * @description Http METHOD. Call api function "getActivity" and responce data: JSON
 */
-router.post('/activity', (req, res) => {
-	const condition = Object.assign ({ mainUser_id: req.auth.userId }, req.query)
+router.get('/activity', (req, res) => {
+	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+	condition = Object.assign(condition, req.headers)
 
-	ActivityController.addActivity(condition, (err, data) => {
-		if (err) {
-			log.warn(`/activity:post |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
-			return res.status(err.jse_info.status).end(err.message)
-		}
+	ActivityController.getActivity(condition)
+	.then(data => {
+	 	const ids = data.map((el) => el.id).toString()
+		log.debug(`/activity:get |-> like:${condition.searchText} | group_id:${condition.group_id}
+			|	for user: ${condition.mainUser_id} | offset:${condition.offset} | elements:[${ids}]`)
 
-		log.debug(`/activity:post |-> id:${condition.task_id} | group:${condition.group_id} | type:${condition.type_el} | for user: ${condition.mainUser_id}`)
 		return res.json({ data: data })
 	})
+	.catch(err => {
+		log.warn(`/activity:get |-> name:${err.name} | status:${err.jse_info.status} | message:	${err.message}`)
+
+		return res.status(err.jse_info.status).end(err.message)
+	})
 })
+
+/***
+ * @func router.post('/activity')
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD. Call api function "addActivity" and responce data: JSON
+*/
+router.post('/activity', (req, res) => {
+	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+
+	ActivityController.addActivity(condition)
+	.then(data => {
+		log.debug(`/activity:post |-> id:${condition.task_id} | group:${condition.group_id}
+			| type:${condition.type_el} | for user: ${condition.mainUser_id}`)
+
+		return res.json({ data: data })
+	})
+	.catch(err => {
+		log.warn(`/activity:post |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
+
+		return res.status(err.jse_info.status).end(err.message)
+	})
+})
+
+/***
+ * @func router.put('/activity')
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD. Call api function "updateActivity" and responce data: JSON
+*/
+router.put('/activity', (req, res) => {
+	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+	const values = Object.assign({}, req.body)
+
+	ActivityController.updateActivity(condition, values)
+	.then(data => {
+		log.debug(`/activity:put |-> id:${condition.id} | for user:${condition.mainUser_id}`)
+
+		return res.json({ data: data })
+	})
+	.catch(err => {
+		log.warn(`/activity:put |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
+
+		return res.status(err.jse_info.status).end(err.message)
+	})
+})
+
 
 router.delete('/activity', (req, res) => {
 	// const condition = {
@@ -369,24 +437,6 @@ router.delete('/activity', (req, res) => {
 	// 	return res.json({ data: data })
 	// })
 	return res.json({ error: 'Api delete - not ready' })
-})
-
-router.put('/activity', (req, res) => {
-	// const condition = {
-	// 	mainUser_id: req.auth.userId,
-	// 	task_id: ('task_id' in req.query) ? req.query.task_id : null,
-	// 	values: req.body
-	// }
-
-	// TaskController.updateTask(condition, (err, data) => {
-	// 	if (err) return res.json(err)
-
-	// 	log.debug(`/tasks:put |-> id:${data.task_id} | for user:${condition.mainUser_id}`)
-
-	// 	return res.json({ data: data })
-	// })
-
-	return res.json({ error: 'Api put - not ready' })
 })
 
 router.put('/activity/order', (req, res) => {
@@ -410,126 +460,4 @@ router.put('/activity/order', (req, res) => {
 	return res.json({ error: 'Api put order - not ready' })
 })
 
-/*** -OTHER API- */
-router.get('/fakeSet', (req, res) => {
-	return res.end('Can not generates fake datas')
-
-	const usersFields = 'username, email, hashedpassword, created, verified, verify_expired, verify_token, salt, loged, visible',
-				usersAnchors = '$1, $2, $3, $4, $5, $6, $7, $8, $9, $10',
-				clientsFields = 'user_id, name, hashedsecret, salt',
-				clientsAnchors = '$1, $2, $3, $4',
-				groupsFields = 'name, parent, creating, reading, updating, deleting, el_creating, el_reading, el_updating, el_deleting, group_type',
-				groupsAnchors = '$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11',
-				personalityFields = 'user_id, name, dateofbirth, city, country, phone',
-				personalityAnchors = '$1, $2, $3, $4, $5, $6'
-
-	let values = [],
-			client
-
-	for (let i = 5; i < 50; i++) {
-		(async () => {
-			const client = await pg.pool.connect()
-
-			try {
-				await client.query('BEGIN')
-				console.log('Generated user id:' + i)
-
-				let salt = crypto.randomBytes(128).toString('hex')
-
-				values = [faker.name.findName(), faker.internet.email(), crypto.pbkdf2Sync('password', salt, 10000, 512, 'sha512').toString('hex'),
-					new Date(), true, new Date(), '', salt, false, 1]
-				await client.query(`INSERT INTO users (${usersFields}) VALUES (${usersAnchors})`, values)
-
-				values = [i, 'WebBrowser', crypto.pbkdf2Sync('password', salt, 10000, 512, 'sha512').toString('hex'), salt]
-				await client.query(`INSERT INTO clients (${clientsFields}) VALUES (${clientsAnchors})`, values)
-
-				values = ['personal', null, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-				await client.query(`INSERT INTO groups (${groupsFields}) VALUES (${groupsAnchors})`, values)
-
-				await client.query(`INSERT INTO groups_list (user_id, group_id, user_type) VALUES ($1, $2, $3)`, [i, i, 1])
-
-				values = [i, faker.name.findName(), faker.date.past(), faker.address.city(), faker.address.country(), faker.phone.phoneNumber()]
-				await client.query(`INSERT INTO users_personality (${personalityFields}) VALUES (${personalityAnchors})`, values)
-
-				await client.query(`INSERT INTO users_photo (user_id, isavatar, url) VALUES ($1, $2, $3)`, [i, true, faker.internet.avatar()])
-
-				await client.query('COMMIT')
-			} catch (error) {
-				await client.query('ROLLBACK')
-				throw error
-			} finally {
-				client.release()
-			}
-		})().catch(e => console.error(e.stack))
-	}
-
-	return res.end('Datas generated')
-})
-
 module.exports = router;
-
-/*
-app.use('/api/clients', express.Router()
-	.post('/', passport.authenticate(['basic'], { session : false }), clientController.postClients)
-	.get('/', passport.authenticate(['basic', 'bearer'], { session : false }), clientController.getClients))
-app.use('/api/clients', express.Router().get('/', apiOauth.isAuthenticated, userController.getUsers))
-app.use('/api/users', express.Router().post('/', userController.postUsers).get('/', userController.getUsers))
-app.use('/api/articles', apiArticles)
-app.use('/api/tgmUsers', apiTgmUsers)
-
-		let fakeDatas = {
-			users: {
-				//id: 2,
-				username: faker.name.findName(),
-				email: faker.internet.email(),
-				hashedpassword: crypto.pbkdf2Sync('password', salt, 10000, 512, 'sha512').toString('hex'),
-				created: new Date(),
-				verified: true,
-				verify_expired: new Date(),
-				verify_token: '',
-				salt: salt,
-				loged: false,
-				visible: 1
-			},
-			clients: {
-				//id: 2,
-				user_id: i,
-				name: 'WebBrowser',
-				hashedsecret: crypto.pbkdf2Sync('password', salt, 10000, 512, 'sha512').toString('hex'),
-				salt: salt
-			},
-			groups: {
-				//id: 2,
-				name: 'personal',
-				parent: 'null',
-				creating: 1,
-				reading: 1,
-				updating: 1,
-				deleting: 1,
-				el_creating: 1,
-				el_reading: 1,
-				el_updating: 1,
-				el_deleting: 1,
-				group_type: 1
-			},
-			groups_list: {
-				user_id: i,
-				group_id: i,
-				user_type: 1
-			},
-			users_personality: {
-				user_id: i,
-				name: faker.name.findName(),
-				dateofbirth: faker.date.past(),
-				city: faker.address.city(),
-				country: faker.address.country(),
-				phone: faker.phone.phoneNumber()
-			},
-			users_photo: {
-				//photo_id: 2,
-				user_id: i,
-				isavatar: true,
-				url: faker.internet.avatar()
-			}
-		}
-*/

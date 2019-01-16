@@ -30,38 +30,22 @@
 						fab
 						small>
 						<v-icon>playlist_add_check</v-icon>
-						<v-icon>close</v-icon>
 					</v-btn>
-					<v-btn
-						fab
-						dark
-						small
-						color="success">
-						<v-icon>play_arrow</v-icon>
-					</v-btn>
-					<v-btn
-						fab
-						dark
-						small
-						color="success">
-						<v-icon>not_interested</v-icon>
-					</v-btn>
-					<v-btn
-						fab
-						dark
-						small
-						color="success">
-						<v-icon>delete_forever</v-icon>
-					</v-btn>
+					<template v-for="action in statusAllowedActions(item.status)">
+						<v-tooltip bottom>
+							<v-btn fab dark small color="blue darken-2" slot="activator" @click="onStatusChange(action)">
+								<v-icon>{{ statusIcon(action) }}</v-icon>
+							</v-btn>
+							<span>{{ statusName(action) }}</span>
+						</v-tooltip>
+					</template>
 				</v-speed-dial>
 			</div>
 
 			<div class="task-clmn2">
 				<v-tooltip bottom class="task-status">
-					<v-icon
-						slot="activator"
-					>play_arrow</v-icon>
-					<span>Начато</span>
+					<v-icon style="width: 24px;" slot="activator">{{ statusIcon(item.status) }}</v-icon>
+					<span>{{ statusName(item.status) }}</span>
 				</v-tooltip>
 
 				<v-icon @click="onExpandSubtasks()" v-show="item.havechild" class="expand-ico"
@@ -148,8 +132,7 @@
 				<v-tab-item v-for="(tab, index) in tabs" :key="index">
 					<component v-bind:is="currentTabComponent"
 						:item="item"
-						:list_id="list_id"
-						:activity="demoItems"></component>
+						:list_id="list_id"></component>
 				</v-tab-item>
 			</v-tabs-items>
 		</div>
@@ -174,13 +157,12 @@ import Treeselect from '@riophae/vue-treeselect'
 import ItmTextArea from '../ItmTextArea.vue'
 import TagsInput from '../../VoerroTagsInput/VoerroTagsInput.vue'
 import VCircle from '../../VCircle/VCircle.js'
-import { isNumeric } from '../../../util/helpers.js'
+import { isNumeric, activityStatus } from '../../../util/helpers.js'
 
 // import { VTabs } from 'vuetify/lib'
 
 import draggable from 'vuedraggable'
 
-//tabitems: ['Note', 'Activity', 'Comments', 'List', 'Options']
 const tabs = [
   {
 		name: 'Note',
@@ -197,45 +179,6 @@ const tabs = [
 	{
 		name: 'Comments',
 		component: { template: '<div>Coming soon</div>' }
-	}
-]
-
-const demoItems = [
-	{
-		id: 'rf331',
-		status: 0,
-		group: 1,
-		user: 1,
-		avatar: 'https://cdn.vuetifyjs.com/images/lists/2.jpg',
-		start: new Date('2019-01-04T01:10:00'),
-		end: new Date('2019-01-04T01:20:00')
-	},
-	{
-		id: 'rf231',
-		status: 1,
-		group: 1,
-		user: 1,
-		avatar: 'https://cdn.vuetifyjs.com/images/lists/2.jpg',
-		start: new Date('2019-01-04T01:20:00'),
-		end: new Date('2019-01-04T01:25:00')
-	},
-	{
-		id: 'xf3e1',
-		status: 0,
-		group: 50,
-		user: 1,
-		avatar: 'https://cdn.vuetifyjs.com/images/lists/2.jpg',
-		start: new Date('2019-01-04T01:25:00'),
-		end: new Date('2019-01-04T01:25:05')
-	},
-	{
-		id: 'rdq3g',
-		status: 1,
-		group: 50,
-		user: 1,
-		avatar: 'https://cdn.vuetifyjs.com/images/lists/4.jpg',
-		start: new Date('2019-01-04T01:25:05'),
-		end: new Date()
 	}
 ]
 
@@ -278,8 +221,7 @@ export default {
 		isTagsInitialized: false,
 		tabs: tabs,
 		currentTab: 1,
-		timeoutID: null,
-		demoItems: demoItems
+		timeoutID: null
 	}),
 	computed: {
 		currentTabComponent: function () {
@@ -291,7 +233,7 @@ export default {
 		},
 		contexts: {
 			get() { return this.item.context },
-			set() {}
+			set(value) {}
 		},
 		mainExistingContexts() { return this.$store.state.mainExistingContexts },
 		mainGroupsMini() { return this.$store.state.mainGroupsMini },
@@ -316,6 +258,19 @@ export default {
 		// value() {
 		// 	this.item = this.value
 		// }
+		currentTab() {
+			if (this.tabs[this.currentTab].name === 'Activity') {
+				this.$store.dispatch('FETCH_ACTIVITY', {
+					task_id: this.item.task_id,
+					list_id: this.list_id })
+				.then((res) => {
+					console.log('Loaded activity')
+				})
+				.catch((err) => {
+					console.warn(err)
+				})
+			}
+		}
 	},
 	mounted () {
 		// this.timeoutID = setInterval(() => {
@@ -331,6 +286,24 @@ export default {
 		// clearTimeout(this.timeoutID)
 	},
 	methods: {
+		onStatusChange: function (newStatus) {
+			this.$store.dispatch('CREATE_ACTIVITY_ELEMENT', {
+				list_id: this.list_id,
+				task_id: this.item.task_id,
+				status: newStatus
+			})
+			.then((res) => {})
+			.catch((err) => {	console.warn(err)	})
+		},
+		statusIcon: function (status) {
+			return activityStatus[status].icon
+		},
+		statusName: function (status) {
+			return activityStatus[status].name
+		},
+		statusAllowedActions: function (status) {
+			return activityStatus[status].allowedActions
+		},
 		tagChange(slug, command) {
 			let context
 			const options = {
@@ -551,12 +524,15 @@ export default {
   color: #cccccc;
   text-shadow: 1px 0 1px black;
 }
+
 .task-handle::after {
   content: '.. .. .. ..';
 }
+
 .task-handle-active {
 	color: blue;
 }
+
 .task-handle-active::after {
 	content: '.. .. .. .. .. ..'
 }
@@ -586,7 +562,6 @@ export default {
   flex-direction: column;
   justify-content: space-between;
 	align-items: center;
-
 	margin: 2px 2px 2px 0px;
 }
 

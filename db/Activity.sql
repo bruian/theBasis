@@ -66,7 +66,7 @@ DECLARE
 BEGIN
 	/* Getting a GROUP to determine the rights to the operation */
 	SELECT gl.user_type, g.reading, g.el_creating, g.el_reading
-	  INTO main_user_type, group_reading, el_creating, el_reading FROM groups_list AS gl
+		INTO main_user_type, group_reading, el_creating, el_reading FROM groups_list AS gl
 	LEFT JOIN groups AS g ON gl.group_id = g.id
 	WHERE (gl.user_id = main_user_id OR gl.user_id = 0) AND (gl.group_id = _group_id);
 
@@ -234,9 +234,59 @@ BEGIN
 END;
 $f$;
 
+select * from users_photo
+
+/* Запрос активностей */
+WITH RECURSIVE main_visible_groups AS (
+	SELECT group_id FROM groups_list AS gl
+	LEFT JOIN groups AS grp ON gl.group_id = grp.id
+	WHERE (grp.reading >= gl.user_type)
+		AND (grp.el_reading >= gl.user_type)
+		AND (gl.user_id = 0 OR gl.user_id = 1)
+	)  SELECT al.id, al.group_id, al.user_id, act.task_id, al.type_el,
+		act.name, act.note, act.productive, uf.url as avatar,
+		act.part, act.status, act.owner, act.start, act.ends
+	FROM activity_list AS al
+	RIGHT JOIN activity AS act ON al.id = act.id
+	RIGHT JOIN users_photo AS uf ON (al.user_id = uf.user_id) AND (uf.isavatar = true)
+	WHERE al.group_id IN (SELECT * FROM main_visible_groups) AND (al.type_el = 1)
+	ORDER BY al.group_id, (al.p::float8/al.q) LIMIT 10 OFFSET 0;
+
+WITH RECURSIVE main_visible_groups AS (
+	SELECT group_id FROM groups_list AS gl
+	LEFT JOIN groups AS grp ON gl.group_id = grp.id
+	WHERE (grp.reading >= gl.user_type)
+		AND (grp.el_reading >= gl.user_type)
+		AND (gl.user_id = 0 OR gl.user_id = 1) --$
+) SELECT al.id, al.group_id, al.user_id, act.task_id,
+		act.name, act.note, act.productive, uf.url as avatar,
+		act.part, act.status, act.owner, act.start, act.ends
+	FROM activity_list AS al
+	RIGHT JOIN activity AS act ON al.id = act.id
+	RIGHT JOIN users_photo AS uf ON (al.user_id = uf.user_id) AND (uf.isavatar = true)
+	WHERE al.group_id IN (SELECT * FROM main_visible_groups) --${pgСonditions}
+	ORDER BY al.group_id, (al.p::float8/al.q) --${pgLimit};
+
+/* Поиск активности со статусами "Started-1" или "Continued-5" */
+SELECT al.id, act.status, act.start, act.ends
+FROM activity_list AS al
+RIGHT JOIN activity as act ON al.id = act.id
+WHERE (al.user_id = 1)
+	AND (act.task_id = 22)
+	AND (act.ends is null)
+	AND (act.status = 1 OR act.status = 5);
+
+--SELECT add_activity(1, 1, 1::smallint, false);
+--UPDATE activity SET status = 1 WHERE id = 'fxsXCIJ4';
 
 select * from activity;
 select * from activity_list;
+select * from tasks_list;
+select * from tasks;
+
+select * from groups;
+
 delete from activity;
 delete from activity_list;
-select * from groups;
+delete from tasks;
+delete from tasks_list;

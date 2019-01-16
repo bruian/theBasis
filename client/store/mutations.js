@@ -339,7 +339,9 @@ export default {
 
 			if (tasks[i].task_id) {
 				tasks[i].context = state.mainContexts.filter(el => el.task_id === tasks[i].task_id).map(cont => { return cont.value })
-				if (!tasks[i].context) tasks[i].context = new Array
+				if (!tasks[i].context) tasks[i].context = new Array()
+
+				if (!tasks[i].activity) tasks[i].activity = new Array()
 			}
 
 			//displays the task item
@@ -355,7 +357,6 @@ export default {
 				1 - refresh
 				2 - not consistently */
 			tasks[i].consistency = 0
-			//nesting level
 
 			//ids to object link
 			if (tasks[i].parent === 0) {
@@ -473,7 +474,7 @@ export default {
 		}
 		state.mainExistingContexts = Object.assign({}, existingContexts)
 
-		if (!Array.isArray(state.mainContexts)) state.mainContexts = new Array
+		if (!Array.isArray(state.mainContexts)) state.mainContexts = new Array()
 	},
 
 	ADD_TASK_CONTEXT: (state, options) => {
@@ -488,6 +489,19 @@ export default {
 
 	REMOVE_TASK_CONTEXT: (state, options) => {
 
+	},
+
+	SET_ACTIVITY: (state, options) => {
+		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		const taskList = activeList.list
+		const element = recursiveFind(taskList, el => el.task_id === options.task_id).element
+
+		element.activity = new Array()
+		for (let i = 0; i < options.data.length; i++) {
+			element.activity.push(options.data[i])
+			element.activity[i].start = new Date(element.activity[i].start)
+			if (element.activity[i].ends) element.activity[i].ends = new Date(element.activity[i].ends)
+		}
 	},
 
 	//*** Other mutations */

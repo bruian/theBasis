@@ -81,40 +81,51 @@ export function treeDepth(tree) {
 	return depth + childrenDepth
 }
 
-export const taskStatus = [
+/***
+ * Статусы активностей, иконки из MaterialDesign и разрешенные
+ * действия относительно выбранного статуса
+ */
+export const activityStatus = [
 	{
 		name: 'Assigned', //Назначено - 0
 		action: 'Assign', //Назначить
-		icon: 'queue'
+		icon: 'queue',
+		allowedActions: [1, 4]
 	},
 	{
 		name: 'Started', //Начато - 1
 		action: 'Start', //Начать
-		icon: 'play_circle_filled'
+		icon: 'play_circle_filled',
+		allowedActions: [3, 2, 4]
 	},
 	{
 		name: 'Completed',	//Завершено - 2
 		action: 'Complete',	//Завершить
-		icon: 'done'
+		icon: 'done',
+		allowedActions: [0]
 	},
 	{
 		name: 'Suspended', //Приостановлено - 3
 		action: 'Suspend', //Приостановить
-		icon: 'pause'
+		icon: 'pause',
+		allowedActions: [5, 2, 4]
 	},
 	{
 		name: 'Canceled', //Отменено - 4
 		action: 'Cancel', //Отклонить
-		icon: 'cancel'
+		icon: 'cancel',
+		allowedActions: [0]
 	},
 	{
 		name: 'Continued', //Продолжено - 5
 		action: 'Continue',//Продолжить
-		icon: 'play_arrow'
+		icon: 'play_arrow',
+		allowedActions: [3, 2, 4]
 	},
 	{
 		name: 'Removed',  //Удалено - 6
 		action: 'Remove', //Удалить
-		icon: 'delete'
+		icon: 'delete',
+		allowedActions: []
 	}
 ]

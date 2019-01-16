@@ -13,7 +13,7 @@
 				<v-list-tile-content>
 					<v-list-tile-title><b style="color: #4caf50;">{{ statusName(item.status) }}</b> to {{ item.group }} group</v-list-tile-title>
 					<v-list-tile-sub-title>
-						<b>Interval:</b> {{ startDate(item.start) }} <b>-</b> {{ endDate(item.end) }}
+						<b>Interval:</b> {{ startDate(item.start) }} <b>-</b> {{ endDate(item.ends) }}
 						<b>Duration:</b> {{ duration(item) }}
 					</v-list-tile-sub-title>
 				</v-list-tile-content>
@@ -35,15 +35,21 @@
 </template>
 
 <script>
-import { taskStatus } from '../../../util/helpers.js'
+import { activityStatus } from '../../../util/helpers.js'
 
 export default {
-	props: ['item', 'list_id', 'activity'],
+	props: ['item', 'list_id'],
 	data: () => ({
-		items: []
+		//items: []
 	}),
 	mounted () {
-		this.items = this.activity
+		//this.items = this.item.activity
+	},
+	computed: {
+		items: {
+			get() { return this.item.activity },
+			set(value) {}
+		}
 	},
 	methods: {
 		startDate: function (start) {
@@ -61,18 +67,25 @@ export default {
 			}
 		},
 		endDate: function (end) {
+			let ends = end
+			if (!ends) ends = new Date()
+
 			const currentDate = new Date()
 
-			if ( currentDate.getFullYear() === end.getFullYear()
-				&& currentDate.getMonth() === end.getMonth()
-				&& currentDate.getDate() === end.getDate() ) {
-				return end.toLocaleTimeString('ru-RU', { hour12: false })
+			if ( currentDate.getFullYear() === ends.getFullYear()
+				&& currentDate.getMonth() === ends.getMonth()
+				&& currentDate.getDate() === ends.getDate() ) {
+				return ends.toLocaleTimeString('ru-RU', { hour12: false })
 			} else {
-				return end.toISOString().replace(/T/, ' ').replace(/\..+/, '')
+				return ends.toISOString().replace(/T/, ' ').replace(/\..+/, '')
 			}
 		},
 		duration: function (item) {
-			let timeDiff = (item.end - item.start) / 1000
+			//debugger
+			let ends = item.ends
+			if (!ends) ends = new Date()
+
+			let timeDiff = (ends - item.start) / 1000
 
 			let seconds = Math.round(timeDiff % 60)
 			timeDiff = Math.floor(timeDiff / 60)
@@ -87,10 +100,10 @@ export default {
 			return `${hours>9 ? '' : '0'}${hours}:${minutes>9 ? '' : '0'}${minutes}:${seconds>9 ? '' : '0'}${seconds}`
 		},
 		statusIcon: function (status) {
-			return taskStatus[status].icon
+			return activityStatus[status].icon
 		},
 		statusName: function (status) {
-			return taskStatus[status].name
+			return activityStatus[status].name
 		}
 	}
 }
