@@ -163,18 +163,29 @@ async function getTasks(condition) {
 			LEFT JOIN groups AS grp ON gl.group_id = grp.id
 			WHERE grp.reading >= gl.user_type AND (gl.user_id = 0 OR gl.user_id = $1)
 		) ${pgUserGroups}, descendants(id, parent, depth, path) AS (
-				SELECT id, parent, 1 depth, ARRAY[id] FROM tasks WHERE ${pgParentCondition2}
+			SELECT id, parent, 1 depth, ARRAY[id] FROM tasks WHERE ${pgParentCondition2}
 		UNION
 			SELECT t.id, t.parent, d.depth + 1, path || t.id FROM tasks t
 			JOIN descendants d ON t.parent = d.id
+		), acts(duration, task_id) AS (
+			SELECT SUM(extract(EPOCH from act.ends) - extract(EPOCH from act.start)) as duration,
+				act.task_id FROM activity_list AS al
+			JOIN activity AS act ON (act.id = al.id)
+			WHERE (al.user_id = $1)
+				AND (al.group_id IN (SELECT * FROM main_visible_groups))
+				AND (act.status = 1 OR act.status = 5)
+			GROUP BY act.task_id
 		)
 		SELECT tl.task_id, tl.group_id, tl.p, tl.q,
 			tsk.tid, tsk.name, tsk.owner AS tskowner,
-			tsk.status, tsk.duration, tsk.note, tsk.parent,
+			act.status, tsk.note, tsk.parent,
 			(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild,
-			dsc.depth
+			(SELECT duration FROM acts WHERE acts.task_id = tl.task_id) * 1000 AS duration,
+			dsc.depth, act.start
 		FROM tasks_list AS tl
 		RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
+		JOIN activity_list AS al ON (al.group_id = tl.group_id) AND (al.user_id = $1)
+		JOIN activity AS act ON (act.task_id = tl.task_id) AND (act.ends IS NULL) AND (act.id = al.id)
 		JOIN (SELECT max(depth) AS depth, descendants.path[1] AS parent_id
 					FROM descendants GROUP BY descendants.path[1]) AS dsc ON tl.task_id = dsc.parent_id
 		WHERE tl.group_id IN (SELECT * FROM ${pgGroups}) ${pgСonditions}

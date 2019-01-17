@@ -171,6 +171,42 @@ LEFT JOIN context_setting AS cs ON cs.context_id = cl.context_id AND cs.user_id 
 WHERE cl.task_id in (select task_id from temp_task);
 */
 
+/* Рабочая выборка списка задач из модуля tasks.js */
+WITH RECURSIVE main_visible_groups AS (
+	SELECT group_id FROM groups_list AS gl
+		LEFT JOIN groups AS grp ON gl.group_id = grp.id
+		WHERE (grp.reading >= gl.user_type) AND (gl.user_id = 0 OR gl.user_id = 1)
+	), descendants(id, parent, depth, path) AS (
+		SELECT id, parent, 1 depth, ARRAY[id] FROM tasks WHERE parent = 0
+		UNION
+		SELECT t.id, t.parent, d.depth + 1, path || t.id FROM tasks t
+		JOIN descendants d ON t.parent = d.id
+	), acts(duration, task_id) AS (
+		SELECT SUM(act.ends - act.start) as duration, act.task_id FROM activity_list AS al
+		JOIN activity AS act ON (act.id = al.id)
+		WHERE (al.user_id = 1) AND (al.group_id IN (SELECT * FROM main_visible_groups))
+		GROUP BY act.task_id
+	)
+	SELECT tl.task_id, tl.group_id, tl.p, tl.q,
+		tsk.tid, tsk.name, tsk.owner AS tskowner,
+		act.status, tsk.note, tsk.parent,
+		(SELECT COUNT(*) FROM tasks WHERE parent = tsk.id) AS havechild,
+		extract(EPOCH from (SELECT duration FROM acts WHERE acts.task_id = tl.task_id))*1000 AS duration,
+		dsc.depth, act.start
+	FROM tasks_list AS tl
+	RIGHT JOIN tasks AS tsk ON tl.task_id = tsk.id
+	JOIN activity_list AS al ON (al.group_id = tl.group_id) AND (al.user_id = 1)
+	JOIN activity AS act ON (act.task_id = tl.task_id) AND (act.ends IS NULL) AND (act.id = al.id)
+	JOIN (SELECT max(depth) AS depth, descendants.path[1] AS parent_id
+				FROM descendants GROUP BY descendants.path[1]) AS dsc ON tl.task_id = dsc.parent_id
+	WHERE tl.group_id IN (SELECT * FROM main_visible_groups)
+	ORDER BY tl.group_id, (tl.p::float8/tl.q);
+
+select * from activity;
+select * from activity_list;
+select * from tasks_list;
+select * from tasks;
+
 /* TEST OPERATIONS for add_task */
 SELECT add_task(1, 1, 0);
 SELECT * from tasks;

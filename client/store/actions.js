@@ -952,6 +952,7 @@ export default {
 			element = recursiveFind(taskList, el => el.task_id === options.task_id).element
 
 		if (!element) return Promise.reject(null)
+		element.consistency = 1
 
 		const fetchQuery = {
 			url: 'activity',
@@ -965,11 +966,13 @@ export default {
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(null)
 			} else {
-				commit('SET_ACTIVITY', { list_id: options.list_id, task_id: options.task_id, data: dataFromSrv.data })
+				element.consistency = 0
+				commit('SET_ACTIVITY', { list_id: options.list_id, data: dataFromSrv.data })
 				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
 		.catch((err) => {
+			element.consistency = 2
 			if (err.response.data) {
 				commit('API_ERROR', { message: err.message, data: err.response.data })
 				return Promise.reject({ message: err.message, data: err.response.data })
@@ -1013,6 +1016,7 @@ export default {
 		const activeElement = recursiveFind(thisList, el => el.task_id === options.task_id).element
 
 		let status, start, group_id = activeElement.group_id
+		activeElement.consistency = 1
 
 		//Определим меняется ли статус задачи или это обычное добавление активности
 		//Т.к. статус должен обязательно включать время смены, то заранее его зададим
@@ -1043,11 +1047,13 @@ export default {
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(null)
 			} else {
+				activeElement.consistency = 0
 				commit('SET_ACTIVITY', { list_id: options.list_id, task_id: options.task_id, data: dataFromSrv.data })
 				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
 		.catch((err) => {
+			activeElement.consistency = 2
 			if (err.response.data) {
 				commit('API_ERROR', { message: err.message, data: err.response.data })
 				return Promise.reject({ message: err.message, data: err.response.data })

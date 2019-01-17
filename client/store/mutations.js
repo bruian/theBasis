@@ -210,7 +210,8 @@ export default {
 		ul.list.splice(idx, 1)
 	},
 
-	//*** Groups list mutations */
+/* ---------------------------------------GROUPS mutations-------------------------------------- */
+
 	SET_GROUPS_LIST: (state, data) => {
 		setApiStatus(state, 'SET_GROUPS_LIST', null)
 
@@ -311,7 +312,8 @@ export default {
 		gl.list.splice(idx, 1)
 	},
 
-//*** Tasks mutations */
+/* ---------------------------------------TASKS mutations--------------------------------------- */
+
 	SET_TASKS: (state, options) => {
 		setApiStatus(state, 'SET_TASKS', null)
 
@@ -342,6 +344,10 @@ export default {
 				if (!tasks[i].context) tasks[i].context = new Array()
 
 				if (!tasks[i].activity) tasks[i].activity = new Array()
+
+				if (tasks[i].status === 1 || tasks[i].status === 5) {
+					tasks[i].duration = tasks[i].duration + (new Date() - new Date(tasks[i].start))
+				}
 			}
 
 			//displays the task item
@@ -451,16 +457,8 @@ export default {
 		}
 	},
 
-	SET_ACTIVE_LIST: ({ listOfList }, options) => {
-		const activeList = listOfList.find(el => el.list_id === options.list_id)
-		activeList.selectedList = true
-		activeList.selectedItem = null
+/* --------------------------------------Contexts mutations------------------------------------- */
 
-		const activeTask = recursiveFind(activeList.list, el => el.isActive).element
-		if (activeTask) activeTask.isActive = false
-	},
-
-//*** Contexts mutations */
 	MAINCONTEXTS_SUCCESS: (state, contexts) => {
 		setApiStatus(state, 'MAINCONTEXTS_SUCCESS', null)
 
@@ -491,20 +489,69 @@ export default {
 
 	},
 
+/* --------------------------------------ACTIVITY mutations------------------------------------- */
+
 	SET_ACTIVITY: (state, options) => {
 		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
 		const taskList = activeList.list
-		const element = recursiveFind(taskList, el => el.task_id === options.task_id).element
+		let element, taskDuration, taskStatus
 
-		element.activity = new Array()
-		for (let i = 0; i < options.data.length; i++) {
-			element.activity.push(options.data[i])
-			element.activity[i].start = new Date(element.activity[i].start)
-			if (element.activity[i].ends) element.activity[i].ends = new Date(element.activity[i].ends)
+		// Обновление активностей и статусов задач информацией полученной в options.data
+		for (let activity of options.data) {
+			// Для каждой задачи обновляется свой список активностей, тут меняется задача для обновления
+			if (!element || (element.task_id !== activity.task_id)) {
+				// Если уже был получен элемент задачи, то перед получением нового элемента, старый
+				// необходимо обновить значениями duration и status
+				if (element) {
+					element.duration = taskDuration
+					element.status = taskStatus
+				}
+
+				// Получается элемент задачи из списка задач на клиенте, инициализируется заново список
+				// активностей, инициализируются переменные duration и status
+				element = recursiveFind(taskList, el => el.task_id === activity.task_id).element
+				element.activity = new Array()
+
+				taskDuration = 0
+				taskStatus = element.status
+			}
+
+			// Накопительно считается duration для активностей со статусом "Started-1" или "Continued-5"
+			if (activity.status === 1 || activity.status === 5) {
+				let ends = (activity.ends) ? new Date(activity.ends) : new Date()
+				taskDuration = taskDuration + (ends - new Date(activity.start))
+			}
+
+			// Обновляется статус ориентируясь на задачу с открытой датой завершения
+			if (activity.ends === null) {
+				taskStatus = activity.status
+			}
+
+			// Заполняется список активностей у выбранной задачи
+			element.activity.push(activity)
+			element.activity[element.activity.length - 1].start = new Date(activity.start)
+			if (activity.ends) element.activity[element.activity.length - 1].ends = new Date(activity.ends)
+		}
+
+		// Обновляются значения duration и status у последней задачи, которая не обновилась из-за
+		// завершения цикла
+		if (element) {
+			element.duration = taskDuration
+			element.status = taskStatus
 		}
 	},
 
-	//*** Other mutations */
+/* ----------------------------------------Other mutations-------------------------------------- */
+
+	SET_ACTIVE_LIST: ({ listOfList }, options) => {
+		const activeList = listOfList.find(el => el.list_id === options.list_id)
+		activeList.selectedList = true
+		activeList.selectedItem = null
+
+		const activeTask = recursiveFind(activeList.list, el => el.isActive).element
+		if (activeTask) activeTask.isActive = false
+	},
+
   SET_ITEMS: (state, { items }) => {
     items.forEach(item => {
       if (item) {

@@ -383,7 +383,6 @@ async function addActivity(condition) {
 				queryText = 'UPDATE activity SET ends = $1 WHERE id = $2;'
 				params = [start, existsElements[0].id]
 				await client.query(queryText, params)
-				returnElements.push(existsElements[0].id)
 
 				// Создание активности для действующей задачи, установка ей статуса  "Suspended-3"
 				queryText = `SELECT add_activity($1, $2, $3, $4);`
@@ -393,15 +392,16 @@ async function addActivity(condition) {
 				// Обновление атрибутов задачи
 				queryText = `UPDATE activity
 					SET (start, task_id, status, productive, part) =
-						($1, $2, $3, $4, (SELECT count(id)+1 FROM activity WHERE task_id = $2))
+						($1, $2, $3, $4, (SELECT count(id) FROM activity WHERE task_id = $2))
 					WHERE id = $5;`
 				params = [start, existsElements[0].task_id, 3, true, rows[0].add_activity]
 				await client.query(queryText, params)
-				returnElements.push(rows[0].add_activity)
+
+				returnElements.push(existsElements[0].task_id)
 			}
 
 			// Поиск активности у той задачи, которая в данный момент принадлежит
-			// переданной пользователем задачи и имеет атрибут "ends" == null
+			// переданной пользователем задаче и имеет атрибут "ends" == null
 			queryText = `SELECT al.id, al.group_id
 				FROM activity_list AS al
 				RIGHT JOIN activity AS act ON al.id = act.id
@@ -417,7 +417,6 @@ async function addActivity(condition) {
 				queryText = 'UPDATE activity SET ends = $1 WHERE id = $2;'
 				params = [start, rows[0].id]
 				await client.query(queryText, params)
-				returnElements.push(rows[0].id)
 			}
 		}
 
@@ -427,7 +426,6 @@ async function addActivity(condition) {
 		let { rows: newElements } = await client.query(queryText, params)
 
 		const elementId = newElements[0].add_activity
-		returnElements.push(elementId)
 
 		// Обновление значения start в таблице activity
 		if (start) {
@@ -436,13 +434,15 @@ async function addActivity(condition) {
 			await client.query(queryText, params)
 		}
 
+		returnElements.push(task_id)
+
 		// Обновление значения task_id в таблице activity
 		if (task_id) {
 			//Если есть права на задачу, то она слинкуется с элементом активности
 			if (status) {
 				queryText = `UPDATE activity
 					SET (task_id, productive, status, start, part)
-						= ($1, $2, $3, $4, (SELECT count(id)+1 FROM activity WHERE task_id = $1))
+						= ($1, $2, $3, $4, (SELECT count(id) FROM activity WHERE task_id = $1))
 					WHERE id = $5;`
 				params = [task_id, true, status, start, elementId]
 			} else {
@@ -456,14 +456,28 @@ async function addActivity(condition) {
 		await client.query('commit')
 
 		// Получение данных по добавленному элементу
-		queryText = `SELECT al.id, al.group_id, al.user_id, al.type_el,
-			act.task_id, act.name, act.note, act.productive, act.part,
-			act.status, act.owner, act.start, act.ends, uf.url as avatar
-		FROM activity_list AS al
-		RIGHT JOIN activity AS act ON al.id = act.id
-		RIGHT JOIN users_photo AS uf ON (al.user_id = uf.user_id) AND (uf.isavatar = true)
-		WHERE al.id IN (SELECT * FROM UNNEST ($1::text[]))`
-		params = [returnElements]
+		if (task_id) {
+			// Получение всех активностей по task_id
+			queryText = `SELECT al.id, al.group_id, al.user_id, al.type_el,
+				act.task_id, act.name, act.note, act.productive, act.part,
+				act.status, act.owner, act.start, act.ends, uf.url as avatar
+			FROM activity_list AS al
+			RIGHT JOIN activity AS act ON al.id = act.id
+			RIGHT JOIN users_photo AS uf ON (al.user_id = uf.user_id) AND (uf.isavatar = true)
+			WHERE act.task_id IN (SELECT * FROM UNNEST ($1::integer[]))
+			ORDER BY act.task_id, (al.p::float8/al.q);`
+			params = [returnElements]
+		} else {
+			// Получение одной активности по activity id
+			queryText = `SELECT al.id, al.group_id, al.user_id, al.type_el,
+				act.task_id, act.name, act.note, act.productive, act.part,
+				act.status, act.owner, act.start, act.ends, uf.url as avatar
+			FROM activity_list AS al
+			RIGHT JOIN activity AS act ON al.id = act.id
+			RIGHT JOIN users_photo AS uf ON (al.user_id = uf.user_id) AND (uf.isavatar = true)
+			WHERE al.id = $1;`
+			params = [elementId]
+		}
 		let { rows: elements } = await client.query(queryText, params)
 
 		return Promise.resolve(elements)

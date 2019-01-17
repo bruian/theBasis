@@ -165,7 +165,8 @@ router.delete('/groups', (req, res) => {
 	})
 })
 
-/*** -CONTEXTS API- */
+/* ----------------------------------------CONTEXTS API----------------------------------------- */
+
 router.get('/contexts', (req, res) => {
 	const condition = {
 		mainUser_id: req.auth.userId,
@@ -229,21 +230,19 @@ router.delete('/contexts', (req, res) => {
  * @description Http METHOD. Call api function "getTasks" and responce data: JSON
 */
 router.get('/tasks', (req, res) => {
+	const timeStart = Date.now()
 	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
 	condition = Object.assign(condition, req.headers)
 
 	TaskController.getTasks(condition)
 	.then(data => {
 		const ids = data.map((el) => el.task_id).toString()
-		log.debug(`/tasks:get |-> like:${condition.searchText} | group_id:${condition.group_id}
-			| parent_id:${condition.parent_id} | for user: ${condition.mainUser_id}
-			| offset:${condition.offset} | partid:${req.headers.partid} | elements:[${ids}]`)
+		log.debug(`/tasks:get ${Date.now()-timeStart}ms |-> like:${condition.searchText} | group_id:${condition.group_id} | parent_id:${condition.parent_id} | for user:${condition.mainUser_id} | offset:${condition.offset} | partid:${req.headers.partid} | elements:[${ids}]`)
 
 		return res.json({ data: data, partid: req.headers.partid })
 	})
 	.catch(err => {
-		log.warn(`/task:get |-> name:${err.name} | status:${err.jse_info.status} | message:
-			${err.message}`)
+		log.warn(`/task:get |-> name:${err.name} | status:${err.jse_info.status} | message:	${err.message}`)
 
 		return res.status(err.jse_info.status).end(err.message)
 	})
@@ -257,11 +256,11 @@ router.get('/tasks', (req, res) => {
  * @description Http METHOD. Call api function "addTask"->"addActivity" and responce data: JSON
 */
 router.post('/tasks', (req, res) => {
+	const timeStart = Date.now()
 	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
 
 	const onTaskCreated = (taskData) => {
-		log.debug(`/tasks:post |-> id:${taskData[0].task_id} | parent:${taskData[0].parent}
-			| group:${taskData[0].group_id} | for user: ${condition.mainUser_id}`)
+		log.debug(`/tasks:post ${Date.now()-timeStart}ms |-> id:${taskData[0].task_id} | parent:${taskData[0].parent}	| group:${taskData[0].group_id} | for user: ${condition.mainUser_id}`)
 
 		condition.status = 0
 		condition.type_el = 1
@@ -269,8 +268,7 @@ router.post('/tasks', (req, res) => {
 		condition.group_id = taskData[0].group_id
 
 		return ActivityController.addActivity(condition).then(activityData => {
-			log.debug(`/activity:post |-> id:${condition.task_id} | group:${condition.group_id}
-				| type:${condition.type_el} | for user: ${condition.mainUser_id}`)
+			log.debug(`/activity:post ${Date.now()-timeStart}ms |-> id:${condition.task_id} | group:${condition.group_id}	| type:${condition.type_el} | for user: ${condition.mainUser_id}`)
 
 			return res.json({ data: taskData })
 		})
@@ -309,12 +307,13 @@ router.delete('/tasks', (req, res) => {
  * @description Http METHOD. Call api function "updateTask"->"addActivity" and responce data: JSON
 */
 router.put('/tasks', (req, res) => {
+	const timeStart = Date.now()
 	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
 	const values = Object.assign({}, req.body)
 
 	TaskController.updateTask(condition, values)
 	.then(taskData => {
-		log.debug(`/tasks:put |-> id:${taskData.task_id} | for user:${condition.mainUser_id}`)
+		log.debug(`/tasks:put ${Date.now()-timeStart}ms |-> id:${taskData.task_id} | for user:${condition.mainUser_id}`)
 
 		return res.json({ data: taskData })
 	})
@@ -338,9 +337,7 @@ router.put('/tasks/order', (req, res) => {
 	TaskController.updatePosition(condition, (err, data) => {
 		if (err) return res.json(err)
 
-		log.debug(`/tasks/order |-> id:${condition.task_id} | parent:${condition.parent_id}
-			| group:${condition.group_id} | position:${condition.position} | isBefore:${condition.isBefore}
-			| for	user: ${condition.mainUser_id}`)
+		log.debug(`/tasks/order |-> id:${condition.task_id} | parent:${condition.parent_id}	| group:${condition.group_id} | position:${condition.position} | isBefore:${condition.isBefore}	| for	user: ${condition.mainUser_id}`)
 
 		return res.json({ data: data })
 	})
@@ -356,19 +353,19 @@ router.put('/tasks/order', (req, res) => {
  * @description Http METHOD. Call api function "getActivity" and responce data: JSON
 */
 router.get('/activity', (req, res) => {
+	const timeStart = Date.now()
 	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
 	condition = Object.assign(condition, req.headers)
 
 	ActivityController.getActivity(condition)
 	.then(data => {
 	 	const ids = data.map((el) => el.id).toString()
-		log.debug(`/activity:get |-> like:${condition.searchText} | group_id:${condition.group_id}
-			|	for user: ${condition.mainUser_id} | offset:${condition.offset} | elements:[${ids}]`)
+		log.debug(`/activity:get ${Date.now()-timeStart}ms |-> like:${condition.searchText} | group_id:${condition.group_id} | for user:${condition.mainUser_id} | offset:${condition.offset} | elements:[${ids}]`)
 
 		return res.json({ data: data })
 	})
 	.catch(err => {
-		log.warn(`/activity:get |-> name:${err.name} | status:${err.jse_info.status} | message:	${err.message}`)
+		log.warn(`/activity:get |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
 
 		return res.status(err.jse_info.status).end(err.message)
 	})
@@ -382,12 +379,12 @@ router.get('/activity', (req, res) => {
  * @description Http METHOD. Call api function "addActivity" and responce data: JSON
 */
 router.post('/activity', (req, res) => {
+	const timeStart = Date.now()
 	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
 
 	ActivityController.addActivity(condition)
 	.then(data => {
-		log.debug(`/activity:post |-> id:${condition.task_id} | group:${condition.group_id}
-			| type:${condition.type_el} | for user: ${condition.mainUser_id}`)
+		log.debug(`/activity:post ${Date.now()-timeStart}ms |-> id:${condition.task_id} | group:${condition.group_id} | type:${condition.type_el} | for user:${condition.mainUser_id}`)
 
 		return res.json({ data: data })
 	})
@@ -406,12 +403,13 @@ router.post('/activity', (req, res) => {
  * @description Http METHOD. Call api function "updateActivity" and responce data: JSON
 */
 router.put('/activity', (req, res) => {
+	const timeStart = Date.now()
 	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
 	const values = Object.assign({}, req.body)
 
 	ActivityController.updateActivity(condition, values)
 	.then(data => {
-		log.debug(`/activity:put |-> id:${condition.id} | for user:${condition.mainUser_id}`)
+		log.debug(`/activity:put ${Date.now()-timeStart}ms |-> id:${condition.id} | for user:${condition.mainUser_id}`)
 
 		return res.json({ data: data })
 	})
@@ -421,7 +419,6 @@ router.put('/activity', (req, res) => {
 		return res.status(err.jse_info.status).end(err.message)
 	})
 })
-
 
 router.delete('/activity', (req, res) => {
 	// const condition = {
