@@ -12,7 +12,7 @@ import VueInstant from 'vue-instant/dist/vue-instant.common'
 Vue.use(VueInstant)
 
 Vue.use(Vuetify, {
-	iconfont: 'md' //'md' || 'mdi' || 'fa' || 'fa4'
+	iconfont: 'md', //'md' || 'mdi' || 'fa' || 'fa4'
 })
 
 // mixin for handling title

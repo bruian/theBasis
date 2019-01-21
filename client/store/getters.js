@@ -6,6 +6,47 @@ export default {
 	token: state => state.auth.token,
 	user: state => state.theUser,
 
+	/***
+	 * @func generalSheets
+	 * @param {vuex state: Object} - state
+	 * @param {vuetify breakpoint: Object } - breakpoint
+	 * @returns { Array } - array components for render
+	 * @description Get the filtered array of components for a render in the general sheet.
+	 * 	state.layout: 1 - "one-column", 2 - "two-column"
+	*/
+	generalSheets: state => breakpoint => {
+		return state.mainSheets.filter(el => {
+			if (state.layout === 2 && !breakpoint.smAndDown) {
+				return (el.visible && el.layout === 1)
+			} else {
+				return (el.visible)
+			}
+		})
+	},
+
+	/***
+	 * @func additionalSheets
+	 * @param {vuex state: Object} - state
+	 * @returns { Array } - array components for render
+	 * @description Get the filtered array of components for a render in the additional list.
+	 * 	state.layout: 1 - "one-column", 2 - "two-column"
+	*/
+	additionalSheets: state => {
+		return state.mainSheets.filter(el => (el.visible && el.layout === 2))
+	},
+
+	/***
+	 * @func isShowAdditional
+	 * @param {vuex state: Object} - state
+	 * @param {vuetify breakpoint: Object } - breakpoint
+	 * @returns { Boolean } - can render or can't
+	 * @description Get information about the possibility of rendering an additional list.
+	 * 	state.layout: 1 - "one-column", 2 - "two-column"
+	*/
+	isShowAdditional: state => breakpoint => {
+		return (state.layout === 2) ? (!breakpoint.smAndDown) : false
+	},
+
 	usersList (state) {
 		return state[state.activeUsersList.list].list
 	},

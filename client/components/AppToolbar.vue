@@ -26,8 +26,8 @@
 		<v-spacer></v-spacer>
 			<v-toolbar-items class="hidden-sm-and-down" v-if="isAuth">
 				<v-btn flat to="info">info</v-btn>
-				<v-btn flat to="users">main</v-btn>
-				<v-btn flat to="tasks">Tasks</v-btn>
+				<v-btn flat to="main-sheets">main</v-btn>
+				<v-btn flat to="user">user</v-btn>
 			</v-toolbar-items>
 		<v-spacer></v-spacer>
 

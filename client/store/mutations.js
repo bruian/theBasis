@@ -552,6 +552,10 @@ export default {
 		if (activeTask) activeTask.isActive = false
 	},
 
+	SET_LAYOUT: (state, value) => {
+		state.layout = parseInt(value, 10)
+	},
+
   SET_ITEMS: (state, { items }) => {
     items.forEach(item => {
       if (item) {

@@ -1,9 +1,14 @@
 <template>
 	<div class="ItmTextAreaLine">
 		<div class="ItmTextAreaBox">
-			<textarea @change="onChange" @focus="resize" v-model="val" :style="computedStyle" class="ItmTextArea effect-3" rows="1"></textarea>
+			<textarea @change="onChange"
+				@keyup.ctrl="handleCmdEnter($event)"
+				@focus="resize" v-model="val"
+				:style="computedStyle"
+				class="ItmTextArea effect-3"
+				rows="1">
+			</textarea>
 			<span class="focus-border"></span>
-			<!-- <i href="#" class="input-change" @click.prevent="removeTag(index)"></i> -->
 		</div>
 		<v-icon v-if="changeButton" @click="onChangeButton" color="primary" style="align-self: flex-start;">done</v-icon>
 	</div>
@@ -74,6 +79,11 @@ export default {
 		}
 	},
 	methods: {
+		handleCmdEnter: function (e) {
+			if (e.ctrlKey && e.keyCode === 13) {
+				this.onChange(e)
+			}
+		},
 		onChange: function(e) {
 			this.changeButton = false
 			this.$emit('change', e.target.value)

@@ -121,17 +121,17 @@ export default {
 			},
 			{ header: 'Common' },
 			{
-				title: 'Main',
+				title: 'User',
 				group: 'Common',
 				icon: 'people',
 				//target: '_blank', переход с открытием нового окна
-				name: 'users',
+				name: 'user',
 			},
 			{
-				title: 'Tasks',
+				title: 'Main',
 				group: 'Common',
 				icon: 'list',
-				name: 'tasks',
+				name: 'main-sheets',
 			},
 			{
 				title: 'Widgets',
@@ -201,7 +201,7 @@ export default {
 }
 </script>
 
-<style <style lang="stylus">
+<style lang="stylus">
 	#appDrawer
 		overflow: hidden
 		.drawer-menu--scroll

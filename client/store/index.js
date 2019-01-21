@@ -19,7 +19,8 @@ const def = {
 		gender: '',
 		phone: '',
 		avatar: '',
-		friend: 0
+		friend: 0,
+		layout: 2 // 1 - "one-column", 2 - "two-column"
 	},
 	mainGroup: {
 		group_id: 0,
@@ -48,7 +49,7 @@ export function createStore () {
 			logStatus: true,				//ON/OFF api status logging
 			apiStatus: [],			 		//log api status
 			//apiError: [], 			  //log api error (from server)
-
+layout: 2, //TEMPORARY. Need move to main user
 			/* -AUTHENTICATED STATUS -*/
 			auth: {	token: ''	},
 
@@ -135,6 +136,14 @@ export function createStore () {
 					offset: 0,
 				}
 			],
+
+			mainSheets: [
+				{ id: 1, icon: 'T', component: 'task-listH', list_id: 'main-tasks', visible: true, layout: 1, name: 'Me tasked' },
+				{ id: 2, icon: 'T', component: 'task-listV', list_id: 'main-tasks', visible: true, layout: 2, name: 'Me tasked' },
+				{ id: 3, icon: 'G', component: 'groups-listV', list_id: 'main-groups', visible: true, layout: 2, name: 'Me groups' },
+				{ id: 4, icon: 'T', component: 'task-listV', list_id: 'main-tasks', visible: true, layout: 2, name: 'Me tasked' },
+				{ id: 5, icon: 'T', component: 'task-listV', list_id: 'main-tasks', visible: false, layout: 2, name: 'Me tasked' },
+			]
     },
     actions,
     mutations,

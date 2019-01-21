@@ -26,12 +26,12 @@
 				<v-icon color="primary">arrow_back</v-icon>
 			</v-btn>
 			<div style="margin: auto;">
-				<p style="margin: auto;">Me tasks</p>
+				<p style="margin: auto;">Me tasked</p>
 			</div>
 		</div>
 		<v-divider class="ma-0"></v-divider>
 		<div class="tasks-list-body">
-			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="list_id">
+			<vue-perfect-scrollbar class="drawer-menu--scrollingV" :settings="scrollSettings" ref="list_id">
 				<draggable v-model="items"
 					:options="getDraggableOptions()"
 					@start="onDragStart"
@@ -59,7 +59,7 @@ import { recursiveFind } from '../../../util/helpers'
 import draggable from 'vuedraggable'
 
 export default {
-	name: 'tasks-list',
+	name: 'tasks-listV',
 	components: {
 		TaskItem,
 		VuePerfectScrollbar,
@@ -395,6 +395,7 @@ export default {
 	text-decoration: none; */
 	/* min-width: 550; */
   transition: .3s cubic-bezier(.25,.8,.5,1);
+	margin-bottom: 10px;
 }
 
 .task-list-header {
@@ -480,7 +481,7 @@ export default {
 </style>
 
 <style lang="stylus">
-	.drawer-menu--scroll
-		height: calc(70vh)
+	.drawer-menu--scrollingV
+		max-height: calc(40vh)
 		overflow: auto
 </style>

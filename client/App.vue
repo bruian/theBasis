@@ -21,9 +21,10 @@
 						</div>
 					</transition>
 
-					<v-btn fab bottom	right	color="blue" dark	fixed @click.stop="dialog = !dialog" style="bottom: 45px;">
+					<!-- Большая синяя кнопка -->
+					<!-- <v-btn fab bottom	right	color="blue" dark	fixed @click.stop="dialog = !dialog" style="bottom: 45px;">
 						<v-icon>add</v-icon>
-					</v-btn>
+					</v-btn> -->
 
 					<!-- App Footer -->
 					<v-footer app>
@@ -173,8 +174,8 @@ export default {
 		messageDialog: false,
 		crumbs: [
 			{ text: "Home", disabled: false, to: '/' },
-			{ text: "Users", disabled: false, to: 'users' },
-			{ text: "Tasks", disabled: true, to: 'css' }
+			{ text: "User", disabled: false, to: 'user' },
+			{ text: "Main", disabled: true, to: 'css' }
 		],
 	}),
 	created() {

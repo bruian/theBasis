@@ -47,22 +47,15 @@ export function createRouter (store) {
 			{ path: '/', name: 'home', component: () => import('../views/Home.vue') }, 																					//OK
 			{ path: '/resetpassword', name: 'resetpassword', component: () => import('../views/Home.vue') },										//OK
 			{ path: '/verified', name: 'verified', component: () => import('../views/Home.vue'), meta: { action: 'verified' } },//OK
-			{ path: '/users', name: 'users', component: () => import('../views/Users.vue'), meta: { auth: true } },							//OK
-			{ path: '/users/:id', name: 'users', component: () => import('../views/Users.vue'), mets: { auth: true } },					//OK
+			{ path: '/user', name: 'user', component: () => import('../views/User.vue'), meta: { auth: true } },							//OK
+		// { path: '/user/:id', name: 'user', component: () => import('../views/User.vue'), mets: { auth: true } },					//OK
 			{ path: '/groups', name: 'groups', component: () => import('../views/Groups.vue'), meta: { auth: true } },					//OK
-			{ path: '/tasks', name: 'tasks', component: () => import('../views/Tasks.vue'), meta: { auth: true } },
+			{ path: '/main-sheets', name: 'main-sheets', component: () => import('../views/MainSheets.vue'), meta: { auth: true } },
 			{ path: '/info', name: 'info', component: () => import('../views/Info.vue') },
 			{ path: '/appGrid', name: 'appGrid', component: () => import('../views/AppGrid.vue'), meta: { auth: true } },
-    // { path: '/tgmUsers', name: 'TgmUsers', component: TgmUsers, meta: { auth: true } },
-    // { path: '/tgmUsers/:id', component: TgmUsers, meta: { auth: true } },
-    // { path: '/top/:page(\\d+)?', component: createListView('top') },
-    // { path: '/new/:page(\\d+)?', component: createListView('new') },
-    // { path: '/show/:page(\\d+)?', component: createListView('show') },
-    // { path: '/ask/:page(\\d+)?', component: createListView('ask') },
     // { path: '/job/:page(\\d+)?', component: createListView('job') },
     // { path: '/item/:id(\\d+)', component: ItemView },
     // { path: '/user/:id', component: UserView },
-    // { path: '/private', component: Private, meta: { auth: true } },
       { path: '/redirect', redirect: '/' }
 		]
 	})
