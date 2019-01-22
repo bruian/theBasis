@@ -43,7 +43,7 @@ async function getActivity(condition) {
 		params.push(condition.mainUser_id)
 	}
 
-	/* type_el - идентификатор типа элемента, в текущем случае это activity = 1
+	/* type_el - битовый идентификатор типа элемента, в текущем случае это activity = 2
 		- обязательный параметр
 		- должен приходить от клиента в api запросе express.router.request.query
 		- ожидается number */
@@ -178,7 +178,7 @@ async function getActivity(condition) {
 		FROM activity_list AS al
 		RIGHT JOIN activity AS act ON al.id = act.id
 		RIGHT JOIN users_photo AS uf ON (al.user_id = uf.user_id) AND (uf.isavatar = true)
-		WHERE al.group_id IN (SELECT * FROM ${pgGroups}) AND (al.type_el = $2) ${pgСonditions}
+		WHERE al.group_id IN (SELECT * FROM ${pgGroups}) AND (al.type_el & $2) ${pgСonditions}
 		ORDER BY al.group_id, (al.p::float8/al.q) ${pgLimit};`
 
 	const client = await pg.pool.connect()
@@ -241,7 +241,7 @@ async function addActivity(condition) {
 		}, 'For add activity need: <group_id> query parameter >= 0')
 	}
 
-	/* type_el - идентификатор типа элемента, в текущем случае это activity = 1
+	/* type_el - битовый идентификатор типа элемента, в текущем случае это activity = 2
 		- обязательный параметр
 		- должен приходить от клиента а api запросе express.router.request.query
 		- ожидается number */

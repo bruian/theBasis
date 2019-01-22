@@ -16,7 +16,7 @@
 
 <script>
 export default {
-	props: ['item', 'list_id'],
+	props: ['item', 'sheet_id'],
 	data: () => ({
 		prevNote: '',
 	}),
@@ -27,7 +27,7 @@ export default {
 		onNoteChange: function () {
 			if (this.prevNote !== this.item.note) {
 				this.$store.dispatch('UPDATE_TASK_VALUES', {
-					list_id: this.list_id,
+					sheet_id: this.sheet_id,
 					task_id: this.item.task_id,
 					note: this.item.note
 				})

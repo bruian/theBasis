@@ -1,15 +1,15 @@
-export function recursiveFind(list, cb) {
+export function recursiveFind(sheet, cb) {
 	let result = {
 		index: null,
 		element: null
 	}
 
-	for (let i = 0; i < list.length; i++) {
-		if (cb(list[i])) {
+	for (let i = 0; i < sheet.length; i++) {
+		if (cb(sheet[i])) {
 			result.index = i
-			result.element = list[i]
-		} else if (list[i].children && list[i].children.length > 0) {
-			result = recursiveFind(list[i].children, cb)
+			result.element = sheet[i]
+		} else if (sheet[i].children && sheet[i].children.length > 0) {
+			result = recursiveFind(sheet[i].children, cb)
 		}
 
 		if (result.element) break
@@ -22,14 +22,14 @@ export function isNumeric(n) {
   return !isNaN(parseFloat(n)) && isFinite(n)
 }
 
-export function recursiveSet(list, key, value) {
-	for (let i = 0; i < list.length; i++) {
-		if (list[i].hasOwnProperty(key)) {
-			list[i][key] = value
+export function recursiveSet(sheet, key, value) {
+	for (let i = 0; i < sheet.length; i++) {
+		if (sheet[i].hasOwnProperty(key)) {
+			sheet[i][key] = value
 		}
 
-		if (list[i].children && list[i].children.length > 0) {
-			recursiveSet(list[i].children, key, value)
+		if (sheet[i].children && sheet[i].children.length > 0) {
+			recursiveSet(sheet[i].children, key, value)
 		}
 	}
 }
@@ -79,6 +79,82 @@ export function treeDepth(tree) {
 	}
 
 	return depth + childrenDepth
+}
+
+/* Return string constants from binary value
+	type_el: (aka widget max 16 widgets 2^15)
+		1  - divider		0000001
+		2  - activity		0000010
+		4  - task				0000100
+		8  - groups			0001000
+		16 - users			0010000
+		32 - post-notes	0100000
+		64 - images			1000000
+*/
+export function typeForSheet(value) {
+	if (value & 2) {
+		return { type_el: 'activity-sheet', icon: 'A' }
+	}
+
+	if (value & 4) {
+		return { type_el: 'tasks-sheet', icon: 'T' }
+	}
+
+	if (value & 8) {
+		return { type_el: 'groups-sheet', icon: 'G' }
+	}
+
+	if (value & 16) {
+		return { type_el: 'users-sheet', icon: 'U' }
+	}
+
+	if (value & 32) {
+		return { type_el: 'post-notes', icon: 'P' }
+	}
+
+	if (value & 64) {
+		return { type_el: 'images', icon: 'I' }
+	}
+
+	return undefined
+}
+
+/* Get sheets_conditions
+	condition:
+		1 - group_id
+		2 - user_id
+		3 - parent_id
+		4 - task_id
+		... others
+*/
+export function conditionsForSheet(conditions, values) {
+	const result = {
+		group_id: null,
+		user_id: null,
+		parent_id: null,
+		task_id: null
+	}
+
+	for (let i = 0; i < conditions.length; i++) {
+		if (values[i] === '') continue
+
+		switch (conditions[i]) {
+			case 1:
+				result.group_id = values[i]
+				break
+			case 2:
+				result.user_id = values[i]
+				break
+			case 3:
+				result.parent_id = values[i]
+				break
+			case 4:
+				result.task_id = values[i]
+				break
+		}
+	}
+
+	return result
 }
 
 /***

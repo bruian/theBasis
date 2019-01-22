@@ -4,69 +4,33 @@
 
 		<ul class="itm-general">
 			<li style="all: unset;" v-for="sheetItem in generalSheets" :key="sheetItem.id">
-				<tasks-listV v-if="sheetItem.component === 'task-listV'" v-bind:list_id="sheetItem.list_id"></tasks-listV>
-				<tasks-listH v-if="sheetItem.component === 'task-listH'" v-bind:list_id="sheetItem.list_id"></tasks-listH>
-				<groups-listV v-if="sheetItem.component === 'groups-listV'" v-bind:list_id="sheetItem.list_id"></groups-listV>
+				<tasks-sheet v-if="sheetItem.type_el === 'tasks-sheet'" v-bind:sheet_id="sheetItem.sheet_id"></tasks-sheet>
+				<groups-sheet v-if="sheetItem.type_el === 'groups-sheet'" v-bind:sheet_id="sheetItem.sheet_id"></groups-sheet>
 			</li>
 		</ul>
 
 		<ul class="itm-additional" v-if="isShowAdditional">
 			<li style="all: unset;" v-for="sheetItem in additionalSheets" :key="sheetItem.id">
-				<tasks-listV v-if="sheetItem.component === 'task-listV'" v-bind:list_id="sheetItem.list_id"></tasks-listV>
-				<tasks-listH v-if="sheetItem.component === 'task-listH'" v-bind:list_id="sheetItem.list_id"></tasks-listH>
-				<groups-listV v-if="sheetItem.component === 'groups-listV'" v-bind:list_id="sheetItem.list_id"></groups-listV>
+				<tasks-sheet v-if="sheetItem.type_el === 'tasks-sheet'" v-bind:sheet_id="sheetItem.sheet_id"></tasks-sheet>
+				<groups-sheet v-if="sheetItem.type_el === 'groups-sheet'" v-bind:sheet_id="sheetItem.sheet_id"></groups-sheet>
 			</li>
 		</ul>
 
 		<div class="itm-fill" v-bind:class="fillsClass" v-if="$vuetify.breakpoint.smAndUp"></div>
 	</section>
-	<!-- <v-container grid-list-lg style="border: 1px solid red;" > -->
-		<!-- <v-layout row wrap style="border: 1px solid blue;" justify-center> -->
-			<!-- <v-flex xl4 lg6 md6 sm12 xs12>
-				<profile></profile>
-			</v-flex> -->
-
-			<!--
-			<v-flex xl6 lg6 md6 sm6 xs6>
-				<tasks-list v-bind:list_id="'main-tasks'"></tasks-list>
-			</v-flex>
-			<v-flex xl6 lg6 md6 sm6 xs6>
-				<tasks-list v-bind:list_id="'main-tasks'"></tasks-list>
-			</v-flex>
-			<v-flex xl6 lg6 md6 sm6 xs6>
-				<tasks-list v-bind:list_id="'main-tasks'"></tasks-list>
-			</v-flex>
-			<v-flex xl6 lg6 md6 sm6 xs6>
-				<tasks-list v-bind:list_id="'main-tasks'"></tasks-list>
-			</v-flex>
-			-->
-
-			<!-- <v-flex xl4 lg6 md6 sm12 xs12>
-				<users-list></users-list>
-			</v-flex>
-			<v-flex xl4 lg6 md6 sm12 xs12>
-				<groups-list></groups-list>
-			</v-flex> -->
-		<!-- </v-layout> -->
-	<!-- </v-container> -->
 </template>
 
 <script>
-import TasksList from '../components/widgets/list/TasksList.vue'
 import Profile from '../components/widgets/Profile.vue'
-import UsersList from '../components/widgets/list/UsersList.vue'
-import GroupsList from '../components/widgets/list/GroupsList.vue'
+import UsersSheet from '../components/widgets/sheets/UsersSheet.vue'
 
 export default {
 	name: 'main-sheets',
 	components: {
 		Profile,
-		TasksList,
-		UsersList,
-		GroupsList,
-		TasksListH: () => import('../components/widgets/list/TasksListH.vue'),
-		TasksListV: () => import('../components/widgets/list/TasksListV.vue'),
-		GroupsListV: () => import('../components/widgets/list/GroupsListV.vue')
+		UsersSheet,
+		TasksSheet: () => import('../components/widgets/sheets/TasksSheet.vue'),
+		GroupsSheet: () => import('../components/widgets/sheets/GroupsSheet.vue'),
 	},
 	data: () => ({
 	}),

@@ -38,7 +38,7 @@
 import { activityStatus } from '../../../util/helpers.js'
 
 export default {
-	props: ['item', 'list_id'],
+	props: ['item', 'sheet_id'],
 	data: () => ({
 		//items: []
 	}),

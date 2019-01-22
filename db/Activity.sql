@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS activity (
 	If an INSERT contains multiple RECORDs, each one will call unique_short_id individually. */
 CREATE TRIGGER trigger_activity_genid BEFORE INSERT ON activity FOR EACH ROW EXECUTE PROCEDURE unique_short_id();
 
-/* Create table - activity list */
+/* Create table - activity sheet */
 CREATE TABLE activity_list (
 	id			 char(8),
   group_id integer NOT NULL REFERENCES groups ON DELETE cascade,
@@ -42,12 +42,14 @@ CREATE UNIQUE INDEX ON activity_list (user_id, group_id, (p::float8/q));
   -1 - No rights to read the group
   -2 - No rights to read the elements in group
   -3 - No rights to create the element in the group
-	type_el: aka widget
-		0 - divider
-		1 - activity
-		2 - task
-		3 - post-note
-		4 - images
+	type_el: (aka widget max 16 widgets 2^15)
+		1  - divider		0000001
+		2  - activity		0000010
+		4  - task				0000100
+		8  - groups			0001000
+		16 - users			0010000
+		32 - post-notes	0100000
+		64 - images			1000000
 */
 CREATE OR REPLACE FUNCTION add_activity (
 	main_user_id integer,
@@ -249,7 +251,7 @@ WITH RECURSIVE main_visible_groups AS (
 	FROM activity_list AS al
 	RIGHT JOIN activity AS act ON al.id = act.id
 	RIGHT JOIN users_photo AS uf ON (al.user_id = uf.user_id) AND (uf.isavatar = true)
-	WHERE al.group_id IN (SELECT * FROM main_visible_groups) AND (al.type_el = 1)
+	WHERE al.group_id IN (SELECT * FROM main_visible_groups) AND (al.type_el & 2)
 	ORDER BY al.group_id, (al.p::float8/al.q) LIMIT 10 OFFSET 0;
 
 WITH RECURSIVE main_visible_groups AS (

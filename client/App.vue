@@ -9,7 +9,7 @@
 					<!-- Page Header -->
 					<!--page-header v-if="$route.meta.breadcrumb"></page-header-->
 
-					<div class="mt-0 pb-0">
+					<div class="mt-0 pb-0" v-if="isAuth">
 						<v-breadcrumbs :items="crumbs">
 							<v-icon slot="divider">link</v-icon>
 						</v-breadcrumbs>
@@ -34,7 +34,12 @@
 					</v-footer>
 				</v-content>
 
-				<v-btn small fab dark falt fixed top="top" right="right" class="setting-fab" color="red" @click="settingsDrawer = !settingsDrawer">
+				<v-btn small fab dark falt fixed
+					top="top" right="right"
+					class="setting-fab" color="red"
+					@click="settingsDrawer = !settingsDrawer"
+					v-if="isAuth"
+				>
 					<v-icon>settings</v-icon>
 				</v-btn>
 
@@ -44,7 +49,8 @@
 					right
 					v-model="settingsDrawer"
 					hide-overlay
-					fixed>
+					fixed
+				>
 					<panel-settings></panel-settings>
 				</v-navigation-drawer>
 
@@ -109,6 +115,7 @@
 				</v-dialog>
 			</v-app>
 		</template>
+
 		<template v-else>
 			<div class="appLoading">
 				<div>Application loaded...</div>
@@ -136,9 +143,8 @@ import Login from './views/Login.vue'
 import MessageDialog from './views/MessageDialog.vue'
 //import AuthCheck from './components/AuthCheck.vue'
 //import { AtomSpinner } from 'epic-spinners'
-
+//#2195f3
 function getUserByToken(store, done) {
-	//debugger
 	const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
 	if (storage && storage.getItem('access_token')) {
 		store.dispatch('MAINUSER_REQUEST')
@@ -147,7 +153,6 @@ function getUserByToken(store, done) {
 			done()
 		})
 		.catch((err) => {
-			//console.log(err)
 			done(err)
 		})
 	} else {

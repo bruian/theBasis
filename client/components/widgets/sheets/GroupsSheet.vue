@@ -1,21 +1,21 @@
 <template>
 	<v-card >
 		<v-expansion-panel class="mb-0">
-			<v-expansion-panel-content class="list-header"
+			<v-expansion-panel-content class="sheet-header"
 				expand
-				expand-icon="search">
-
+				expand-icon="search"
+			>
 				<div slot="header">
 					<v-toolbar card dense color="transparent">
-						<div class="activeGroupsListbox">
-							<span v-bind:class="{ opacIn: showActiveGroupsList }">{{ activeGroupsList.text }}</span>
+						<div class="activeGroupsSheetbox">
+							<span v-bind:class="{ opacIn: showActiveGroupsSheet }">{{ activeGroupsSheet.text }}</span>
 							<span style="margin-left: 5px;">groups</span>
 						</div>
 
 						<v-spacer></v-spacer>
 
-						<transition-group name="list">
-							<span v-for="glitem in availableGroupsList" v-bind:key="glitem.id">
+						<transition-group name="sheet">
+							<span v-for="glitem in availableGroupsSheet" v-bind:key="glitem.id">
 								<a class="activeitem"
 									v-show="glitem.visible"
 									href=""
@@ -26,7 +26,7 @@
 					</v-toolbar>
 				</div>
 
-				<v-card class="list-body">
+				<v-card class="sheet-body">
 					<!--search bar-->
           <v-text-field class=""
             label="Solo"
@@ -41,7 +41,7 @@
 		<v-divider class="ma-0"></v-divider>
 
 		<v-card-text class="pa-0">
-			<vue-perfect-scrollbar class="drawer-menu--scrollV" :settings="scrollSettings" ref="grpbox">
+			<vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="grpbox">
 				<v-treeview
           :active.sync="active"
           :items="items"
@@ -60,7 +60,7 @@
 						mdi-account
 					</v-icon>
         </v-treeview>
-				<infinite-loading @infinite="infiniteHandler" ref="infLoadingGroupsList"></infinite-loading>
+				<infinite-loading @infinite="infiniteHandler" ref="infLoadingGroupsSheet"></infinite-loading>
 			</vue-perfect-scrollbar>
 		</v-card-text>
 	</v-card>
@@ -73,7 +73,7 @@ import InfiniteLoading from '../../InfiniteLoading'
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 export default {
-	name: 'groups-listV',
+	name: 'groups-sheet',
 	components: {
 		VuePerfectScrollbar,
 		InfiniteLoading,
@@ -91,14 +91,14 @@ export default {
 		},
 		countEl: 0, //pass to load data
 		blocked: false,
-		showActiveGroupsList: false, //shows selected user list, my or all. Its for animation
+		showActiveGroupsSheet: false, //shows selected user sheet, my or all. Its for animation
 	}),
 	beforeMount () {
 		if (this.$root._isMounted) {
 		}
 	},
 	computed: {
-		items() {	return this.$store.getters.groupsList },
+		items() {	return this.$store.getters.groupsSheet },
 		selected() {
 			if (!this.active.length) return undefined
 
@@ -106,8 +106,8 @@ export default {
 
 			return this.users.find(user => user.id === id)
 		},
-		activeGroupsList() { return this.$store.state.activeGroupsList },
-		availableGroupsList() { return this.$store.state.availableGroupsList }
+		activeGroupsSheet() { return this.$store.state.activeGroupsSheet },
+		availableGroupsSheet() { return this.$store.state.availableGroupsSheet }
 	},
   methods: {
 		onChange: function(value) {
@@ -117,9 +117,9 @@ export default {
 
 			function que(params) {
 				if (that.countEl == 0) {
-					that.$store.commit('RESET_GROUPS_LIST')
-					that.$store.commit('SET_PARAMS_GROUPS_LIST', { searchText: that.searchText })
-					that.$refs.infLoadingGroupsList.$emit('$InfiniteLoading:reset')
+					that.$store.commit('RESET_GROUPS_SHEET')
+					that.$store.commit('SET_PARAMS_GROUPS_SHEET', { searchText: that.searchText })
+					that.$refs.infLoadingGroupsSheet.$emit('$InfiniteLoading:reset')
 					that.blocked = false
 					console.log('ask groups')
 
@@ -134,13 +134,13 @@ export default {
 			if (!this.blocked) que()
 		},
 		onLink: function(id) {
-			return this.$store.dispatch('LINK_GROUPS_LIST', id).then((res) => {})
+			return this.$store.dispatch('LINK_GROUPS_SHEET', id).then((res) => {})
 			.catch((err) => {
 				console.log(err)
 			})
 		},
 		onUnLink: function(id) {
-			return this.$store.dispatch('UNLINK_GROUPS_LIST', id).then((res) => {})
+			return this.$store.dispatch('UNLINK_GROUPS_SHEET', id).then((res) => {})
 			.catch((err) => {
 				console.log(err)
 			})
@@ -151,8 +151,8 @@ export default {
 		infiniteHandler($state) {
 			if (this.countEl == 0) {
 				this.countEl++
-				console.log(`1**GR infiniteHandler fetch offset: ${this.$store.state[this.$store.state.activeGroupsList.list].offset} CNT: ${this.countEl}`)
-				return this.$store.dispatch('FETCH_GROUPS_LIST').then((count) => {
+				console.log(`1**GR infiniteHandler fetch offset: ${this.$store.state[this.$store.state.activeGroupsSheet.sheet].offset} CNT: ${this.countEl}`)
+				return this.$store.dispatch('FETCH_GROUPS_SHEET').then((count) => {
 					this.countEl--
 					if (count) {
 						$state.loaded()
@@ -170,14 +170,14 @@ export default {
 		},
    	activeClick: function(activeID) {
 			this.countEl = 0
-			this.$store.commit('SET_ACTIVE_GROUPS_LIST', activeID)
+			this.$store.commit('SET_ACTIVE_GROUPS_SHEET', activeID)
 			this.$nextTick(() => {
-        this.$refs.infLoadingGroupsList.$emit('$InfiniteLoading:reset')
+        this.$refs.infLoadingGroupsSheet.$emit('$InfiniteLoading:reset')
       })
 
-			this.showActiveGroupsList = !this.showActiveGroupsList
+			this.showActiveGroupsSheet = !this.showActiveGroupsSheet
       setTimeout(() => {
-        this.showActiveGroupsList = !this.showActiveGroupsList
+        this.showActiveGroupsSheet = !this.showActiveGroupsSheet
       }, 500)
 		},
 		async fetchSubgroups (item) {
@@ -194,71 +194,72 @@ export default {
 </script>
 
 <style lang="css">
-.list-header .v-expansion-panel__header {
-  padding: 0px;
+	.sheet-header .v-expansion-panel__header {
+		padding: 0px;
+	}
+
+	.sheet-header .v-expansion-panel__header__icon {
+		padding-top: 4px;
+		padding-right: 5px;
+	}
+
+	.sheet-header .search-button {
+		padding-top: 4px;
+		margin-left: 0px;
+		margin-right: 0px;
+	}
+
+	.sheet-header .v-toolbar__content {
+		padding-right: 5px;
+	}
+
+	.sheet-body .sbx-twitter {
+		width: 100%;
+	}
+
+	.sheet-body .main {
+		margin-left: 5px;
+		margin-right: 5px;
+		margin-bottom: 5px;
+	}
+
+	.activebox {
+		white-space: nowrap;
+		display: flex;
+		justify-content: space-between;
+	}
+
+	.activeGroupsSheetbox {
+		display: flex;
 }
 
-.list-header .v-expansion-panel__header__icon {
-	padding-top: 4px;
-	padding-right: 5px;
-}
+	.opacIn {
+		animation-name: fadeIn;
+		animation-duration: .5s;
+	}
 
-.list-header .search-button {
-	padding-top: 4px;
-	margin-left: 0px;
-	margin-right: 0px;
-}
+	@keyframes fadeIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
 
-.list-header .v-toolbar__content {
-	padding-right: 5px;
-}
+	.activeitem {
+		margin-right: 5px;
+		color: blue;
+	}
 
-.list-body .sbx-twitter {
-	width: 100%;
-}
+	.sheet-enter-active, .sheet-leave-active {
+	  transition: all 1s;
+	}
 
-.list-body .main {
-	margin-left: 5px;
-	margin-right: 5px;
-	margin-bottom: 5px;
-}
-
-.activebox {
-  white-space: nowrap;
-  display: flex;
-  justify-content: space-between;
-}
-
-.activeGroupsListbox {
-  display: flex;
-}
-
-.opacIn {
-  animation-name: fadeIn;
-  animation-duration: .5s;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.activeitem {
-	margin-right: 5px;
-	color: blue;
-}
-
-.list-enter-active, .list-leave-active {
-  transition: all 1s;
-}
-.list-enter, .list-leave-to /* .list-leave-active до версии 2.1.8 */ {
-  opacity: 0;
-  transform: translateY(30px);
-}
+	.sheet-enter, .sheet-leave-to /* .sheet-leave-active до версии 2.1.8 */ {
+		opacity: 0;
+		transform: translateY(30px);
+	}
 </style>
 
 <style lang="stylus">
-	.drawer-menu--scrollV
-		max-height: calc(40vh)
+	.drawer-menu--scroll
+		height: calc(70vh)
 		overflow: auto
 </style>

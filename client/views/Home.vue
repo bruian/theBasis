@@ -1,6 +1,19 @@
 <template>
 	<div id="Home">
 		<section>
+			<v-layout	column wrap	class="my-2" align-center>
+				<v-flex xs12 sm4 class="my-3">
+					<div class="text-xs-center">
+						<h2 class="headline">Управляй временем эффективно</h2>
+						<span class="subheading">
+							планируй, исполняй, делегируй
+						</span>
+					</div>
+				</v-flex>
+			</v-layout>
+		</section>
+
+		<section>
 			<v-parallax src="./public/screen1_1920_1080.jpg" height="600">
 				<v-layout
 					column
@@ -26,7 +39,8 @@
 				column
 				wrap
 				class="my-5"
-				align-center>
+				align-center
+			>
 				<v-flex xs12 sm4 class="my-3">
 					<div class="text-xs-center">
 						<h2 class="headline">Эффективная управленческая деятельность</h2>

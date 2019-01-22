@@ -1,5 +1,5 @@
 import Vue from 'vue'
-import { recursiveFind, findGroup } from '../util/helpers'
+import { recursiveFind, findGroup, typeForSheet, conditionsForSheet } from '../util/helpers'
 
 /* use only for api srv mutations */
 function setApiStatus(state, status, error) {
@@ -32,17 +32,17 @@ export default {
 		state.mainUser = Object.assign({}, state.default.mainUser)
 		state.theUser = {}
 		state.theGroup = {}
-		state.activeUsersList = { text: "all", id: 0, list: 'usersListAll', visible: true, condition: [] }
-		state.availableUsersList = [
-			{ text: "my", id: 1, list: 'usersListMy', visible: true, condition: ['user_id'] },
-			{ text: "group", id: 2, list: 'usersListGroup', visible: false, condition: ['user_id', 'group_id'] }
+		state.activeUsersSheet = { text: "all", id: 0, sheet: 'usersSheetAll', visible: true, condition: [] }
+		state.availableUsersSheet = [
+			{ text: "my", id: 1, sheet: 'usersSheetMy', visible: true, condition: ['user_id'] },
+			{ text: "group", id: 2, sheet: 'usersSheetGroup', visible: false, condition: ['user_id', 'group_id'] }
 		]
-		state.usersListAll.list = []
-		state.usersListAll.offset = 0
-		state.usersListMy.list = []
-		state.usersListMy.offset = 0
-		state.usersListGroup.list = []
-		state.usersListGroup.offset = 0
+		state.usersSheetAll.sheet = []
+		state.usersSheetAll.offset = 0
+		state.usersSheetMy.sheet = []
+		state.usersSheetMy.offset = 0
+		state.usersSheetGroup.sheet = []
+		state.usersSheetGroup.offset = 0
 	},
 
 	//*** Registration mutations */
@@ -61,14 +61,14 @@ export default {
 		setApiStatus(state, 'MAINUSER_REQUEST', null)
 	},
 
-	MAINUSER_SUCCESS: (state, user) => {
-		setApiStatus(state, 'MAINUSER_SUCCESS', null)
+	MAIN_USER_SUCCESS: (state, user) => {
+		setApiStatus(state, 'MAIN_USER_SUCCESS', null)
 
 		state.mainUser = Object.assign({}, user)
 	},
 
-	MAINGROUPS_SUCCESS: (state, groups) => {
-		setApiStatus(state, 'MAINGROUPS_SUCCESS', null)
+	MAIN_GROUPS_SUCCESS: (state, groups) => {
+		setApiStatus(state, 'MAIN_GROUPS_SUCCESS', null)
 
 		//debugger
 		state.mainGroups = groups
@@ -130,35 +130,35 @@ export default {
 		}
 	},
 
-	//*** Users list mutations */
-	SET_USERS_LIST: (state, data) => {
-		setApiStatus(state, 'SET_USERS_LIST', null)
+	//*** Users sheet mutations */
+	SET_USERS_SHEET: (state, data) => {
+		setApiStatus(state, 'SET_USERS_SHEET', null)
 
 		data.forEach(el => el.loadingButton = false)
-		state[state.activeUsersList.list].list = state[state.activeUsersList.list].list.concat(data)
-		state[state.activeUsersList.list].offset = state[state.activeUsersList.list].offset + data.length
+		state[state.activeUsersSheet.sheet].sheet = state[state.activeUsersSheet.sheet].sheet.concat(data)
+		state[state.activeUsersSheet.sheet].offset = state[state.activeUsersSheet.sheet].offset + data.length
 	},
 
-	SET_ACTIVE_USERS_LIST: (state, activeID) => {
-		let temp = state.activeUsersList
+	SET_ACTIVE_USERS_SHEET: (state, activeID) => {
+		let temp = state.activeUsersSheet
 
-		state.activeUsersList = state.availableUsersList.splice(state.availableUsersList.findIndex(el => el.id == activeID), 1)[0]
+		state.activeUsersSheet = state.availableUsersSheet.splice(state.availableUsersSheet.findIndex(el => el.id == activeID), 1)[0]
 		if (temp.id > -1) {
 			if (temp.id === 0) {
-				state.availableUsersList.unshift(temp)
+				state.availableUsersSheet.unshift(temp)
 			} else {
-				let fIndex = state.availableUsersList.findIndex(el => el.id > temp.id)
+				let fIndex = state.availableUsersSheet.findIndex(el => el.id > temp.id)
 				if (fIndex > -1) {
-					state.availableUsersList.splice(fIndex, 0, temp)
+					state.availableUsersSheet.splice(fIndex, 0, temp)
 				} else {
-					state.availableUsersList.push(temp)
+					state.availableUsersSheet.push(temp)
 				}
 			}
 		}
 	},
 
-	SET_PARAMS_USERS_LIST: (state, params) => {
-		const ul = state[state.activeUsersList.list]
+	SET_PARAMS_USERS_SHEET: (state, params) => {
+		const ul = state[state.activeUsersSheet.sheet]
 
 		for (const key in params) {
 			if (ul.hasOwnProperty(key)) {
@@ -167,71 +167,71 @@ export default {
 		}
 	},
 
-	RESET_USERS_LIST: (state) => {
-		const ul = state[state.activeUsersList.list]
-		ul.list = []
+	RESET_USERS_SHEET: (state) => {
+		const ul = state[state.activeUsersSheet.sheet]
+		ul.sheet = []
 		ul.offset = 0
 		ul.limit = 10
 		ul.searchText = ''
 	},
 
-	RESET_INACTIVE_USERS_LIST: (state) => {
+	RESET_INACTIVE_USERS_SHEET: (state) => {
 		let ul
-		for (let i = 0; i < state.availableUsersList.length; i++) {
-			ul = state[state.availableUsersList[i].list]
-			ul.list = []
+		for (let i = 0; i < state.availableUsersSheet.length; i++) {
+			ul = state[state.availableUsersSheet[i].sheet]
+			ul.sheet = []
 			ul.offset = 0
 			ul.limit = 10
 			ul.searchText = ''
 		}
 	},
 
-	UPDATE_VALUES_USERS_LIST: (state, values) => {
-		setApiStatus(state, 'UPDATE_VALUES_USERS_LIST', null)
+	UPDATE_VALUES_USERS_SHEET: (state, values) => {
+		setApiStatus(state, 'UPDATE_VALUES_USERS_SHEET', null)
 
-		const ul = state[state.activeUsersList.list]
-		const idx = ul.list.findIndex(el => el.id == values.id)
-		const element = ul.list[idx]
+		const ul = state[state.activeUsersSheet.sheet]
+		const idx = ul.sheet.findIndex(el => el.id == values.id)
+		const element = ul.sheet[idx]
 		for (const key in values) {
 			if (key === 'id') continue
 
 			if (element.hasOwnProperty(key)) {
 				element[key] = values[key]
-				//Vue.set(ul.list, idx, element)
+				//Vue.set(ul.sheet, idx, element)
 			}
 		}
 	},
 
-	REMOVE_VALUES_USERS_LIST: (state, values) => {
-		setApiStatus(state, 'REMOVE_VALUES_USERS_LIST', null)
+	REMOVE_VALUES_USERS_SHEET: (state, values) => {
+		setApiStatus(state, 'REMOVE_VALUES_USERS_SHEET', null)
 
-		const ul = state[state.activeUsersList.list]
-		const idx = ul.list.findIndex(el => el.id == values.id)
-		ul.list.splice(idx, 1)
+		const ul = state[state.activeUsersSheet.sheet]
+		const idx = ul.sheet.findIndex(el => el.id == values.id)
+		ul.sheet.splice(idx, 1)
 	},
 
 /* ---------------------------------------GROUPS mutations-------------------------------------- */
 
-	SET_GROUPS_LIST: (state, data) => {
-		setApiStatus(state, 'SET_GROUPS_LIST', null)
+	SET_GROUPS_SHEET: (state, data) => {
+		setApiStatus(state, 'SET_GROUPS_SHEET', null)
 
-		state[state.activeGroupsList.list].list = state[state.activeGroupsList.list].list.concat(data)
-		state[state.activeGroupsList.list].offset = state[state.activeGroupsList.list].offset + data.length
+		state[state.activeGroupsSheet.sheet].sheet = state[state.activeGroupsSheet.sheet].sheet.concat(data)
+		state[state.activeGroupsSheet.sheet].offset = state[state.activeGroupsSheet.sheet].offset + data.length
 	},
 
-	SET_ACTIVE_GROUPS_LIST: (state, activeID) => {
-		let temp = state.activeGroupsList
+	SET_ACTIVE_GROUPS_SHEET: (state, activeID) => {
+		let temp = state.activeGroupsSheet
 
-		state.activeGroupsList = state.availableGroupsList.splice(state.availableGroupsList.findIndex(el => el.id == activeID), 1)[0]
+		state.activeGroupsSheet = state.availableGroupsSheet.splice(state.availableGroupsSheet.findIndex(el => el.id == activeID), 1)[0]
 		if (temp.id > -1) {
 			if (temp.id === 0) {
-				state.availableGroupsList.unshift(temp)
+				state.availableGroupsSheet.unshift(temp)
 			} else {
-				let fIndex = state.availableGroupsList.findIndex(el => el.id > temp.id)
+				let fIndex = state.availableGroupsSheet.findIndex(el => el.id > temp.id)
 				if (fIndex > -1) {
-					state.availableGroupsList.splice(fIndex, 0, temp)
+					state.availableGroupsSheet.splice(fIndex, 0, temp)
 				} else {
-					state.availableGroupsList.push(temp)
+					state.availableGroupsSheet.push(temp)
 				}
 			}
 		}
@@ -240,7 +240,7 @@ export default {
 	SET_SUBGROUPS: (state, data) => {
 		setApiStatus(state, 'SET_SUBGROUPS', null)
 
-		const gl = state[state.activeGroupsList.list]
+		const gl = state[state.activeGroupsSheet.Sheet]
 		let fIndex = -1
 
 		for (let i = 0; i < data.length; i++) {
@@ -251,15 +251,15 @@ export default {
 			}
 			*/
 
-			fIndex = gl.list.findIndex(el => el.id === data[i].id)
+			fIndex = gl.sheet.findIndex(el => el.id === data[i].id)
 			if (fIndex > -1) {
-				gl.list[fIndex].children = data[i].children
+				gl.sheet[fIndex].children = data[i].children
 			}
 		}
 	},
 
-	SET_PARAMS_GROUPS_LIST: (state, params) => {
-		const gl = state[state.activeGroupsList.list]
+	SET_PARAMS_GROUPS_SHEET: (state, params) => {
+		const gl = state[state.activeGroupsSheet.sheet]
 
 		for (const key in params) {
 			if (gl.hasOwnProperty(key)) {
@@ -268,33 +268,33 @@ export default {
 		}
 	},
 
-	RESET_GROUPS_LIST: (state) => {
-		const gl = state[state.activeGroupsList.list]
-		gl.list = []
+	RESET_GROUPS_SHEET: (state) => {
+		const gl = state[state.activeGroupsSheet.sheet]
+		gl.sheet = []
 		gl.offset = 0
 		gl.limit = 10
 		gl.searchText = ''
 	},
 
-	RESET_INACTIVE_GROUPS_LIST: (state) => {
-		setApiStatus(state, 'RESET_INACTIVE_GROUPS_LIST', null)
+	RESET_INACTIVE_GROUPS_SHEET: (state) => {
+		setApiStatus(state, 'RESET_INACTIVE_GROUPS_SHEET', null)
 
 		let gl
-		for (let i = 0; i < state.availableGroupsList.length; i++) {
-			gl = state[state.availableGroupsList[i].list]
-			gl.list = []
+		for (let i = 0; i < state.availableGroupsSheet.length; i++) {
+			gl = state[state.availableGroupsSheet[i].sheet]
+			gl.sheet = []
 			gl.offset = 0
 			gl.limit = 10
 			gl.searchText = ''
 		}
 	},
 
-	UPDATE_VALUES_GROUPS_LIST: (state, values) => {
-		setApiStatus(state, 'UPDATE_VALUES_GROUPS_LIST', null)
+	UPDATE_VALUES_GROUPS_SHEET: (state, values) => {
+		setApiStatus(state, 'UPDATE_VALUES_GROUPS_SHEET', null)
 
-		const gl = state[state.activeGroupsList.list]
-		const idx = gl.list.findIndex(el => el.id == values.id)
-		const element = gl.list[idx]
+		const gl = state[state.activeGroupsSheet.sheet]
+		const idx = gl.sheet.findIndex(el => el.id == values.id)
+		const element = gl.sheet[idx]
 		for (const key in values) {
 			if (key === 'id') continue
 
@@ -304,12 +304,12 @@ export default {
 		}
 	},
 
-	REMOVE_VALUES_GROUPS_LIST: (state, values) => {
-		setApiStatus(state, 'REMOVE_VALUES_GROUPS_LIST', null)
+	REMOVE_VALUES_GROUPS_SHEET: (state, values) => {
+		setApiStatus(state, 'REMOVE_VALUES_GROUPS_SHEET', null)
 
-		const gl = state[state.activeGroupsList.list]
-		const idx = gl.list.findIndex(el => el.id == values.id)
-		gl.list.splice(idx, 1)
+		const gl = state[state.activeGroupsSheet.sheet]
+		const idx = gl.sheet.findIndex(el => el.id == values.id)
+		gl.sheet.splice(idx, 1)
 	},
 
 /* ---------------------------------------TASKS mutations--------------------------------------- */
@@ -317,8 +317,8 @@ export default {
 	SET_TASKS: (state, options) => {
 		setApiStatus(state, 'SET_TASKS', null)
 
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		const taskList = activeList.list
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+		const taskSheet = activeSheet.sheet
 		const tasks = options.data
 
 		let prevGroupId, tempParent, tempParent_id, existElement = -1
@@ -327,9 +327,9 @@ export default {
 				let grp = findGroup(state.mainGroups, tasks[i].group_id)
 				let divId = 'div' + grp.id
 
-				existElement = taskList.findIndex(el => el.task_id === divId)
+				existElement = taskSheet.findIndex(el => el.task_id === divId)
 				if (existElement === -1) {
-					taskList.push({ isDivider: true,
+					taskSheet.push({ isDivider: true,
 						task_id: divId,
 						group_id: tasks[i].group_id,
 						name: grp.name,
@@ -369,20 +369,20 @@ export default {
 				tasks[i].parent = null
 				tasks[i].level = 1
 
-				existElement = taskList.findIndex(el => el.task_id === tasks[i].task_id)
+				existElement = taskSheet.findIndex(el => el.task_id === tasks[i].task_id)
 				if (existElement === -1) {
-					activeList.offset++
-					if ('isStart' in options && options.isStart && taskList.length > 1) {
-						taskList.splice(1, 0, tasks[i])
+					activeSheet.offset++
+					if ('isStart' in options && options.isStart && taskSheet.length > 1) {
+						taskSheet.splice(1, 0, tasks[i])
 					} else {
-						taskList.push(tasks[i])
+						taskSheet.push(tasks[i])
 					}
 				} else {
-					Vue.set(taskList, existElement, tasks[i])
+					Vue.set(taskSheet, existElement, tasks[i])
 				}
 			} else {
 				if (!tempParent || tempParent_id !== tasks[i].parent) {
-					tempParent = recursiveFind(taskList, el => el.task_id === tasks[i].parent).element
+					tempParent = recursiveFind(taskSheet, el => el.task_id === tasks[i].parent).element
 					tempParent_id = tempParent.task_id
 				}
 
@@ -413,12 +413,12 @@ export default {
 	},
 
 	DELETE_TASK: (state, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		const taskList = activeList.list
-		const { index, element } = recursiveFind(taskList, el => el.task_id === options.task_id)
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+		const taskSheet = activeSheet.sheet
+		const { index, element } = recursiveFind(taskSheet, el => el.task_id === options.task_id)
 
 		if (element.parent === null) {
-			taskList.splice(index, 1)
+			taskSheet.splice(index, 1)
 		} else {
 			if (element.parent.children && element.parent.children.length > 0) {
 				element.parent.havechild--
@@ -429,12 +429,12 @@ export default {
 
 	//values must contain task_id of element task_id:id
 	UPDATE_TASK_VALUES: (state, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		let taskList = activeList.list
-		const element = recursiveFind(taskList, el => el.task_id === options.task_id).element
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+		let taskSheet = activeSheet.sheet
+		const element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element
 
 		for (const key in options) {
-			if (key === 'task_id' || key === 'list_id') continue
+			if (key === 'task_id' || key === 'sheet_id') continue
 
 			if (element.hasOwnProperty(key)) {
 				element[key] = options[key]
@@ -443,24 +443,24 @@ export default {
 	},
 
 	SET_ACTIVE_TASK: (state, obj) => {
-		const activeList = state.listOfList.find(el => el.list_id === obj.list_id)
-		let activedTask = recursiveFind(activeList.list, el => el.isActive === true).element
+		const activeSheet = state.sheets.find(el => el.sheet_id === obj.sheet_id)
+		let activedTask = recursiveFind(activeSheet.sheet, el => el.isActive === true).element
 		if (activedTask) {
 			activedTask.isActive = false
 		}
 
-		let activeTask = recursiveFind(activeList.list, el => el.task_id === obj.task_id).element
+		let activeTask = recursiveFind(activeSheet.sheet, el => el.task_id === obj.task_id).element
 		if (activeTask) {
 			activeTask.isActive = true
-			activeList.selectedItem = activeTask.task_id
-			activeList.selectedList = false
+			activeSheet.selectedItem = activeTask.task_id
+			activeSheet.selectedSheet = false
 		}
 	},
 
 /* --------------------------------------Contexts mutations------------------------------------- */
 
-	MAINCONTEXTS_SUCCESS: (state, contexts) => {
-		setApiStatus(state, 'MAINCONTEXTS_SUCCESS', null)
+	MAIN_CONTEXTS_SUCCESS: (state, contexts) => {
+		setApiStatus(state, 'MAIN_CONTEXTS_SUCCESS', null)
 
 		let existingContexts = []
 		state.mainContexts = contexts
@@ -476,9 +476,9 @@ export default {
 	},
 
 	ADD_TASK_CONTEXT: (state, options) => {
-		// const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		// let taskList = activeList.list
-		// const element = recursiveFind(taskList, el => el.task_id === options.task_id).element
+		// const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+		// let taskSheet = activeSheet.sheet
+		// const element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element
 
 		//mainExistingContexts
 		//mainContexts
@@ -492,8 +492,8 @@ export default {
 /* --------------------------------------ACTIVITY mutations------------------------------------- */
 
 	SET_ACTIVITY: (state, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		const taskList = activeList.list
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+		const taskSheet = activeSheet.sheet
 		let element, taskDuration, taskStatus
 
 		// Обновление активностей и статусов задач информацией полученной в options.data
@@ -509,7 +509,7 @@ export default {
 
 				// Получается элемент задачи из списка задач на клиенте, инициализируется заново список
 				// активностей, инициализируются переменные duration и status
-				element = recursiveFind(taskList, el => el.task_id === activity.task_id).element
+				element = recursiveFind(taskSheet, el => el.task_id === activity.task_id).element
 				element.activity = new Array()
 
 				taskDuration = 0
@@ -541,14 +541,53 @@ export default {
 		}
 	},
 
+/* --------------------------------------Sheets mutations--------------------------------------- */
+
+	MAIN_SHEETS_SUCCESS: (state, data) => {
+		setApiStatus(state, 'MAIN_SHEETS_SUCCESS', null)
+// debugger
+		let mainSheet, sheet, type_obj, condition
+		for (let i = 0; i < data.length; i++) {
+			type_obj = typeForSheet(data[i].type_el)
+			condition = conditionsForSheet(data[i].conditions, data[i].values)
+
+			sheet = {
+				sheet_id: data[i].id,
+				selectedSheet: false,
+				selectedItem: null,
+				sheet: [],
+				limit: 10,
+				offset: 0,
+				searchText: '',
+				condition: condition
+			}
+
+			mainSheet = {
+				id: i + 1,
+				sheet_id: data[i].id,
+				service: false, //Такие элементы не отображаются в списке настроек sheets
+				type_el: type_obj.type_el,
+				icon: type_obj.icon,
+				user_id: data[i].user_id,
+				owner_id: data[i].owner_id,
+				name: data[i].name,
+				visible: data[i].visible,
+				layout: data[i].layout
+			}
+
+			state.mainSheets.push(mainSheet)
+			state.sheets.push(sheet)
+		}
+	},
+
 /* ----------------------------------------Other mutations-------------------------------------- */
 
-	SET_ACTIVE_LIST: ({ listOfList }, options) => {
-		const activeList = listOfList.find(el => el.list_id === options.list_id)
-		activeList.selectedList = true
-		activeList.selectedItem = null
+	SET_ACTIVE_SHEET: ({ sheets }, options) => {
+		const activeSheet = sheets.find(el => el.sheet_id === options.sheet_id)
+		activeSheet.selectedSheet = true
+		activeSheet.selectedItem = null
 
-		const activeTask = recursiveFind(activeList.list, el => el.isActive).element
+		const activeTask = recursiveFind(activeSheet.sheet, el => el.isActive).element
 		if (activeTask) activeTask.isActive = false
 	},
 
@@ -589,25 +628,3 @@ export default {
     Vue.set(state.users, id, user || false) /* false means user not found */
   }
 }
-
-		/*
-		let item = state.availableUsersList.find(el => el.id == activeID)
-		if (item.condition) {
-			for (const key in item.condition) {
-				if (item.condition.hasOwnProperty(key)) {
-					//const element = item.condition[key];
-					switch (key) {
-						case 'id':
-							item.condition[key] = state.mainUser.id
-							break
-						case 'user_id':
-							item.condition[key] = state.user.id
-							break
-						case 'group_id':
-							item.condition[key] = state.group.id
-							break
-					}
-				}
-			}
-		}
-		*/

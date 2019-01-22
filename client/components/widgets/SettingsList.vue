@@ -38,8 +38,7 @@
 										type="text"
 										v-model="sheet.name"
 										@change="onNameChange($event, sheet.id)"
-									>
-									</input>
+									></input>
 								</div>
 
 								<v-btn flat small icon class="item-clmn3"
@@ -155,10 +154,12 @@ export default {
 		createdVisible: true
 	}),
 	computed: {
-		/* 1 - add subtask    000001
-			 2 - delete task    000010
-			 4 - move up        000100
-			 8 - move down      001000 */
+		/*
+			1 - create 	  000001
+			2 - delete    000010
+			4 - move up   000100
+			8 - move down 001000
+		*/
 		isAllowedOperation() {
 			let result = 0
 			if (this.selectedItem) {

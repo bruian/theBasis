@@ -132,7 +132,7 @@
 				<v-tab-item v-for="(tab, index) in tabs" :key="index">
 					<component v-bind:is="currentTabComponent"
 						:item="item"
-						:list_id="list_id"></component>
+						:sheet_id="sheet_id"></component>
 				</v-tab-item>
 			</v-tabs-items>
 		</div>
@@ -146,7 +146,7 @@
 				:key="children.task_id"
 				v-bind:data-task_id="children.task_id"
 				v-bind:data-parent_id="(children.parent) ? children.parent.task_id : 0">
-				<TaskItem :list_id="list_id" :item="children"></TaskItem>
+				<TaskItem :sheet_id="sheet_id" :item="children"></TaskItem>
 			</div>
 		</draggable>
 	</div>
@@ -208,7 +208,7 @@ export default {
 		ItmTextArea,
 		draggable
 	},
-	props: ['item', 'list_id'],
+	props: ['item', 'sheet_id'],
 	data: () => ({
 		direction: 'right',
 		hover: false,
@@ -262,7 +262,7 @@ export default {
 			if (this.tabs[this.currentTab].name === 'Activity') {
 				this.$store.dispatch('FETCH_ACTIVITY', {
 					task_id: this.item.task_id,
-					list_id: this.list_id })
+					sheet_id: this.sheet_id })
 				.then((res) => {
 					console.log('Loaded activity')
 				})
@@ -288,7 +288,7 @@ export default {
 	methods: {
 		onStatusChange: function (newStatus) {
 			this.$store.dispatch('CREATE_ACTIVITY_ELEMENT', {
-				list_id: this.list_id,
+				sheet_id: this.sheet_id,
 				task_id: this.item.task_id,
 				status: newStatus
 			})
@@ -307,7 +307,7 @@ export default {
 		tagChange(slug, command) {
 			let context
 			const options = {
-				list_id: this.list_id,
+				sheet_id: this.sheet_id,
 				task_id: this.item.task_id
 			}
 
@@ -349,7 +349,7 @@ export default {
 		onNameChange: function(text) {
 			//debugger
 			this.$store.dispatch('UPDATE_TASK_VALUES', {
-				list_id: this.list_id,
+				sheet_id: this.sheet_id,
 				task_id: this.item.task_id,
 				name: text
 			})
@@ -361,12 +361,12 @@ export default {
 			return status[itm]
 		},
 		getDraggableOptions: function() {
-			return { group:this.list_id, handle:'.task-handle' }
+			return { group:this.sheet_id, handle:'.task-handle' }
 		},
     onDragStart: function(dragResult) {
 			const { item } = dragResult
 
-			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
+			this.$store.commit('SET_ACTIVE_TASK', { sheet_id: this.sheet_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
 		},
 		onDrop: function(dropResult) {
 			const { newIndex, oldIndex, from, to } = dropResult
@@ -382,7 +382,7 @@ export default {
 				newIndex: newIndex,
 				fromParent_id: Number.parseInt(from.dataset.parent_id, 10),
 				toParent_id: Number.parseInt(to.dataset.parent_id, 10),
-				list_id: this.list_id })
+				sheet_id: this.sheet_id })
 			.then((res) => {
 				console.log('reordering item')
 			})
@@ -410,7 +410,7 @@ export default {
 			if (this.groupChangeStart) {
 				//our need catch event only first time
 				this.$store.dispatch('UPDATE_TASK_GROUP', {
-					list_id: this.list_id,
+					sheet_id: this.sheet_id,
 					task_id: this.item.task_id,
 					group_id: value
 				})
@@ -425,7 +425,7 @@ export default {
 			}
 		},
 		onBodyClick: function() {
-			this.$store.commit('SET_ACTIVE_TASK', { list_id: this.list_id, task_id: this.item.task_id })
+			this.$store.commit('SET_ACTIVE_TASK', { sheet_id: this.sheet_id, task_id: this.item.task_id })
 		},
 		getDuration(duration) {
 			let timeDiff = duration / 1000
@@ -446,18 +446,18 @@ export default {
 			if (!this.item.isExpanded) {
 				this.currentTab = 0
 			}
-			this.$store.commit('UPDATE_TASK_VALUES', { list_id: this.list_id, task_id: this.item.task_id, isExpanded: !this.item.isExpanded })
+			this.$store.commit('UPDATE_TASK_VALUES', { sheet_id: this.sheet_id, task_id: this.item.task_id, isExpanded: !this.item.isExpanded })
 		},
 		onExpandSubtasks() {
 			console.log(`onExpandSubtasks taskId !{ this.item.task_id }`)
 
 			if (Array.isArray(this.item.children) && this.item.children.length > 0) {
-				this.$store.commit('UPDATE_TASK_VALUES', { list_id: this.list_id, task_id: this.item.task_id, isSubtaskExpanded: ((this.item.isSubtaskExpanded > 1) ? 0 : 2) })
+				this.$store.commit('UPDATE_TASK_VALUES', { sheet_id: this.sheet_id, task_id: this.item.task_id, isSubtaskExpanded: ((this.item.isSubtaskExpanded > 1) ? 0 : 2) })
 			} else {
-				return this.$store.dispatch('FETCH_TASKS', { list_id: this.list_id, parent_id: this.item.task_id }).
+				return this.$store.dispatch('FETCH_TASKS', { sheet_id: this.sheet_id, parent_id: this.item.task_id }).
 				then((count) => {
 					//debugger
-					this.$store.commit('UPDATE_TASK_VALUES', { list_id: this.list_id, task_id: this.item.task_id, isSubtaskExpanded: ((this.item.isSubtaskExpanded > 1) ? 0 : 2) })
+					this.$store.commit('UPDATE_TASK_VALUES', { sheet_id: this.sheet_id, task_id: this.item.task_id, isSubtaskExpanded: ((this.item.isSubtaskExpanded > 1) ? 0 : 2) })
 					console.log('Subtasks fetched')
 				})
 				.catch((err) => {

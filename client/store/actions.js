@@ -10,24 +10,31 @@ const mainPacket = [{
 	fetchQuery: {
 		url: 'main-user',
 		method: 'GET',
-		headers: { packet: 0 }
+		headers: { packet: 0 },
 	},
-	mutations: ['MAINUSER_SUCCESS', 'THEUSER_SUCCESS']
+	mutations: ['MAIN_USER_SUCCESS', 'THEUSER_SUCCESS']
 },{
 	fetchQuery: {
 		url: 'groups',
 		method: 'GET',
 		params: { whose: 'main' },
-		headers: { packet: 1 }
+		headers: { packet: 1 },
 	},
-	mutations: ['MAINGROUPS_SUCCESS']
+	mutations: ['MAIN_GROUPS_SUCCESS']
 },{
 	fetchQuery: {
 		url: 'contexts',
 		method: 'GET',
-		headers: { packet: 2 }
+		headers: { packet: 2 },
 	},
-	mutations: ['MAINCONTEXTS_SUCCESS']
+	mutations: ['MAIN_CONTEXTS_SUCCESS']
+},{
+	fetchQuery: {
+		url: 'sheets',
+		method: 'GET',
+		headers: { packet: 3 },
+	},
+	mutations: ['MAIN_SHEETS_SUCCESS']
 }]
 
 function getTokensFromSessionStorage() {
@@ -84,21 +91,21 @@ async function fetchSrv(query) {
 let userPartID = 0, groupPartID = 0, taskPartID = 0
 
 export default {
-	/*** USERS LIST actions */
-	FETCH_USERS_LIST: ({ commit, state }) => {
-		const activeList = state.activeUsersList.list
-		const searchText = state[activeList].searchText
+	/*** USERS SHEET actions */
+	FETCH_USERS_SHEET: ({ commit, state }) => {
+		const activeSheet = state.activeUsersSheet.sheet
+		const searchText = state[activeSheet].searchText
 		const fetchQuery = {
 			url: 'users',
 			method: 'GET',
 			params: {
 				like: (searchText) ? searchText : '',
-				whose: state.activeUsersList.whose
+				whose: state.activeUsersSheet.whose
 			},
-			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++userPartID }
+			headers: { limit: state[activeSheet].limit, offset: state[activeSheet].offset, partid: ++userPartID }
 		}
 
-		const condition = state.activeUsersList.condition
+		const condition = state.activeUsersSheet.condition
 		for (let i = 0; i < condition.length; i++) {
 			switch (condition[i]) {
 				case 'user_id':
@@ -117,7 +124,7 @@ export default {
 				return Promise.resolve(0)
 			} else {
 				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${userPartID}`)
-				commit('SET_USERS_LIST', dataFromSrv.data)
+				commit('SET_USERS_SHEET', dataFromSrv.data)
 				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
@@ -128,7 +135,7 @@ export default {
 		})
 	},
 
-	LINK_USERS_LIST: ({ commit, state }, id) => {
+	LINK_USERS_SHEET: ({ commit, state }, id) => {
 		const fetchQuery = {
 			url: 'users',
 			method: 'POST',
@@ -137,7 +144,7 @@ export default {
 			}
 		}
 
-		commit('UPDATE_VALUES_USERS_LIST', { id, loadingButton: true })
+		commit('UPDATE_VALUES_USERS_SHEET', { id, loadingButton: true })
 
 		return fetchSrv(fetchQuery)
 		.then((dataFromSrv) => {
@@ -145,8 +152,8 @@ export default {
 				return Promise.resolve(0)
 			} else {
 				console.log('user linked')
-				commit('UPDATE_VALUES_USERS_LIST', { id, friend: 1, loadingButton: false })
-				commit('RESET_INACTIVE_USERS_LIST')
+				commit('UPDATE_VALUES_USERS_SHEET', { id, friend: 1, loadingButton: false })
+				commit('RESET_INACTIVE_USERS_SHEET')
 			}
 		}).catch((err) => {
 			debugger
@@ -155,7 +162,7 @@ export default {
 		})
 	},
 
-	UNLINK_USERS_LIST: ({ commit, state }, id) => {
+	UNLINK_USERS_SHEET: ({ commit, state }, id) => {
 		const fetchQuery = {
 			url: 'users',
 			method: 'DELETE',
@@ -170,8 +177,8 @@ export default {
 				return Promise.resolve(0)
 			} else {
 				console.log('user unlinked')
-				commit('REMOVE_VALUES_USERS_LIST', { id })
-				commit('RESET_INACTIVE_USERS_LIST')
+				commit('REMOVE_VALUES_USERS_SHEET', { id })
+				commit('RESET_INACTIVE_USERS_SHEET')
 			}
 		}).catch((err) => {
 			debugger
@@ -180,22 +187,22 @@ export default {
 		})
 	},
 
-	/*** GROUPS LIST actions */
-	FETCH_GROUPS_LIST: ({ commit, state }) => {
+	/*** GROUPS SHEET actions */
+	FETCH_GROUPS_SHEET: ({ commit, state }) => {
 		//debugger
-		const activeList = state.activeGroupsList.list
-		const searchText = state[activeList].searchText
+		const activeSheet = state.activeGroupsSheet.sheet
+		const searchText = state[activeSheet].searchText
 		const fetchQuery = {
 			url: 'groups',
 			method: 'GET',
 			params: {
 				like: (searchText) ? searchText : '',
-				whose: state.activeGroupsList.whose
+				whose: state.activeGroupsSheet.whose
 			},
-			headers: { limit: state[activeList].limit, offset: state[activeList].offset, partid: ++groupPartID }
+			headers: { limit: state[activeSheet].limit, offset: state[activeSheet].offset, partid: ++groupPartID }
 		}
 
-		const condition = state.activeGroupsList.condition
+		const condition = state.activeGroupsSheet.condition
 		for (let i = 0; i < condition.length; i++) {
 			switch (condition[i]) {
 				case 'user_id':
@@ -213,7 +220,7 @@ export default {
 				return Promise.resolve(0)
 			} else {
 				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${groupPartID}`)
-				commit('SET_GROUPS_LIST', dataFromSrv.data)
+				commit('SET_GROUPS_SHEET', dataFromSrv.data)
 				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
@@ -225,8 +232,8 @@ export default {
 	},
 
 	FETCH_SUBGROUPS: ({ commit, state }, group_id) => {
-		const activeList = state.activeGroupsList.list
-		const searchText = state[activeList].searchText
+		const activeSheet = state.activeGroupsSheet.sheet
+		const searchText = state[activeSheet].searchText
 		const fetchQuery = {
 			url: 'groups',
 			method: 'GET',
@@ -254,7 +261,7 @@ export default {
 		})
 	},
 
-	LINK_GROUPS_LIST: ({ commit, state }, id) => {
+	LINK_GROUPS_SHEET: ({ commit, state }, id) => {
 		const fetchQuery = {
 			url: 'groups',
 			method: 'POST',
@@ -263,7 +270,7 @@ export default {
 			}
 		}
 
-		commit('UPDATE_VALUES_GROUPS_LIST', { id, loadingButton: true })
+		commit('UPDATE_VALUES_GROUPS_SHEET', { id, loadingButton: true })
 
 		return fetchSrv(fetchQuery)
 		.then((dataFromSrv) => {
@@ -271,8 +278,8 @@ export default {
 				return Promise.resolve(0)
 			} else {
 				console.log('group linked')
-				commit('UPDATE_VALUES_GROUPS_LIST', { id, friend: 1, loadingButton: false })
-				commit('RESET_INACTIVE_GROUPS_LIST')
+				commit('UPDATE_VALUES_GROUPS_SHEET', { id, friend: 1, loadingButton: false })
+				commit('RESET_INACTIVE_GROUPS_SHEET')
 			}
 		}).catch((err) => {
 			debugger
@@ -281,7 +288,7 @@ export default {
 		})
 	},
 
-	UNLINK_GROUPS_LIST: ({ commit, state }, id) => {
+	UNLINK_GROUPS_SHEET: ({ commit, state }, id) => {
 		const fetchQuery = {
 			url: 'groups',
 			method: 'DELETE',
@@ -296,8 +303,8 @@ export default {
 				return Promise.resolve(0)
 			} else {
 				console.log('group unlinked')
-				commit('REMOVE_VALUES_GROUPS_LIST', { id })
-				commit('RESET_INACTIVE_GROUPS_LIST')
+				commit('REMOVE_VALUES_GROUPS_SHEET', { id })
+				commit('RESET_INACTIVE_GROUPS_SHEET')
 			}
 		}).catch((err) => {
 			debugger
@@ -306,35 +313,35 @@ export default {
 		})
 	},
 
-	//*** TASKS LIST actions */
+	//*** TASKS SHEET actions */
 	FETCH_TASKS: ({ commit, state }, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
 		const fetchQuery = {
 			url: 'tasks',
 			method: 'GET',
 			params: {},
-			headers: { limit: activeList.limit, offset: activeList.offset, partid: ++taskPartID }
+			headers: { limit: activeSheet.limit, offset: activeSheet.offset, partid: ++taskPartID }
 		}
 
 		// apply global condition
-		for (const key in activeList.condition) {
-			if (activeList.condition[key] === null) continue
+		for (const key in activeSheet.condition) {
+			if (activeSheet.condition[key] === null) continue
 
 			switch (key) {
 				case 'group_id':
-					fetchQuery.params.group_id = activeList.condition[key]
+					fetchQuery.params.group_id = activeSheet.condition[key]
 					break
 				case 'user_id':
-					fetchQuery.params.user_id = activeList.condition[key]
+					fetchQuery.params.user_id = activeSheet.condition[key]
 					break
 				case 'parent_id':
-					fetchQuery.params.parent_id = activeList.condition[key]
+					fetchQuery.params.parent_id = activeSheet.condition[key]
 					break
 				case 'task_id':
-					fetchQuery.params.task_id =  activeList.condition[key]
+					fetchQuery.params.task_id =  activeSheet.condition[key]
 					break
 				case 'searchText':
-					fetchQuery.params.searchText = activeList.condition[key]
+					fetchQuery.params.searchText = activeSheet[key]
 					break
 				default:
 					break
@@ -343,7 +350,7 @@ export default {
 
 		// apply local condition
 		for (const key in options) {
-			if (key === 'list_id') continue
+			if (key === 'sheet_id') continue
 
 			fetchQuery.params[key] = options[key]
 		}
@@ -354,7 +361,7 @@ export default {
 				return Promise.resolve(0)
 			} else {
 				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${taskPartID}`)
-				commit('SET_TASKS', { list_id: options.list_id, data: dataFromSrv.data })
+				commit('SET_TASKS', { sheet_id: options.sheet_id, data: dataFromSrv.data })
 				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
@@ -365,18 +372,18 @@ export default {
 		})
 	},
 
-	/** Создание нового элемента в списке list принадлежащему множеству списков listOfList по list_id
-	 * обязательные входящие опции: options = { list_id:string, isSubelement:bool, isStart:bool }
+	/** Создание нового элемента в списке sheet принадлежащему множеству списков sheets по sheet_id
+	 * обязательные входящие опции: options = { sheet_id:string, isSubelement:bool, isStart:bool }
 	 */
 	CREATE_ELEMENT: ({ commit, state }, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		const thisList = activeList.list
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+		const thisSheet = activeSheet.sheet
 
 		let group_id, parent_id = 0
 
 		/* Определим, что добавляется элемент или субэлемент */
 		if (options.isSubelement) {
-			const activeElement = recursiveFind(thisList, el => el.isActive).element
+			const activeElement = recursiveFind(thisSheet, el => el.isActive).element
 			if (activeElement) {
 				if (activeElement.level < 3) {
 					parent_id = activeElement.task_id
@@ -388,8 +395,8 @@ export default {
 				return Promise.reject('To add an unselected item')
 			}
 		} else {
-			if (thisList.length > 0) {
-				group_id = thisList[0].group_id
+			if (thisSheet.length > 0) {
+				group_id = thisSheet[0].group_id
 			} else {
 				/* Если список элементов пуст, найдем primary group в которую по-умолчанию добавим элемент */
 				group_id = state.mainGroups.find(el => el.group_type === 1).id
@@ -413,7 +420,7 @@ export default {
 				return Promise.resolve(0)
 			} else {
 				console.log(`Actions add item recieve datas:`)
-				commit('SET_TASKS', { list_id: options.list_id, data: dataFromSrv.data, isStart: options.isStart })
+				commit('SET_TASKS', { sheet_id: options.sheet_id, data: dataFromSrv.data, isStart: options.isStart })
 				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
@@ -424,16 +431,16 @@ export default {
 		})
 	},
 
-	/** Удаление текущего элемента в списке list принадлежащему множеству списков listOfList по list_id
-	 * обязательные входящие опции: options = { list_id:string }
+	/** Удаление текущего элемента в списке sheet принадлежащему множеству списков sheets по sheet_id
+	 * обязательные входящие опции: options = { sheet_id:string }
 	 */
 	DELETE_ELEMENT: ({ commit, state }, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		const thisList = activeList.list
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+		const thisSheet = activeSheet.sheet
 
 		let task_id = null, group_id = null
 
-		const activeElement = recursiveFind(thisList, el => el.isActive).element
+		const activeElement = recursiveFind(thisSheet, el => el.isActive).element
 		if (activeElement) {
 			if (activeElement.havechild) {
 				return Promise.reject('I can not delete an element containing other elements')
@@ -459,7 +466,7 @@ export default {
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(false)
 			} else {
-				commit('DELETE_TASK', { list_id: options.list_id, task_id: task_id })
+				commit('DELETE_TASK', { sheet_id: options.sheet_id, task_id: task_id })
 				return Promise.resolve(true)
 			}
 		})
@@ -470,8 +477,8 @@ export default {
 		})
 	},
 
-	/** Перемещение элементов в списке list принадлежащему множеству списков listOfList по list_id
-	 * обязательные входящие опции: options = {	oldIndex,	newIndex,	fromParent,	toParent,	list_id }
+	/** Перемещение элементов в списке sheet принадлежащему множеству списков sheets по sheet_id
+	 * обязательные входящие опции: options = {	oldIndex,	newIndex,	fromParent,	toParent,	sheet_id }
 	 * Эта action - функция меняет позицию на клиенте и на сервере по различным правилам:
 	 * - на клиенте список древовидной структуры, а на сервере плоский - поэтому индексация разная
 	 * - на клиенте в списке присутствуют dividers, которые делят список на группы, на сервере нет
@@ -481,8 +488,8 @@ export default {
 	 * - клиент ориентирует положение элемента относительно idx, сервер относительно id элементов
 	 * */
 	REORDER_TASKS: ({ commit, state }, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		const taskList = activeList.list
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+		const taskSheet = activeSheet.sheet
 		if (options.fromParent_id === 0) options.fromParent_id = null
 		if (options.toParent_id === 0) options.toParent_id = null
 
@@ -490,21 +497,21 @@ export default {
 			isBefore = (options.oldIndex > options.newIndex)
 
 		if (options.fromParent_id === null) {
-			fromTask = taskList[options.oldIndex]
+			fromTask = taskSheet[options.oldIndex]
 		} else {
-			fromParent = recursiveFind(taskList, el => el.task_id === options.fromParent_id).element
+			fromParent = recursiveFind(taskSheet, el => el.task_id === options.fromParent_id).element
 			fromTask = fromParent.children[options.oldIndex]
 		}
 		fromTask.consistency = 1
 
 		if (options.toParent_id === null) {
-			if (taskList.length === options.newIndex) {
-				toTask = taskList[options.newIndex - 1]
+			if (taskSheet.length === options.newIndex) {
+				toTask = taskSheet[options.newIndex - 1]
 				newGroupId = toTask.group_id
 				toTask = null
 				isBefore = true
 			} else {
-				toTask = taskList[options.newIndex]
+				toTask = taskSheet[options.newIndex]
 				if (toTask.isDivider) {
 					newGroupId = toTask.group_id
 					if (options.newIndex === 0) {
@@ -513,13 +520,13 @@ export default {
 					} else {
 						//Если элемент перемещается выше своей позиции, иначе ниже
 						if (options.oldIndex > options.newIndex) {
-							toTask = taskList[options.newIndex - 1]
+							toTask = taskSheet[options.newIndex - 1]
 							newGroupId = toTask.group_id
 							isBefore = false
 						} else {
-							if (taskList.length > options.newIndex + 1) {
+							if (taskSheet.length > options.newIndex + 1) {
 								isBefore = true
-								toTask = taskList[options.newIndex + 1]
+								toTask = taskSheet[options.newIndex + 1]
 							} else {
 								//достигнут конец списка
 								toTask = null
@@ -529,7 +536,7 @@ export default {
 				}
 			}
 		} else {
-			toParent = recursiveFind(taskList, el => el.task_id === options.toParent_id).element
+			toParent = recursiveFind(taskSheet, el => el.task_id === options.toParent_id).element
 			if (!toParent.children || toParent.children.length === 0) {
 				toTask = null
 				newGroupId = fromTask.group_id
@@ -569,7 +576,7 @@ export default {
 			} else {
 				if (toTask.parent === null) {
 					//Если до новой позиции сразу стоит разделитель группы, то ставим на позицию выше
-					//if (options.newIndex > 0 && taskList[options.newIndex - 1].isDivider) {
+					//if (options.newIndex > 0 && taskSheet[options.newIndex - 1].isDivider) {
 						isBefore = true
 					//}
 				} else {
@@ -637,7 +644,7 @@ export default {
 				let movedItem
 
 				if (options.fromParent_id === null) {
-					movedItem = taskList.splice(options.oldIndex, 1)[0]
+					movedItem = taskSheet.splice(options.oldIndex, 1)[0]
 				} else {
 					movedItem = fromParent.children.splice(options.oldIndex, 1)[0]
 					fromParent.havechild--
@@ -646,7 +653,7 @@ export default {
 				if (movedItem) movedItem.isShowed = true
 
 				if (options.toParent_id === null) {
-					taskList.splice((options.newIndex === 0) ? 1 : options.newIndex, 0, movedItem)
+					taskSheet.splice((options.newIndex === 0) ? 1 : options.newIndex, 0, movedItem)
 				} else {
 					if (!toParent.children) {
 						Vue.set(toParent, 'children', new Array)
@@ -718,7 +725,7 @@ export default {
 
 				//изменение значения группы на новую группу, если она задана
 				if (newGroupId !== undefined) {
-					commit('UPDATE_TASK_VALUES', { list_id: options.list_id, task_id: movedItem.task_id, group_id: newGroupId })
+					commit('UPDATE_TASK_VALUES', { sheet_id: options.sheet_id, task_id: movedItem.task_id, group_id: newGroupId })
 				}
 
 				movedItem.consistency = 0
@@ -733,11 +740,11 @@ export default {
 		})
 	},
 
-	/** options = { list_id, task_id, group_id } */
+	/** options = { sheet_id, task_id, group_id } */
 	UPDATE_TASK_GROUP: ({ commit, state }, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
-		taskList = activeList.list,
-		element = recursiveFind(taskList, el => el.task_id === options.task_id).element
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id),
+		taskSheet = activeSheet.sheet,
+		element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element
 		element.consistency = 1
 
 		const fetchQuery = {
@@ -764,21 +771,21 @@ export default {
 				if (element.level === 1) {
 					/* Необходимо найти divider он будет являться началом размещения задачи
 						 в новой группе */
-					idxTask = taskList.findIndex(el => el.task_id == options.task_id)
-					movedItem = taskList.splice(idxTask, 1)[0]
+					idxTask = taskSheet.findIndex(el => el.task_id == options.task_id)
+					movedItem = taskSheet.splice(idxTask, 1)[0]
 
-					idxGroup = taskList.findIndex(el => (el.group_id === options.group_id && el.isDivider))
+					idxGroup = taskSheet.findIndex(el => (el.group_id === options.group_id && el.isDivider))
 					if (idxGroup === -1) {
 						const group = findGroup(state.mainGroups, options.group_id)
 						//Такой разделитель не найден, значит необходимо создать новый
-						idxGroup = taskList.push({ isDivider: true,
+						idxGroup = taskSheet.push({ isDivider: true,
 							group_id: options.group_id,
 							name: group.name,
 							isActive: false })
 					}
 					idxGroup++
 
-					taskList.splice(idxGroup, 0, movedItem)
+					taskSheet.splice(idxGroup, 0, movedItem)
 				} else {
 					/* Для элементов последующих уровней необходимо найти самый первый элемент
 						 принадлежащий искомой группе и поместить нашу задачу выше этого элемента */
@@ -793,7 +800,7 @@ export default {
 				}
 
 				//изменение значения группы на новую группу
-				commit('UPDATE_TASK_VALUES', { list_id: options.list_id, task_id: movedItem.task_id, group_id: options.group_id })
+				commit('UPDATE_TASK_VALUES', { sheet_id: options.sheet_id, task_id: movedItem.task_id, group_id: options.group_id })
 
 				movedItem.consistency = 0
 				return Promise.resolve(true)
@@ -806,18 +813,18 @@ export default {
 		})
 	},
 
-	/** options = { list_id, task_id, ...values } */
+	/** options = { sheet_id, task_id, ...values } */
 	UPDATE_TASK_VALUES: ({ commit, state }, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
-					taskList = activeList.list,
-					element = recursiveFind(taskList, el => el.task_id === options.task_id).element,
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id),
+					taskSheet = activeSheet.sheet,
+					element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element,
 					values = {}
 
 		element.consistency = 1
 		//debugger
 
 		for (const key in options) {
-			if (key === 'task_id' || key === 'list_id') continue
+			if (key === 'task_id' || key === 'sheet_id') continue
 
 			if (element.hasOwnProperty(key)) {
 				values[key] = options[key]
@@ -856,9 +863,9 @@ export default {
 	},
 
 	ADD_TASK_CONTEXT: ({ commit, state }, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
-					taskList = activeList.list,
-					element = recursiveFind(taskList, el => el.task_id === options.task_id).element,
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id),
+					taskSheet = activeSheet.sheet,
+					element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element,
 					values = {}
 
 		element.consistency = 1
@@ -888,7 +895,7 @@ export default {
 				return Promise.resolve(false)
 			} else {
 				const data = Object.assign({}, dataFromSrv.data)
-				data.list_id = options.list_id
+				data.sheet_id = options.sheet_id
 
 				commit('ADD_TASK_CONTEXT', data)
 				return Promise.resolve(true)
@@ -903,9 +910,9 @@ export default {
 	},
 
 	REMOVE_TASK_CONTEXT: ({commit, state}, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
-					taskList = activeList.list,
-					element = recursiveFind(taskList, el => el.task_id === options.task_id).element,
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id),
+					taskSheet = activeSheet.sheet,
+					element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element,
 					values = {}
 
 		element.consistency = 1
@@ -931,7 +938,7 @@ export default {
 				return Promise.resolve(false)
 			} else {
 				const data = Object.assign({}, dataFromSrv.data)
-				data.list_id = options.list_id
+				data.sheet_id = options.sheet_id
 
 				commit('REMOVE_TASK_CONTEXT', data)
 				return Promise.resolve(true)
@@ -945,11 +952,11 @@ export default {
 		})
 	},
 
-	/** options = { list_id, task_id } */
+	/** options = { sheet_id, task_id } */
 	FETCH_ACTIVITY: ({ commit, state }, options) => {
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id),
-			taskList = activeList.list,
-			element = recursiveFind(taskList, el => el.task_id === options.task_id).element
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id),
+			taskSheet = activeSheet.sheet,
+			element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element
 
 		if (!element) return Promise.reject(null)
 		element.consistency = 1
@@ -957,7 +964,7 @@ export default {
 		const fetchQuery = {
 			url: 'activity',
 			method: 'GET',
-			params: { task_id: element.task_id,	group_id: element.group_id, type_el: 1 },
+			params: { task_id: element.task_id,	group_id: element.group_id, type_el: 2 },
 			headers: { limit: 100, offset: 0 }
 		}
 
@@ -967,7 +974,7 @@ export default {
 				return Promise.resolve(null)
 			} else {
 				element.consistency = 0
-				commit('SET_ACTIVITY', { list_id: options.list_id, data: dataFromSrv.data })
+				commit('SET_ACTIVITY', { sheet_id: options.sheet_id, data: dataFromSrv.data })
 				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
@@ -988,7 +995,7 @@ export default {
 	/***
 	 * @func CREATE_ACTIVITY_ELEMENT
 	 * @param { VUEX action parametres: Object }
-	 * @param { { list_id, task_id, ...other options }: Object } - options
+	 * @param { { sheet_id, task_id, ...other options }: Object } - options
 	 * @returns { function(...args): Promise }
 	 * @description Функция для создания элемента активности, а так-же изменения статуса
 	 * у задачи, если в options переданы "task_id" и "status".
@@ -1011,9 +1018,9 @@ export default {
 	*/
 	CREATE_ACTIVITY_ELEMENT: ({ commit, state }, options) => {
 		//Получим элемент задачи относительно которой добавляется активность
-		const activeList = state.listOfList.find(el => el.list_id === options.list_id)
-		const thisList = activeList.list
-		const activeElement = recursiveFind(thisList, el => el.task_id === options.task_id).element
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+		const thisSheet = activeSheet.sheet
+		const activeElement = recursiveFind(thisSheet, el => el.task_id === options.task_id).element
 
 		let status, start, group_id = activeElement.group_id
 		activeElement.consistency = 1
@@ -1035,7 +1042,7 @@ export default {
 			method: 'POST',
 			params: {
 				group_id: group_id,
-				type_el: 1,
+				type_el: 2,
 				task_id: activeElement.task_id,
 				start: start,
 				status: status
@@ -1048,7 +1055,7 @@ export default {
 				return Promise.resolve(null)
 			} else {
 				activeElement.consistency = 0
-				commit('SET_ACTIVITY', { list_id: options.list_id, task_id: options.task_id, data: dataFromSrv.data })
+				commit('SET_ACTIVITY', { sheet_id: options.sheet_id, task_id: options.task_id, data: dataFromSrv.data })
 				return Promise.resolve(dataFromSrv.data.length)
 			}
 		})
@@ -1073,12 +1080,14 @@ export default {
 		return Promise.all([
 			fetchSrv(mainPacket[0].fetchQuery),
 			fetchSrv(mainPacket[1].fetchQuery),
-			fetchSrv(mainPacket[2].fetchQuery)
+			fetchSrv(mainPacket[2].fetchQuery),
+			fetchSrv(mainPacket[3].fetchQuery)
 		]).then(datasFromSrv => {
-			//debugger
+			// debugger
 			for (const dataFromSrv of datasFromSrv) {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(0)
+					continue
+					//return Promise.resolve(0)
 				} else {
 					if (!state.auth.token) {
 						//if need refressh token in store
@@ -1244,7 +1253,7 @@ export default {
     })
   },
 
-  // ensure data for rendering given list type
+  // ensure data for rendering given  type
   FETCH_LIST_DATA: ({ commit, dispatch, state }, { type }) => {
     commit('SET_ACTIVE_TYPE', { type })
 

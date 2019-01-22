@@ -3,14 +3,15 @@
 		v-bind:value="value"
 		:clipped-left="$vuetify.breakpoint.lgAndUp"
 		color="primary"
-		dark
-		app
-		fixed
-		dense>
-
+		dark app fixed dense
+	>
 		<!-- <v-toolbar-title style="width: 300px" class="ml-0 pl-0"> -->
 		<v-toolbar-title class="ml-0 pl-0">
-			<v-toolbar-side-icon @click="$emit('input', !value)" height="36"></v-toolbar-side-icon>
+			<v-toolbar-side-icon
+				@click="$emit('input', !value)"
+				height="36"
+				v-if="isAuth"
+			></v-toolbar-side-icon>
 			<a class="hidden-sm-and-down white--text" href="/">inTask.me</a>
 		</v-toolbar-title>
 
@@ -35,8 +36,9 @@
 			offset-y
 			origin="center center"
 			:nudge-bottom="14"
-			transition="scale-transition" v-if="isAuth">
-
+			transition="scale-transition" v-if="false"
+		>
+		<!-- transition="scale-transition" v-if="isAuth" -->
 			<v-btn icon flat slot="activator">
 				<v-badge color="red" overlap>
 					<span slot="badge">3</span>
@@ -52,8 +54,8 @@
 			origin="center center"
 			:nudge-bottom="10"
 			transition="scale-transition"
-			light>
-
+			light
+		>
 			<v-btn slot="activator" icon>
 				<v-avatar size="32px" tile>
 					<img src="https://www.freeiconspng.com/uploads/brain-icon-png-12.png" alt="Avatar">
@@ -70,10 +72,12 @@
 					:disabled="item.disabled"
 					:target="item.target"
 					rel="noopener"
-					:key="index">
+					:key="index"
+				>
 					<v-list-tile-action v-if="item.icon">
 						<v-icon>{{ item.icon }}</v-icon>
 					</v-list-tile-action>
+
 					<v-list-tile-content>
 						<v-list-tile-title>{{ item.title }}</v-list-tile-title>
 					</v-list-tile-content>
@@ -88,7 +92,7 @@
 </template>
 
 <script>
-import NotificationList from '../components/widgets/list/NotificationList.vue'
+import NotificationList from '../components/widgets/NotificationList.vue'
 
 let self = undefined
 

@@ -7,7 +7,8 @@
 		v-model="localDrawer"
 		width="260"
 		stateless
-		app>
+		app
+	>
 		<!--disable-resize-watcher -->
 		<!--v-bind:value="value"-->
 		<!--stateless=false панель будет парить сверху-->

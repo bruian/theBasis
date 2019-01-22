@@ -28,7 +28,7 @@ export default {
 	 * @func additionalSheets
 	 * @param {vuex state: Object} - state
 	 * @returns { Array } - array components for render
-	 * @description Get the filtered array of components for a render in the additional list.
+	 * @description Get the filtered array of components for a render in the additional sheet.
 	 * 	state.layout: 1 - "one-column", 2 - "two-column"
 	*/
 	additionalSheets: state => {
@@ -40,25 +40,28 @@ export default {
 	 * @param {vuex state: Object} - state
 	 * @param {vuetify breakpoint: Object } - breakpoint
 	 * @returns { Boolean } - can render or can't
-	 * @description Get information about the possibility of rendering an additional list.
+	 * @description Get information about the possibility of rendering an additional sheet.
 	 * 	state.layout: 1 - "one-column", 2 - "two-column"
 	*/
 	isShowAdditional: state => breakpoint => {
+		const index = state.mainSheets.findIndex(el => (el.visible && el.layout === 2))
+		if (index === -1) return false
+
 		return (state.layout === 2) ? (!breakpoint.smAndDown) : false
 	},
 
-	usersList (state) {
-		return state[state.activeUsersList.list].list
+	usersSheet (state) {
+		return state[state.activeUsersSheet.sheet].sheet
 	},
 
-	groupsList (state) {
-		return state[state.activeGroupsList.list].list
+	groupsSheet (state) {
+		return state[state.activeGroupsSheet.sheet].sheet
 	},
 
-	tasksList: state => list_id => {
-		// const currentList = state.listOfList.find(el => el.list_id === list_id).list
-		// return (currentList) ? currentList.list : []
-		return state.listOfList.find(el => el.list_id === list_id).list
+	tasksSheet: state => sheet_id => {
+		// const currentSheet = state.sheets.find(el => el.sheet_id === sheet_id).sheet
+		// return (currentSheet) ? currentSheet.sheet : []
+		return state.sheets.find(el => el.sheet_id === sheet_id).sheet
 	},
 
 	contextByExistingTag: state => (index) => {
@@ -70,8 +73,8 @@ export default {
 	},
 
 	taskByIndex: state => obj => {
-		const currentList = state.listOfList.find(el => el.list_id === obj.list_id).list
-		return currentList[obj.index]
+		const currentSheet = state.sheets.find(el => el.sheet_id === obj.sheet_id).sheet
+		return currentSheet[obj.index]
 	},
 
 	groupById: state => id => {

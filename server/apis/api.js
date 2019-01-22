@@ -4,9 +4,10 @@ import GroupController from '../controllers/groups'
 import TaskController from '../controllers/tasks'
 import ActivityController from '../controllers/activity'
 import ContextController from '../controllers/contexts'
-import faker from 'faker'
-import crypto from 'crypto'
-import pg from '../db/postgres'
+import SheetController from '../controllers/sheets'
+// import faker from 'faker'
+// import crypto from 'crypto'
+// import pg from '../db/postgres'
 
 const srvPath = process.cwd() + '/server/'
 const log     = require(srvPath + 'log')(module)
@@ -263,7 +264,7 @@ router.post('/tasks', (req, res) => {
 		log.debug(`/tasks:post ${Date.now()-timeStart}ms |-> id:${taskData[0].task_id} | parent:${taskData[0].parent}	| group:${taskData[0].group_id} | for user: ${condition.mainUser_id}`)
 
 		condition.status = 0
-		condition.type_el = 1
+		condition.type_el = 2
 		condition.task_id = taskData[0].task_id
 		condition.group_id = taskData[0].group_id
 
@@ -456,5 +457,34 @@ router.put('/activity/order', (req, res) => {
 
 	return res.json({ error: 'Api put order - not ready' })
 })
+
+/* -----------------------------------------SHEETS API------------------------------------------ */
+
+/***
+ * @func router.get('/sheets')
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD. Call api function "getSheets" and responce data: JSON
+*/
+router.get('/sheets', (req, res) => {
+	const timeStart = Date.now()
+	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+	condition = Object.assign(condition, req.headers)
+
+	SheetController.getSheets(condition)
+	.then(data => {
+	 	const ids = data.map((el) => el.id).toString()
+		log.debug(`/sheets:get ${Date.now()-timeStart}ms |-> | for user:${condition.mainUser_id} | elements:[${ids}]`)
+
+		return res.json({ data: data, packet: condition.packet })
+	})
+	.catch(err => {
+		log.warn(`/sheets:get |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
+
+		return res.status(err.jse_info.status).end(err.message)
+	})
+})
+
 
 module.exports = router;

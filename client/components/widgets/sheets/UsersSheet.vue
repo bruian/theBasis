@@ -1,7 +1,7 @@
 <template>
 	<v-card >
 		<v-expansion-panel class="mb-0">
-			<v-expansion-panel-content class="list-header"
+			<v-expansion-panel-content class="sheet-header"
 				expand
 				expand-icon="search">
 				<!-- v-model="externalOpen"
@@ -9,15 +9,15 @@
 
 				<div slot="header">
 					<v-toolbar card dense color="transparent">
-						<div class="activeUsersListbox">
-							<span v-bind:class="{ opacIn: showActiveUsersList }">{{ activeUsersList.text }}</span>
+						<div class="activeUsersSheetbox">
+							<span v-bind:class="{ opacIn: showActiveUsersSheet }">{{ activeUsersSheet.text }}</span>
 							<span style="margin-left: 5px;">users</span>
 						</div>
 
 						<v-spacer></v-spacer>
 
 						<transition-group name="list">
-							<span v-for="ulitem in availableUsersList" v-bind:key="ulitem.id">
+							<span v-for="ulitem in availableUsersSheet" v-bind:key="ulitem.id">
 								<a class="activeitem"
 									v-show="ulitem.visible"
 									href=""
@@ -104,7 +104,7 @@ import InfiniteLoading from '../../InfiniteLoading'
 //import axios from 'axios'
 
 export default {
-	name: 'users-list',
+	name: 'users-sheet',
 	components: {
 		VuePerfectScrollbar,
 		InfiniteLoading,
@@ -119,7 +119,7 @@ export default {
 		},
 		countEl: 0, //pass to load data
 		blocked: false,
-		showActiveUsersList: false, //shows selected user list, my or all. Its for animation
+		showActiveUsersSheet: false, //shows selected user list, my or all. Its for animation
 		//externalOpen: false
 	}),
 	beforeMount () {
@@ -129,9 +129,9 @@ export default {
 		}
 	},
 	computed: {
-		items() {	return this.$store.getters.usersList },
-		activeUsersList() { return this.$store.state.activeUsersList },
-		availableUsersList() { return this.$store.state.availableUsersList }
+		items() {	return this.$store.getters.usersSheet },
+		activeUsersSheet() { return this.$store.state.activeUsersSheet },
+		availableUsersSheet() { return this.$store.state.availableUsersSheet }
 	},
   methods: {
 		onChange: function(value) {
@@ -143,9 +143,9 @@ export default {
 				//this.$nextTick(() => {
 					//this.countEl = 1
 					if (that.countEl == 0) {
-						that.$store.commit('RESET_USERS_LIST')
-						that.$store.commit('SET_PARAMS_USERS_LIST', { searchText: that.searchText })
-						that.$refs.infLoadingUsersList.$emit('$InfiniteLoading:reset')
+						that.$store.commit('RESET_USERS_SHEET')
+						that.$store.commit('SET_PARAMS_USERS_SHEET', { searchText: that.searchText })
+						that.$refs.infLoadingUsersSheet.$emit('$InfiniteLoading:reset')
 						that.blocked = false
 						console.log('ask')
 
@@ -161,14 +161,14 @@ export default {
 			if (!this.blocked) que()
 		},
 		onLink: function(id) {
-			return this.$store.dispatch('LINK_USERS_LIST', id).then((res) => {
+			return this.$store.dispatch('LINK_USERS_SHEET', id).then((res) => {
 			})
 			.catch((err) => {
 				console.log(err)
 			})
 		},
 		onUnLink: function(id) {
-			return this.$store.dispatch('UNLINK_USERS_LIST', id).then((res) => {
+			return this.$store.dispatch('UNLINK_USERS_SHEET', id).then((res) => {
 				if (res) {}
 			})
 			.catch((err) => {
@@ -181,8 +181,8 @@ export default {
 		infiniteHandler($state) {
 			if (this.countEl == 0) {
 				this.countEl++
-				console.log(`1** infiniteHandler fetch offset: ${this.$store.state[this.$store.state.activeUsersList.list].offset} CNT: ${this.countEl}`)
-				return this.$store.dispatch('FETCH_USERS_LIST').then((count) => {
+				console.log(`1** infiniteHandler fetch offset: ${this.$store.state[this.$store.state.activeUsersSheet.sheet].offset} CNT: ${this.countEl}`)
+				return this.$store.dispatch('FETCH_USERS_SHEET').then((count) => {
 					this.countEl--
 					if (count) {
 						$state.loaded()
@@ -200,14 +200,14 @@ export default {
 		},
    	activeClick: function(activeID) {
 			this.countEl = 0
-			this.$store.commit('SET_ACTIVE_USERS_LIST', activeID)
+			this.$store.commit('SET_ACTIVE_USERS_SHEET', activeID)
 			this.$nextTick(() => {
-        this.$refs.infLoadingUsersList.$emit('$InfiniteLoading:reset')
+        this.$refs.infLoadingUsersSheet.$emit('$InfiniteLoading:reset')
       })
 
-			this.showActiveUsersList = !this.showActiveUsersList
+			this.showActiveUsersSheet = !this.showActiveUsersSheet
       setTimeout(() => {
-        this.showActiveUsersList = !this.showActiveUsersList
+        this.showActiveUsersSheet = !this.showActiveUsersSheet
       }, 500)
 		},
 		getHref(condition) {
@@ -259,30 +259,30 @@ export default {
 </script>
 
 <style lang="css">
-.list-header .v-expansion-panel__header {
+.sheet-header .v-expansion-panel__header {
   padding: 0px;
 }
 
-.list-header .v-expansion-panel__header__icon {
+.sheet-header .v-expansion-panel__header__icon {
 	padding-top: 4px;
 	padding-right: 5px;
 }
 
-.list-header .search-button {
+.sheet-header .search-button {
 	padding-top: 4px;
 	margin-left: 0px;
 	margin-right: 0px;
 }
 
-.list-header .v-toolbar__content {
+.sheet-header .v-toolbar__content {
 	padding-right: 5px;
 }
 
-.list-body .sbx-twitter {
+.sheet-body .sbx-twitter {
 	width: 100%;
 }
 
-.list-body .main {
+.sheet-body .main {
 	margin-left: 5px;
 	margin-right: 5px;
 	margin-bottom: 5px;
@@ -294,7 +294,7 @@ export default {
   justify-content: space-between;
 }
 
-.activeUsersListbox {
+.activeUsersSheetbox {
   display: flex;
 }
 
@@ -313,10 +313,10 @@ export default {
 	color: blue;
 }
 
-.list-enter-active, .list-leave-active {
+.sheet-enter-active, .sheet-leave-active {
   transition: all 1s;
 }
-.list-enter, .list-leave-to /* .list-leave-active до версии 2.1.8 */ {
+.sheet-enter, .sheet-leave-to /* .list-leave-active до версии 2.1.8 */ {
   opacity: 0;
   transform: translateY(30px);
 }

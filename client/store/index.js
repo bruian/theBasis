@@ -50,6 +50,7 @@ export function createStore () {
 			apiStatus: [],			 		//log api status
 			//apiError: [], 			  //log api error (from server)
 layout: 2, //TEMPORARY. Need move to main user
+selectedSheet: '', //TEMPORARY. Need move to main user
 			/* -AUTHENTICATED STATUS -*/
 			auth: {	token: ''	},
 
@@ -69,59 +70,55 @@ layout: 2, //TEMPORARY. Need move to main user
 				id: 0
 			},
 
-			theTask: {
-				task_id: 0
-			},
-
 			subgroupsCache: [],
 
-			/* -USERS LIST DATAS- *//* api request: /users or /users/:id */
-			activeUsersList: { text: 'all', whose: 'all', id: 0, list: 'usersListAll', visible: true, condition: [] },
-			availableUsersList: [
-				{ text: 'my', whose: 'user', id: 1, list: 'usersListMy', visible: true, condition: ['user_id'] },
-				{ text: 'group', whose: 'group', id: 2, list: 'usersListGroup', visible: false, condition: ['user_id', 'group_id'] }
+			/* -USERS SHEET DATAS- *//* api request: /users or /users/:id */
+			activeUsersSheet: { text: 'all', whose: 'all', id: 0, sheet: 'usersSheetAll', visible: true, condition: [] },
+			availableUsersSheet: [
+				{ text: 'my', whose: 'user', id: 1, sheet: 'usersSheetMy', visible: true, condition: ['user_id'] },
+				{ text: 'group', whose: 'group', id: 2, sheet: 'usersSheetGroup', visible: false, condition: ['user_id', 'group_id'] }
 			],
-			usersListAll: {
-				list: [],
+			usersSheetAll: {
+				sheet: [],
 				limit: 10,
 				offset: 0,
 				searchText: ''
 			},
-			usersListMy: {
-				list: [],
+			usersSheetMy: {
+				sheet: [],
 				limit: 10,
 				offset: 0,
 				searchText: ''
 			},
-			usersListGroup: {
-				list: [],
+			usersSheetGroup: {
+				sheet: [],
 				limit: 10,
 				offset: 0,
 				searchText: ''
 			},
 
-			/* -GROUPS LIST DATAS- *//* api request: /groups or /groups/:id */
-			activeGroupsList: { text: 'all', whose: 'all', id: 0, list: 'groupsListAll', visible: true, condition: [] },
-			availableGroupsList: [
-				{ text: 'my', whose: 'user', id: 1, list: 'groupsListMy', visible: true, condition: ['user_id'] }
+			/* -GROUPS SHEET DATAS- *//* api request: /groups or /groups/:id */
+			activeGroupsSheet: { text: 'all', whose: 'all', id: 0, sheet: 'groupsSheetAll', visible: true, condition: [] },
+			availableGroupsSheet: [
+				{ text: 'my', whose: 'user', id: 1, sheet: 'groupsSheetMy', visible: true, condition: ['user_id'] }
 			],
-			groupsListAll: {
-				list: [],
+			groupsSheetAll: {
+				sheet: [],
 				limit: 10,
 				offset: 0,
 				searchText: ''
 			},
-			groupsListMy: {
-				list: [],
+			groupsSheetMy: {
+				sheet: [],
 				limit: 10,
 				offset: 0,
 				searchText: ''
 			},
 
-			theList: 0,
+			theSheet: 0,
 			listOfList: [
 				{
-					list_id: 'main-tasks',
+					sheet_id: 'main-tasks',
 					condition: {
 						group_id: null,
 						user_id: null,
@@ -129,21 +126,18 @@ layout: 2, //TEMPORARY. Need move to main user
 						task_id: null,
 						searchText: null
 					},
-					selectedList: true,
+					selectedSheet: true,
 					selectedItem: null,
-					list: [],
+					sheet: [],
 					limit: 10,
 					offset: 0,
 				}
 			],
 
 			mainSheets: [
-				{ id: 1, icon: 'T', component: 'task-listH', list_id: 'main-tasks', visible: true, layout: 1, name: 'Me tasked' },
-				{ id: 2, icon: 'T', component: 'task-listV', list_id: 'main-tasks', visible: true, layout: 2, name: 'Me tasked' },
-				{ id: 3, icon: 'G', component: 'groups-listV', list_id: 'main-groups', visible: true, layout: 2, name: 'Me groups' },
-				{ id: 4, icon: 'T', component: 'task-listV', list_id: 'main-tasks', visible: true, layout: 2, name: 'Me tasked' },
-				{ id: 5, icon: 'T', component: 'task-listV', list_id: 'main-tasks', visible: false, layout: 2, name: 'Me tasked' },
-			]
+			],
+
+			sheets: [],
     },
     actions,
     mutations,
