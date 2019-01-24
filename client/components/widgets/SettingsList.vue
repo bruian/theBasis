@@ -24,10 +24,10 @@
 				ref="scrollId"
 			>
 				<ul style="all: unset;">
-					<li style="all: unset;" v-for="sheet in value" :key="sheet.id">
+					<li style="all: unset;" v-for="sheet in value" :key="sheet.sheet_id">
 						<div class="item-container">
-							<div class="item-body" v-bind:class="{'active': (selectedItem === sheet.id)}"
-								@click="onItemClick(sheet.id)"
+							<div class="item-body" v-bind:class="{'active': (selectedItem === sheet.sheet_id)}"
+								@click="onItemClick(sheet.id, sheet.sheet_id)"
 							>
 								<div class="item-clmn1">
 									<v-icon>{{sheet.icon}}</v-icon>
@@ -37,13 +37,13 @@
 									<input class="item-input"
 										type="text"
 										v-model="sheet.name"
-										@change="onNameChange($event, sheet.id)"
+										@change="onNameChange($event, sheet.sheet_id)"
 									></input>
 								</div>
 
 								<v-btn flat small icon class="item-clmn3"
 									:color="isVisibleColor(sheet.visible)"
-									@click="onVisibleChange(sheet.id, sheet.visible)"
+									@click="onVisibleChange(sheet.sheet_id, sheet.visible)"
 								>
 									<v-icon>visibility</v-icon>
 								</v-btn>
@@ -61,7 +61,7 @@
 										<v-list-tile
 											v-for="(enumLayout, index) in enumLayouts"
 											:key="index"
-											@click="onLayoutChange(sheet.layout, index)"
+											@click="onLayoutChange(sheet.sheet_id, index)"
 										>
 											<v-list-tile-title>{{ enumLayout }}</v-list-tile-title>
 										</v-list-tile>
@@ -87,10 +87,10 @@
           ></v-text-field>
 
 					<v-select
-						:items="enumComponent"
+						:items="enumTypeEl"
 						label="Select component"
 						item-value="text"
-						v-model="createdComponent"
+						v-model="createdTypeEl"
 					></v-select>
 
 					<v-select
@@ -134,7 +134,7 @@ export default {
 				return ['One', 'Two']
 			}
 		},
-		enumComponent: {
+		enumTypeEl: {
 			type: Array,
 			default: function () {
 				return ['Tasks', 'Groups', 'Users']
@@ -145,11 +145,12 @@ export default {
 		scrollSettings: {
 			maxScrollLength: 10
 		},
-		selectedItem: 1,
+		selectedItem: null,
+		selectedSheet_id: null,
 		scrollId: "settings-list",
 		createDialog: false,
 		createdName: '',
-		createdComponent: '',
+		createdTypeEl: '',
 		createdLayout: '',
 		createdVisible: true
 	}),
@@ -179,31 +180,45 @@ export default {
 			this.createDialog = true
 		},
 		onCreateItem() {
-			const createdSheet = { 'component': this.createdComponent, 'layout': this.createdLayout,
+			let type_el
+			switch (this.createdTypeEl) {
+				case 'Tasks':
+					type_el = 4
+					break
+				case 'Groups':
+					type_el = 8
+					break
+				case 'Users':
+					type_el = 16
+					break
+			}
+
+			const createdLayout = this.enumLayouts.findIndex(el => el === this.createdLayout) + 1
+			const createdSheet = { 'type_el': type_el, 'layout': createdLayout,
 				'name': this.createdName, 'visible': this.createdVisible }
 
-			console.log(createdSheet)
 			this.createDialog = false
-			this.$emit('onCreate')
+			this.$emit('onCreate', createdSheet)
 		},
 		onDeleteItem() {
-			this.$emit('onDelete', this.selectedItem)
+			this.$emit('onDelete', { index: this.selectedItem, id: this.selectedSheet_id })
 		},
 		onMove: function(UP = true) {
-			this.$emit('onMove', this.selectedItem, UP)
+			this.$emit('onMove', { index: this.selectedItem - 1, UP })
 		},
-		onItemClick: function(id) {
-			this.selectedItem = id
-			this.$emit('onSelect', id)
+		onItemClick: function(index, id) {
+			this.selectedItem = index
+			this.selectedSheet_id = id
+			this.$emit('onSelect', { index, id })
 		},
 		onNameChange(e, id) {
 			this.$emit('input', { 'id': id, 'field': 'name', 'value': e.target.value })
 		},
 		onVisibleChange(id, value) {
-			this.$emit('input', { 'id': id, 'field': 'visible', 'value': value })
+			this.$emit('input', { 'id': id, 'field': 'visible', 'value': !value })
 		},
 		onLayoutChange(id, index) {
-			this.$emit('input', { 'id': id, 'field': 'layout', 'value': this.enumLayouts[index] })
+			this.$emit('input', { 'id': id, 'field': 'layout', 'value': index + 1 })
 		}
 	}
 }

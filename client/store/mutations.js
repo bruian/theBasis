@@ -544,8 +544,6 @@ export default {
 /* --------------------------------------Sheets mutations--------------------------------------- */
 
 	MAIN_SHEETS_SUCCESS: (state, data) => {
-		setApiStatus(state, 'MAIN_SHEETS_SUCCESS', null)
-// debugger
 		let mainSheet, sheet, type_obj, condition
 		for (let i = 0; i < data.length; i++) {
 			type_obj = typeForSheet(data[i].type_el)
@@ -580,7 +578,85 @@ export default {
 		}
 	},
 
+	UPDATE_MAIN_SHEETS_VALUES: (state, data) => {
+		for (const dataItem of data) {
+			if (dataItem.hasOwnProperty('id')) {
+				const thisMainSheet = state.mainSheets.find(el => el.sheet_id === dataItem.id)
+				if (thisMainSheet) {
+					for (const key in dataItem) {
+						if (key === 'id') continue
+
+						if (thisMainSheet.hasOwnProperty(key)) {
+							thisMainSheet[key] = dataItem[key]
+						}
+					}
+				}
+			}
+		}
+	},
+
+	DELETE_SHEET_ELEMENT: (state, data) => {
+		if (data.hasOwnProperty('id')) {
+			let index = state.mainSheets.findIndex(el => el.sheet_id === data.id)
+			if (index !== -1) {
+				state.mainSheets.splice(index, 1)
+			}
+
+			index = state.sheets.findIndex(el => el.sheet_id === data.id)
+			if (index !== -1) {
+				state.sheets.splice(index, 1)
+			}
+
+			// Пересчёт id у элементов коллекции
+			for (let i = 0; i < state.mainSheets.length; i++) {
+				state.mainSheets[i].id = i + 1
+			}
+		}
+	},
+
+	MOVE_SHEET_ELEMENT: (state, data) => {
+		if (data.hasOwnProperty('index') && data.hasOwnProperty('UP')) {
+			let res, deletedElement = state.mainSheets.splice(data.index, 1)[0]
+
+			if (data.UP) {
+				if (data.index - 1 >= 0) {
+					res = state.mainSheets.splice(data.index - 1, 0, deletedElement)
+				}
+			} else {
+				if (data.index + 1 < state.mainSheets.length) {
+					res = state.mainSheets.splice(data.index + 1, 0, deletedElement)
+				} else {
+					res = state.mainSheets.push(deletedElement)
+				}
+			}
+
+			if (res !== undefined) {
+				// Пересчёт id у элементов коллекции
+				for (let i = 0; i < state.mainSheets.length; i++) {
+					state.mainSheets[i].id = i + 1
+				}
+			}
+		}
+	},
+
 /* ----------------------------------------Other mutations-------------------------------------- */
+
+	UPDATE_QUEUE: (state, data) => {
+		const queue = {
+			sheet_id: null,
+			element_id: null,
+			data: null,
+			method: null
+		}
+
+		for (const key in data) {
+			if (queue.hasOwnProperty(key)) {
+				queue[key] = data[key]
+			}
+		}
+
+		state.updateQueue.push(queue)
+	},
 
 	SET_ACTIVE_SHEET: ({ sheets }, options) => {
 		const activeSheet = sheets.find(el => el.sheet_id === options.sheet_id)

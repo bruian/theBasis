@@ -214,14 +214,14 @@ async function getTasks(condition) {
 }
 
 /***
- * @func addTask
+ * @func createTask
  * @param {{ mainUser_id: Number,	group_id: Number,
  * 					 parent_id: Number, start: ISO-DateTime string,
  * 					 isStart: boolean }} condition - Get from api
  * @returns { function(...args): Promise }
  * @description Create new <Task> in database and set new position in tasks_list
 */
-async function addTask(condition) {
+async function createTask(condition) {
 	let isStart = true
 
 	/* mainUser_id - идентификатор пользователя, который аутентифицирован в системе
@@ -246,7 +246,7 @@ async function addTask(condition) {
 		throw new VError({
 			'name': 'WrongParameter',
 			'info': { 'parameter': 'parent_id', 'value': condition.parent_id, 'status': 400 /* Bad request */ }
-		}, 'For add task need: <parent_id> query parameter >= 0')
+		}, 'For create task need: <parent_id> query parameter >= 0')
 	}
 
 	/* group_id - идентификатор группы в которую будет добавляться новая задача.
@@ -258,7 +258,7 @@ async function addTask(condition) {
 		throw new VError({
 			'name': 'WrongParameter',
 			'info': { 'parameter': 'group_id', 'value': condition.group_id, 'status': 400 /* Bad request */ }
-		}, 'For add task need: <group_id> query parameter > 0')
+		}, 'For create task need: <group_id> query parameter > 0')
 	}
 
 	/* isStart - параметр указывающий куда поместить создаваемый элемент,	в начало или конец списка
@@ -556,7 +556,7 @@ async function updatePosition(condition, done) {
 
 module.exports = {
 	getTasks,
-	addTask,
+	createTask,
 	updateTask,
 	deleteTask,
 	updatePosition

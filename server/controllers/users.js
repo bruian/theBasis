@@ -265,8 +265,8 @@ async function getUsers(condition, done) {
 	}
 }
 
-/* Add user to my user list */
-async function addUsers(condition, done) {
+/* Create user to my user list */
+async function createUsers(condition, done) {
 	let client, queryText
 
 	try {
@@ -290,7 +290,7 @@ async function addUsers(condition, done) {
 		const { rowCount } = await client.query(queryText)
 
 		if (rowCount === 0) {
-			return done({ message: `Can't add user to users-list`, status: 400, code: 'rejected_addusers', name: 'ApiMessage' })
+			return done({ message: `Can't create user to users-list`, status: 400, code: 'rejected_addusers', name: 'ApiMessage' })
 		} else {
 			return done(null, true)
 		}
@@ -345,6 +345,6 @@ module.exports = {
 	newUser,
 	getUsers,
 	getUser,
-	addUsers,
+	createUsers,
 	removeUsers
 }

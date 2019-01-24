@@ -22,7 +22,12 @@
 						Sheets
 					</v-subheader>
 
-					<settings-list v-model="sheets"></settings-list>
+					<settings-list
+						v-model="sheets"
+						@onCreate="onCreateSheet"
+						@onDelete="onDeleteSheet"
+						@onMove="onMoveSheet"
+					></settings-list>
 				</v-flex>
 			</v-layout>
 		</v-container>
@@ -30,12 +35,12 @@
 </template>
 
 <script>
-import settingsList from './widgets/SettingsList.vue'
+import SettingsList from './Widgets/SettingsList.vue'
 
 export default {
 	name: 'panel-settings',
 	components: {
-		settingsList
+		SettingsList
 	},
   data () {
     return {
@@ -55,10 +60,24 @@ export default {
 				return this.$store.state.mainSheets
 			},
 			set(value) {
-				console.log(value)
+				this.$store.dispatch('UPDATE_MAIN_SHEETS_VALUES', value)
+				.catch((err) => {	console.warn(err)	})
 			}
 		}
-  },
+	},
+	methods: {
+		onCreateSheet: function (sheet) {
+			this.$store.dispatch('CREATE_SHEET_ELEMENT', sheet)
+			.catch((err) => { console.warn(err) })
+		},
+		onDeleteSheet: function (sheet) {
+			this.$store.dispatch('DELETE_SHEET_ELEMENT', { id: sheet.id })
+			.catch((err) => { console.warn(err) })
+		},
+		onMoveSheet: function (sheet) {
+			this.$store.commit('MOVE_SHEET_ELEMENT', sheet)
+		}
+	}
 }
 </script>
 

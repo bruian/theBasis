@@ -50,7 +50,7 @@ export function createStore () {
 			apiStatus: [],			 		//log api status
 			//apiError: [], 			  //log api error (from server)
 layout: 2, //TEMPORARY. Need move to main user
-selectedSheet: '', //TEMPORARY. Need move to main user
+
 			/* -AUTHENTICATED STATUS -*/
 			auth: {	token: ''	},
 
@@ -69,6 +69,8 @@ selectedSheet: '', //TEMPORARY. Need move to main user
 			theGroup: {
 				id: 0
 			},
+
+			updateQueue: [],
 
 			subgroupsCache: [],
 
@@ -114,29 +116,10 @@ selectedSheet: '', //TEMPORARY. Need move to main user
 				offset: 0,
 				searchText: ''
 			},
-
-			theSheet: 0,
-			listOfList: [
-				{
-					sheet_id: 'main-tasks',
-					condition: {
-						group_id: null,
-						user_id: null,
-						parent_id: null,
-						task_id: null,
-						searchText: null
-					},
-					selectedSheet: true,
-					selectedItem: null,
-					sheet: [],
-					limit: 10,
-					offset: 0,
-				}
-			],
-
+/* ----------------------------------------Sheets state----------------------------------------- */
+			selectedSheet: null,
 			mainSheets: [
 			],
-
 			sheets: [],
     },
     actions,

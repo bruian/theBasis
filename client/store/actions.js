@@ -859,7 +859,6 @@ export default {
 			commit('API_ERROR', err.response.data)
 			return Promise.reject(err.response.data)
 		})
-
 	},
 
 	ADD_TASK_CONTEXT: ({ commit, state }, options) => {
@@ -1103,8 +1102,139 @@ export default {
 			}
 		})
 		.catch((err) => {
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			debugger
+		})
+	},
+
+	// options - { id, field, value }
+	UPDATE_MAIN_SHEETS_VALUES: ({ commit, state }, options) => {
+		const values = {}
+
+		if (options.field === 'visible') {
+			if (options.values === true) {
+				commit('UPDATE_QUEUE', { sheet_id: options.id })
+			}
+		}
+
+		values[options.field] = options.value
+
+		const fetchQuery = {
+			url: 'sheets',
+			method: 'PUT',
+			params: {
+				id: options.id,
+			},
+			data: querystring.stringify(values)
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(false)
+			} else {
+				commit('UPDATE_MAIN_SHEETS_VALUES', dataFromSrv.data)
+
+				return Promise.resolve(true)
+			}
+		})
+		.catch((err) => {
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			debugger
+		})
+	},
+
+	/***
+	 * @func CREATE_SHEET_ELEMENT
+	 * @param { VUEX action parametres: Object }
+	 * @param { { type_el, layout, name, visible }: Object } - options
+	 * @returns { function(...args): Promise }
+	 * @description Функция для создания списка элементов
+	*/
+	CREATE_SHEET_ELEMENT: ({ commit }, options) => {
+		const values = Object.assign({}, options)
+
+		const fetchQuery = {
+			url: 'sheets',
+			method: 'POST',
+			params: {},
+			data: querystring.stringify(values)
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(false)
+			} else {
+				commit('MAIN_SHEETS_SUCCESS', dataFromSrv.data)
+
+				return Promise.resolve(true)
+			}
+		})
+		.catch((err) => {
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			debugger
+		})
+	},
+
+	/***
+	 * @func DELETE_SHEET_ELEMENT
+	 * @param { VUEX action parametres: Object }
+	 * @param { { id }: Object } - options
+	 * @returns { function(...args): Promise }
+	 * @description Функция для удаления списка элементов
+	*/
+	DELETE_SHEET_ELEMENT: ({ commit }, options) => {
+		const fetchQuery = {
+			url: 'sheets',
+			method: 'DELETE',
+			params: {
+				id: options.id
+			},
+		}
+
+		return fetchSrv(fetchQuery)
+		.then((dataFromSrv) => {
+			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+				return Promise.resolve(false)
+			} else {
+				debugger
+				commit('DELETE_SHEET_ELEMENT', dataFromSrv.data)
+
+				return Promise.resolve(true)
+			}
+		})
+		.catch((err) => {
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			debugger
 		})
 	},
 

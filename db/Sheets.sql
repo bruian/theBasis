@@ -33,7 +33,7 @@ CREATE TRIGGER trigger_sheets_genid BEFORE INSERT ON sheets FOR EACH ROW EXECUTE
 		... others
 */
 CREATE TABLE IF NOT EXISTS sheets_conditions (
-	sheet_id	char(8),
+	sheet_id	char(8) REFERENCES sheets ON DELETE cascade,
 	condition smallint,
 	value 		varchar(10),
 	PRIMARY KEY (sheet_id, condition)
@@ -44,7 +44,7 @@ INSERT INTO sheets (type_el, user_id, owner_id, name, visible, layout)
 	RETURNING *;
 
 INSERT INTO sheets_conditions (sheet_id, condition, value)
-	VALUES ('iqWAAvZs', 1, '1'), ('iqWAAvZs', 2, ''), ('iqWAAvZs', 3, '')
+	VALUES ('ZZg02kCG', 1, '1'), ('ZZg02kCG', 2, ''), ('ZZg02kCG', 3, '')
 	RETURNING *;
 
 SELECT *,
@@ -60,14 +60,7 @@ SELECT *,
 	)) AS values
 FROM sheets AS sh WHERE user_id = 1
 
-SELECT array_agg(column_name::TEXT)
-FROM information.schema.columns
-WHERE table_name = 'aean'
+SELECT * FROM sheets;
+SELECT * FROM sheets_conditions;
 
-SELECT ARRAY(
-	SELECT condition::integer
-	FROM sheets_conditions
-	WHERE sheet_id='GvReD_Jm'
-)
-
-DELETE FROM sheets;
+DELETE FROM sheets WHERE defaults = false;

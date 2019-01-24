@@ -199,7 +199,7 @@ async function getActivity(condition) {
 }
 
 /***
- * @func addActivity
+ * @func createActivity
  * @param {{ mainUser_id: Number,	group_id: Number,
  * 					 type_el: Number, task_id: Number,
  * 					 start: ISO-DateTime string, status: Number,
@@ -208,7 +208,7 @@ async function getActivity(condition) {
  * @description Create new <Activity> in database
  * And set new position in activity_list and linked to the task if it exists
 */
-async function addActivity(condition) {
+async function createActivity(condition) {
 	let task_id = null,
 			start = null,
 			status = null,
@@ -238,7 +238,7 @@ async function addActivity(condition) {
 		throw new VError({
 			'name': 'WrongParameter',
 			'info': { 'parameter': 'group_id', 'value': condition.group_id, 'status': 400 /* Bad request */ }
-		}, 'For add activity need: <group_id> query parameter >= 0')
+		}, 'For create activity need: <group_id> query parameter >= 0')
 	}
 
 	/* type_el - битовый идентификатор типа элемента, в текущем случае это activity = 2
@@ -249,7 +249,7 @@ async function addActivity(condition) {
 		throw new VError({
 			'name': 'WrongParameter',
 			'info': { 'parameter': 'type_el', 'value': condition.type_el, 'status': 400 /* Bad request */ }
-		}, 'For add activity need: <type_el> query parameter >= 0')
+		}, 'For create activity need: <type_el> query parameter >= 0')
 	}
 
 	/* start - параметр указывающий начало статуса элемента активности
@@ -259,7 +259,7 @@ async function addActivity(condition) {
 		throw new VError({
 			'name': 'WrongParameter',
 			'info': { 'parameter': 'start', value: condition.start, 'status': 400 /* Bad request */ }
-		}, 'For add activity need: <start> query parameter ISO DateTime string')
+		}, 'For create activity need: <start> query parameter ISO DateTime string')
 	} else {
 		const valid = /^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9]).([0-9]+)?(Z)?$/.test(condition.start)
 		if (!valid) {
@@ -547,7 +547,7 @@ async function updateActivity(condition, values) {
 		активности с назначенным "task_id" тоже запрещено
 		- изменение группы у активности разрешено вызовом метода updatePosition
 		- изменение "owner" и "user_id" запрещено
-		- изменение "status" у активности запрещено, статус назначается вызовом метода addActivity,
+		- изменение "status" у активности запрещено, статус назначается вызовом метода createActivity,
 		при этом создается новая активность с указанием нового статуса, активность должна иметь
 		ссылку на "task_id" т.к. статусы меняются у задач, а активности поэтапно логируют эти изме-
 		нения.
@@ -766,7 +766,7 @@ async function updatePosition(condition, done) {
 
 module.exports = {
 	getActivity,
-	addActivity,
+	createActivity,
 	updateActivity,
 	deleteActivity,
 	updatePosition

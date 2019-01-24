@@ -77,7 +77,7 @@ router.post('/users', (req, res) => {
 		user_id: ('user_id' in req.query) ? req.query.user_id : null
 	}
 
-	UserController.addUsers(condition, (err, data) => {
+	UserController.createUsers(condition, (err, data) => {
 		if (err) return res.json(err)
 
 		return res.send(data)
@@ -146,7 +146,7 @@ router.post('/groups', (req, res) => {
 		group_id: ('group_id' in req.query) ? req.query.group_id : null
 	}
 
-	GroupController.addGroup(condition, (err, data) => {
+	GroupController.createGroup(condition, (err, data) => {
 		if (err) return res.json(err)
 
 		return res.send(data)
@@ -254,7 +254,7 @@ router.get('/tasks', (req, res) => {
  * @param {String} path - http path from METHOD
  * @param {function(...args): Callback} response - to client
  * @returns { Response: Object }
- * @description Http METHOD. Call api function "addTask"->"addActivity" and responce data: JSON
+ * @description Http METHOD. Call api function "createTask"->"createActivity" and responce data: JSON
 */
 router.post('/tasks', (req, res) => {
 	const timeStart = Date.now()
@@ -268,7 +268,7 @@ router.post('/tasks', (req, res) => {
 		condition.task_id = taskData[0].task_id
 		condition.group_id = taskData[0].group_id
 
-		return ActivityController.addActivity(condition).then(activityData => {
+		return ActivityController.createActivity(condition).then(activityData => {
 			log.debug(`/activity:post ${Date.now()-timeStart}ms |-> id:${condition.task_id} | group:${condition.group_id}	| type:${condition.type_el} | for user: ${condition.mainUser_id}`)
 
 			return res.json({ data: taskData })
@@ -276,7 +276,7 @@ router.post('/tasks', (req, res) => {
 		.catch(err => Promise.reject(err))
 	}
 
-	TaskController.addTask(condition).then(onTaskCreated)
+	TaskController.createTask(condition).then(onTaskCreated)
 	.catch(err => {
 		log.warn(`/task:post |-> name:${err.name} | status:${err.jse_info.status}	| message:${err.message}`)
 
@@ -305,7 +305,7 @@ router.delete('/tasks', (req, res) => {
  * @param {String} path - http path from METHOD
  * @param {function(...args): Callback} response - to client
  * @returns { Response: Object }
- * @description Http METHOD. Call api function "updateTask"->"addActivity" and responce data: JSON
+ * @description Http METHOD. Call api function "updateTask" and responce data: JSON
 */
 router.put('/tasks', (req, res) => {
 	const timeStart = Date.now()
@@ -377,13 +377,13 @@ router.get('/activity', (req, res) => {
  * @param {String} path - http path from METHOD
  * @param {function(...args): Callback} response - to client
  * @returns { Response: Object }
- * @description Http METHOD. Call api function "addActivity" and responce data: JSON
+ * @description Http METHOD. Call api function "createActivity" and responce data: JSON
 */
 router.post('/activity', (req, res) => {
 	const timeStart = Date.now()
 	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
 
-	ActivityController.addActivity(condition)
+	ActivityController.createActivity(condition)
 	.then(data => {
 		log.debug(`/activity:post ${Date.now()-timeStart}ms |-> id:${condition.task_id} | group:${condition.group_id} | type:${condition.type_el} | for user:${condition.mainUser_id}`)
 
@@ -486,5 +486,80 @@ router.get('/sheets', (req, res) => {
 	})
 })
 
+/***
+ * @func router.post('/sheets')
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD. Call api function "createSheet" and responce data: JSON
+*/
+router.post('/sheets', (req, res) => {
+	const timeStart = Date.now()
+	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+	const values = Object.assign({}, req.body)
+
+	SheetController.createSheet(condition, values)
+	.then(data => {
+		log.debug(`/sheets:post ${Date.now()-timeStart}ms |-> for user:${condition.mainUser_id}`)
+
+		return res.json({ data: data })
+	})
+	.catch(err => {
+		log.warn(`/sheets:post |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
+
+		return res.status(err.jse_info.status).end(err.message)
+	})
+})
+
+/***
+ * @func router.put('/sheets')
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD. Call api function "updateSheet" and responce data: JSON
+*/
+router.put('/sheets', (req, res) => {
+	const timeStart = Date.now()
+	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+	condition = Object.assign(condition, req.headers)
+	const values = Object.assign({}, req.body)
+
+	SheetController.updateSheet(condition, values)
+	.then(sheetData => {
+		log.debug(`/sheets:put ${Date.now()-timeStart}ms |-> id:${sheetData.id} | for user:${condition.mainUser_id}`)
+
+		return res.json({ data: sheetData })
+	})
+	.catch(err => {
+		log.warn(`/sheets:put |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
+
+		return res.status(err.jse_info.status).end(err.message)
+	})
+})
+
+/***
+ * @func router.delete('/sheets')
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD. Call api function "deleteSheet" and responce data: JSON
+*/
+router.delete('/sheets', (req, res) => {
+	const timeStart = Date.now()
+	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+	condition = Object.assign(condition, req.headers)
+
+	SheetController.deleteSheet(condition)
+	.then(sheetData => {
+		log.debug(`/sheets:delete ${Date.now()-timeStart}ms |-> id:${condition.id} | for user:${condition.mainUser_id}`)
+
+		return res.json({ data: sheetData })
+	})
+	.catch(err => {
+		log.warn(`/sheets:delete |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
+
+		return res.status(err.jse_info.status).end(err.message)
+	})
+})
 
 module.exports = router;
