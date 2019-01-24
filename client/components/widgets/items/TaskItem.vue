@@ -53,29 +53,6 @@
 					color="primary"
 					dark
 				>{{ (item.isSubtaskExpanded > 1) ? "expand_less" : "expand_more" }}</v-icon>
-
-				<!-- <v-menu
-					bottom
-					origin="center center"
-					transition="scale-transition"
-				>
-					<v-icon
-						slot="activator"
-						color="primary"
-					>more_horiz</v-icon>
-
-					<v-list>
-						<v-list-tile
-							v-for="(mmitem, i) in moreMenu"
-							:key="i"
-							@click=""
-						>
-							<v-list-tile-title>{{ mmitem.title }}</v-list-tile-title>
-						</v-list-tile>
-					</v-list>
-				</v-menu> -->
-
-				<!-- <a style="margin-bottom: 2px">more</a> -->
 			</div>
 
 			<div class="task-clmn3">

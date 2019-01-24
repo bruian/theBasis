@@ -453,7 +453,7 @@ export default {
 		if (activeTask) {
 			activeTask.isActive = true
 			activeSheet.selectedItem = activeTask.task_id
-			activeSheet.selectedSheet = false
+			state.selectedSheet = null
 		}
 	},
 
@@ -551,7 +551,7 @@ export default {
 
 			sheet = {
 				sheet_id: data[i].id,
-				selectedSheet: false,
+				// selectedSheet: false,
 				selectedItem: null,
 				sheet: [],
 				limit: 10,
@@ -658,10 +658,10 @@ export default {
 		state.updateQueue.push(queue)
 	},
 
-	SET_ACTIVE_SHEET: ({ sheets }, options) => {
-		const activeSheet = sheets.find(el => el.sheet_id === options.sheet_id)
-		activeSheet.selectedSheet = true
+	SET_SELECTED_SHEET: (state, options) => {
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
 		activeSheet.selectedItem = null
+		state.selectedSheet = activeSheet
 
 		const activeTask = recursiveFind(activeSheet.sheet, el => el.isActive).element
 		if (activeTask) activeTask.isActive = false

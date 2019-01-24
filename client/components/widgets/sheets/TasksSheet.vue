@@ -110,7 +110,7 @@ export default {
 		},
 		selectedSheet() {
 			// const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
-			return (this.thisSheet.selectedSheet) ? 'primary' : ''
+			return (this.thisSheet === this.$store.state.selectedSheet) ? 'primary' : ''
 		},
 		/*
 			1 - add subtask    000001
@@ -169,7 +169,7 @@ export default {
 			return { group:this.sheet_id, handle:'.task-handle' }
 		},
 		onSelectSheet: function() {
-			this.$store.commit('SET_ACTIVE_SHEET', { sheet_id: this.sheet_id })
+			this.$store.commit('SET_SELECTED_SHEET', { sheet_id: this.sheet_id })
 		},
 		onChange: function(value) {
 			console.log('changed searchText: ' + value)
