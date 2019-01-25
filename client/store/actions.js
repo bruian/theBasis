@@ -632,6 +632,7 @@ export default {
 				task_id: fromTask.task_id,
 				position: (toTask === null) ? null : toTask.task_id,
 				isBefore: isBefore,
+				start: new Date().toISOString(),
 				parent_id: (toParent === undefined) ? 0 : toParent.task_id
 			}
 		}
@@ -726,6 +727,7 @@ export default {
 				//изменение значения группы на новую группу, если она задана
 				if (newGroupId !== undefined) {
 					commit('UPDATE_TASK_VALUES', { sheet_id: options.sheet_id, task_id: movedItem.task_id, group_id: newGroupId })
+					commit('SET_ACTIVITY', { sheet_id: options.sheet_id, task_id: movedItem.task_id, data: dataFromSrv.activity_data })
 				}
 
 				movedItem.consistency = 0
@@ -733,10 +735,16 @@ export default {
 			}
 		})
 		.catch((err) => {
+			element.consistency = 2
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
 			debugger
-			movedItem.consistency = 2
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
 		})
 	},
 
@@ -755,6 +763,7 @@ export default {
 				task_id: element.task_id,
 				position: null,
 				isBefore: false,
+				start: new Date().toISOString(),
 				parent_id: (element.parent) ? element.parent.task_id : 0
 			}
 		}
@@ -769,8 +778,7 @@ export default {
 					 перемещение происходит по этим разделам
 					 Для уровней ниже применяется распределение по группам без разделов */
 				if (element.level === 1) {
-					/* Необходимо найти divider он будет являться началом размещения задачи
-						 в новой группе */
+					/* Необходимо найти divider он будет являться началом размещения задачи в новой группе */
 					idxTask = taskSheet.findIndex(el => el.task_id == options.task_id)
 					movedItem = taskSheet.splice(idxTask, 1)[0]
 
@@ -801,15 +809,23 @@ export default {
 
 				//изменение значения группы на новую группу
 				commit('UPDATE_TASK_VALUES', { sheet_id: options.sheet_id, task_id: movedItem.task_id, group_id: options.group_id })
+				commit('SET_ACTIVITY', { sheet_id: options.sheet_id, task_id: movedItem.task_id, data: dataFromSrv.activity_data })
 
 				movedItem.consistency = 0
 				return Promise.resolve(true)
 			}
 		})
 		.catch((err) => {
+			element.consistency = 2
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
 			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
 		})
 	},
 
@@ -963,7 +979,7 @@ export default {
 		const fetchQuery = {
 			url: 'activity',
 			method: 'GET',
-			params: { task_id: element.task_id,	group_id: element.group_id, type_el: 2 },
+			params: { task_id: element.task_id,	type_el: 2 },
 			headers: { limit: 100, offset: 0 }
 		}
 

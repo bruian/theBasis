@@ -271,14 +271,14 @@ router.post('/tasks', (req, res) => {
 		return ActivityController.createActivity(condition).then(activityData => {
 			log.debug(`/activity:post ${Date.now()-timeStart}ms |-> id:${condition.task_id} | group:${condition.group_id}	| type:${condition.type_el} | for user: ${condition.mainUser_id}`)
 
-			return res.json({ data: taskData })
+			return res.json({ data: taskData, activity_data: activityData })
 		})
 		.catch(err => Promise.reject(err))
 	}
 
 	TaskController.createTask(condition).then(onTaskCreated)
 	.catch(err => {
-		log.warn(`/task:post |-> name:${err.name} | status:${err.jse_info.status}	| message:${err.message}`)
+		log.warn(`/tasks:post |-> name:${err.name} | status:${err.jse_info.status}	| message:${err.message}`)
 
 		return res.status(err.jse_info.status).end(err.message)
 	})
@@ -325,22 +325,43 @@ router.put('/tasks', (req, res) => {
 	})
 })
 
+/***
+ * @func router.put('/tasks/order')
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description Http METHOD. Call api function "updatePosition" and responce data: JSON
+*/
 router.put('/tasks/order', (req, res) => {
-	const condition = {
-		mainUser_id: req.auth.userId,
-		group_id: ('group_id' in req.query) ? req.query.group_id : null,
-		task_id: ('task_id' in req.query) ? req.query.task_id : null,
-		parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
-		position: ('position' in req.query) ? req.query.position : null,
-		isBefore: ('isBefore' in req.query) ? req.query.isBefore : null
+	const timeStart = Date.now()
+	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+
+	const onTaskUpdated = (taskData) => {
+		log.debug(`/tasks/order ${Date.now()-timeStart}ms |-> id:${condition.task_id} | parent:${condition.parent_id} | group:${condition.group_id} | position:${condition.position} | isBefore:${condition.isBefore} | for user: ${condition.mainUser_id}`)
+
+		condition.status = 0
+		condition.type_el = 2
+		condition.task_id = condition.task_id
+		condition.group_id = condition.group_id
+
+		if (!taskData.groupChanged) {
+			return res.json({ data: taskData })
+		}
+
+		return ActivityController.createActivity(condition).then(activityData => {
+			log.debug(`/activity:post ${Date.now()-timeStart}ms |-> id:${condition.task_id} | group:${condition.group_id}	| type:${condition.type_el} | for user: ${condition.mainUser_id}`)
+
+			return res.json({ data: taskData, activity_data: activityData })
+		})
+		.catch(err => Promise.reject(err))
 	}
 
-	TaskController.updatePosition(condition, (err, data) => {
-		if (err) return res.json(err)
+	TaskController.updatePosition(condition).then(onTaskUpdated)
+	.catch(err => {
+		log.warn(`/tasks/order:put |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
 
-		log.debug(`/tasks/order |-> id:${condition.task_id} | parent:${condition.parent_id}	| group:${condition.group_id} | position:${condition.position} | isBefore:${condition.isBefore}	| for	user: ${condition.mainUser_id}`)
+		return res.status(err.jse_info.status).end(err.message)
 
-		return res.json({ data: data })
 	})
 })
 

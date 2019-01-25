@@ -52,6 +52,8 @@ UPDATE tasks SET name = 'Hello people' WHERE id IN (SELECT * FROM main_visible_t
 
 /* Выборка всех задач из списка с сортировкой по группам и пользовательскому порядку */
 SELECT * FROM tasks_list ORDER BY group_id, (p::float8/q);
+SELECT * FROM tasks;
+SELECT * FROM groups_list;
 
 /* Простейшая выборка всех доступных задач из списка с фильтром по пользователю */
 SELECT * FROM tasks_list AS tl
@@ -338,93 +340,134 @@ BEGIN
   END;
 $f$;
 
-/* return
-	0 - moving a record to its own position is a no-op
-  1 - operation complete
-	2 - user is not assigned this group or this group no public
-	3 - user does not have permissions to read this group
-	4 - user does not have permissions to updating this group
+/**
+ * @func reorder_task
+ * @param {integer} mainUser_id - идентификатор текущего пользователя
+ * @param {integer} _group_id - идентификатор группы, куда перемещается елемент задачи
+ * @param {integer} _task_id - идентификатор элемента перемещаемой задачи
+ * @param {integer} _relation_id - идентификатор элемента на который перемещается задача
+ * @param {boolean} _is_before - признак помещения элемента в начало(true) или конец(false) списка
+ * @param {integer} _parent - идентификатор родителя если такой меняется, null если не меняется
+ * @return {integer} Признак завершения операции. 1 - перемещение удачно, 2 - сменилась группа
+ * @description Обновляет положение элемента в списке задач, пересчитывает значения p и q,
+ * если меняется группа, то меняет значения группы у элемента
+ * Список ошибок, что выплевывает функция:
+ * 0 - moving a record to its own position is a no-op
+ * 1 - user is not assigned this group or this group no public
+ * 2 - user does not have permissions to read this group
+ * 3 - user does not have permissions to updating this group
 */
 CREATE OR REPLACE FUNCTION reorder_task(
-	main_user_id INTEGER,
-	grp_id INTEGER,
-  tsk_id INTEGER,
-  rel_id INTEGER,
-  is_before BOOLEAN,
-	new_parent INTEGER
-)
-  RETURNS integer
-  LANGUAGE plpgsql
-  volatile called ON NULL INPUT
-AS $f$
-  DECLARE
-	before_group_id INTEGER; before_parent_id INTEGER;
-    main_group_id INTEGER; main_group_reading INTEGER;
-    main_group_updating INTEGER; main_user_type INTEGER;
-	rel_group_id INTEGER;
-  BEGIN
+	main_user_id integer,
+	_group_id 	 integer,
+  _task_id 		 integer,
+  _relation_id integer,
+  _is_before 	 boolean,
+	_parent 		 integer
+) RETURNS integer LANGUAGE plpgsql VOLATILE CALLED ON NULL INPUT AS $f$
+DECLARE
+	before_group_id 		integer;
+	before_parent_id 		integer;
+	main_group_id 			integer;
+	main_group_reading 	integer;
+	main_el_updating 		integer;
+	main_user_type 			integer;
+	rel_group_id 				integer;
+BEGIN
+	/* Выборка доступной пользователю группы для проверки прав на операции с ней,
+		где user_id = 0 это группы общие для всех пользователей */
 	SELECT group_id, grp.reading, grp.updating, gl.user_type
-	  INTO main_group_id, main_group_reading,
-	       main_group_updating, main_user_type FROM groups_list gl
+	  INTO main_group_id, main_group_reading, main_el_updating, main_user_type
+	FROM groups_list gl
 	LEFT JOIN groups grp ON gl.group_id = grp.id
-    WHERE gl.group_id = grp_id AND (gl.user_id = 0 OR gl.user_id = main_user_id);
+  WHERE gl.group_id = _group_id AND (gl.user_id = 0 OR gl.user_id = main_user_id);
 
+	/* Нет результатов выборки, а значит и группа не доступна пользователю */
 	IF NOT FOUND THEN
-	  RETURN 2;
+		RAISE EXCEPTION 'User is not assigned this group or this group no public';
 	END IF;
 
 	IF main_group_id IS NULL THEN
-		RETURN 2;
+		RAISE EXCEPTION 'User is not assigned this group or this group no public';
 	END IF;
 
+	/* Проверка прав доступа на чтение группы. Анализ прав происходит по следующему принципу
+		из groups_list извлекается тип пользователя user_type, который может иметь 3 значения:
+			1 - owner (владелец)
+			2 - curator (куратор группы)
+			3 - member (член группы)
+			4 - all (все остальные)
+		значения этого типа сравниваются с "атрибутами доступа" извлеченными из groups, это
+		groups.reading и groups.el_updating
+		сравнение происходит по принципу, атрибуты доступа совпадающие с user_type - это разрешающие
+		например: groups.reading = 1 значит, что доступ есть только у пользователя с user_type = 1
+	*/
 	IF main_group_reading < main_user_type THEN
-	  RETURN 3;
+	  RAISE EXCEPTION 'User does not have permissions to read this group';
 	END IF;
 
-	IF main_group_updating < main_user_type THEN
-	  RETURN 4;
+	IF main_el_updating < main_user_type THEN
+		RAISE EXCEPTION 'User does not have permissions to updating this group';
 	END IF;
 
     -- moving a record to its own position is a no-op
-    --IF rel_id=tsk_id THEN RETURN 0; END IF;
+    --IF _relation_id=_task_id THEN RETURN 0; END IF;
 
-	SELECT tl.group_id, t.parent
-	INTO strict before_group_id, before_parent_id FROM tasks_list AS tl
+	/* Получение предыдущих значений группы и родителя у задачи */
+	SELECT tl.group_id, t.parent INTO strict before_group_id, before_parent_id FROM tasks_list AS tl
 	LEFT JOIN tasks AS t ON t.id = tl.task_id
-	WHERE tl.task_id = tsk_id
+	WHERE tl.task_id = _task_id
 	GROUP BY tl.group_id, t.parent;
 
-	IF new_parent IS NOT NULL THEN
-		IF new_parent <> before_parent_id THEN
-			UPDATE tasks SET parent = new_parent WHERE id = tsk_id;
+	/* Сравнение родителей у старой и новой позиции, если поменялись, то необходимо обновить */
+	IF _parent IS NOT NULL THEN
+		IF _parent <> before_parent_id THEN
+			UPDATE tasks SET parent = _parent WHERE id = _task_id;
 		END IF;
 	END IF;
 
-	IF rel_id IS NULL THEN
-		perform task_place_list(grp_id, tsk_id, rel_id, is_before);
+	/* Обработка перемещения элемента в списке tasks_list, тут важно организовать правильное
+		положение элемента в списке (то что задал пользователь), для этого используется частное
+		от деления полей p/q, где получается дробное число и сортировка происходит в порядке
+		дробных значений. Алгоритм: Дерево Штерна-Брока.
+		_relation_id - входящий параметр, означает элемент на который помещается "перемещаемый
+		элемент", может иметь значение null это значит что "перемещаемый элемент" помещается в
+		начало или конец списка (регулируется параметром _is_before)
+	*/
+	IF _relation_id IS NULL THEN
+		perform task_place_list(_group_id, _task_id, _relation_id, _is_before);
 	ELSE
-		SELECT tl.group_id
-		INTO strict rel_group_id FROM tasks_list AS tl
-		WHERE tl.task_id = rel_id;
+		/* Получение группы для задачи на которую помещается "перемещаемый элемент", это делается
+			для сравнения групп. Если группы не совпадают, т.е. у "перемещаемого элемента" группа
+			иная, то "перемещаемый элемент помещается в начало списка группы назначения. В противном
+			случае происходит стандартное перемещение */
+		SELECT tl.group_id INTO strict rel_group_id
+		FROM tasks_list AS tl
+		WHERE tl.task_id = _relation_id;
 
-		--IF before_group_id <> rel_group_id THEN
-		IF grp_id <> rel_group_id THEN
-			perform task_place_list(grp_id, tsk_id, null, FALSE);
+		IF _group_id <> rel_group_id THEN
+			perform task_place_list(_group_id, _task_id, null, FALSE);
 		ELSE
-			perform task_place_list(grp_id, tsk_id, rel_id, is_before);
+			perform task_place_list(_group_id, _task_id, _relation_id, _is_before);
 		END IF;
-
-		--perform task_place_list(grp_id, tsk_id, rel_id, is_before);
 	END IF;
 
-    -- lock the tasks_list
-    --perform 1 FROM tasks_list tl WHERE tl.task_id=before_group_id FOR UPDATE;
+	-- lock the tasks_list
+	--perform 1 FROM tasks_list tl WHERE tl.task_id=before_group_id FOR UPDATE;
 
+	/* Если сменилась, группа, то функция task_place_list автоматически создаст новую запись в
+		списке tasks_list. Значит необходимо удалить предыдущую запись. Что и делается ниже */
 	IF before_group_id <> main_group_id THEN
-		DELETE FROM tasks_list WHERE (group_id = before_group_id) AND (task_id = tsk_id);
+		DELETE FROM tasks_list WHERE (group_id = before_group_id) AND (task_id = _task_id);
+
+		/* Возвращается двоечка, как признак, что сменилась группа. Это нужно, что-бы api знало
+			о необходимости выполнения ряда действий при смене группы. Например обновления активностей */
+		return 2;
+	ELSE
+		/* Возвращается единичка, как признак, что все нормально поменялось */
+		return 1;
  	END IF;
 
-	return 1;
   END;
 $f$;
 

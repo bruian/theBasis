@@ -9,7 +9,12 @@
 					<!-- Page Header -->
 					<!--page-header v-if="$route.meta.breadcrumb"></page-header-->
 
-					<div class="mt-0 pb-0" v-if="isAuth">
+					<div class="mt-0 pb-0" v-if="isAuth" style="display: flex;">
+						<v-icon style="cursor: pointer;"
+							v-bind:color="selectedSheet"
+							@click="onSelectSheet"
+						>bookmark</v-icon>
+
 						<v-breadcrumbs :items="crumbs">
 							<v-icon slot="divider">link</v-icon>
 						</v-breadcrumbs>
@@ -141,8 +146,6 @@ import AppToolbar from './components/AppToolbar.vue'
 import PanelSettings from './components/PanelSettings.vue'
 import Login from './views/Login.vue'
 import MessageDialog from './views/MessageDialog.vue'
-//import AuthCheck from './components/AuthCheck.vue'
-//import { AtomSpinner } from 'epic-spinners'
 //#2195f3
 function getUserByToken(store, done) {
 	const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
@@ -168,8 +171,6 @@ export default {
 		Login,
 		MessageDialog,
 		PanelSettings,
-	//	AuthCheck,
-	//	AtomSpinner
 	},
 	data: () => ({
 		dialog: false,
@@ -218,24 +219,25 @@ export default {
 			})
 		}
 	},
-	watch: {
-		/*
-		drawer: function() {
-			console.log('App drawer:' + this.drawer)
-		}
-		*/
-	},
 	computed: {
+		selectedSheet() {
+			return (this.$store.state.selectedSheetsManager) ? 'primary' : ''
+		},
 		appReady() {
 			return this.$store.state.appReady
 		},
 		isAuth() {
 			return this.$store.getters.isAuth
-		}
+		},
+	},
+	methods: {
+		onSelectSheet: function() {
+			this.$store.commit('SET_SELECTED', null)
+		},
 	},
 	props: {
     source: String
-  }
+  },
 }
 </script>
 

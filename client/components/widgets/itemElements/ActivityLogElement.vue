@@ -11,7 +11,7 @@
 				</v-list-tile-avatar>
 
 				<v-list-tile-content>
-					<v-list-tile-title>#{{item.part}} <b style="color: #4caf50;">{{ statusName(item.status) }}</b> to {{ item.group }} group</v-list-tile-title>
+					<v-list-tile-title>#{{item.part}} <b style="color: #4caf50;">{{ statusName(item.status) }}</b> to <b>{{ groupName(item.group_id) }}</b> group</v-list-tile-title>
 					<v-list-tile-sub-title>
 						<b>Interval:</b> {{ startDate(item.start) }} <b>-</b> {{ endDate(item.ends) }}
 						<b>Duration:</b> {{ duration(item) }}
@@ -104,6 +104,10 @@ export default {
 		},
 		statusName: function (status) {
 			return activityStatus[status].name
+		},
+		groupName: function (id) {
+			const group = this.$store.getters.groupById(id)
+			return group.name
 		}
 	}
 }

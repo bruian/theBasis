@@ -344,13 +344,6 @@ async function updateTask(condition, values) {
 		- должен приходить от клиента в api запросе express.router.request.query
 		- ожидается number */
 	if (condition.hasOwnProperty('task_id')) {
-		// if (condition.id.length !== 8) {
-		// 	throw new VError({
-		// 		'name': 'WrongParameter',
-		// 		'info': { 'parameter': 'id', 'value': condition.id, 'status': 400 /* Bad request */ }
-		// 	}, '<id> query parameter must contain 8 char string')
-		// }
-
 		params.push(condition.task_id)
 	} else {
 		throw new VError({
@@ -512,43 +505,119 @@ async function deleteTask(condition, done) {
 }
 
 /***
- * Set new position in tasks_list OR change group for task
- * condition = { mainUser_id,	group_id,	task_id, parent_id,	position,	isBefore }
- */
-async function updatePosition(condition, done) {
-	let client, queryText, isBefore = false
+ * @func updatePosition
+ * @param {{ mainUser_id: Number,	group_id: Number,
+ * 					 task_id: Number, parent_id: Number,
+ * 					 position: Number, isBefore: Boolean }} condition - Get from api
+ * @returns { function(...args): Promise }
+ * @description Set new position in tasks_list OR change group for task
+*/
+async function updatePosition(condition) {
+	let isBefore = false, parent_id = 0, position = null
 
-	try {
-		if (!condition.mainUser_id && !isNumeric(condition.mainUser_id)) {
-			return done(new PgError('For database operations, a main user token is required'))
-		}
-
-		if (!condition.group_id) {
-			return done(new PgError('Condition must contain <group_id> field and value must be not null'))
-		}
-
-		if (!condition.task_id) {
-			return done(new PgError('Condition must contain <task_id> field (from task) and value must be not null'))
-		}
-
-		if (condition.isBefore !== null) isBefore = condition.isBefore
-
-		queryText = `SELECT reorder_task(${condition.mainUser_id}, ${condition.group_id}, ${condition.task_id}, ${condition.position}, ${isBefore}, ${condition.parent_id});`
-	} catch (error) {
-		return done(error)
+	/* mainUser_id - идентификатор пользователя, который аутентифицирован в системе
+		относительно этого пользователя происходит запрос данных у базы, с ним же
+		связаны все права доступа.
+		- Находится в свойстве auth объекта express.router.request, помещается туда
+		сервером авторизации
+		- Ожидается number */
+	if (!condition.hasOwnProperty('mainUser_id') || !isNumeric(condition.mainUser_id)) {
+		/* Unauthorized */
+		throw new VError({
+			'name': 'WrongParameter',
+			'info': { 'parameter': 'mainUser_id', 'value': condition.mainUser_id, 'status': 401 }
+		}, 'User authentication required')
 	}
 
-	try {
-		client = await pg.pool.connect()
+	/* group_id - идентификатор группы в которую будет добавляться новая задача.
+		- обязательный параметр, относительно которого назначаются параметры
+		прав доступа и видимости элементов
+		- должен приходить от клиента в api запросе express.router.request.query
+		- ожидается number */
+	if (!condition.hasOwnProperty('group_id')	|| !isNumeric(condition.group_id)) {
+		/* Bad request */
+		throw new VError({
+			'name': 'WrongParameter',
+			'info': { 'parameter': 'group_id', 'value': null, 'status': 400 }
+		}, 'For update task position need: <group_id> query parameter > 0')
+	}
 
-		const { rowCount, rows } = await client.query(queryText)
-		if (rowCount === 0) {
-			return done({ message: `No datas with your conditions`, status: 400, code: 'no_datas', name: 'ApiMessage' })
-		} else {
-			return done(null, rows)
+	/* task_id - идентификатор задачи, которая будет меняться
+		- обязательный параметр
+		- должен приходить от клиента в api запросе express.router.request.query
+		- ожидается number */
+	if (!condition.hasOwnProperty('task_id')) {
+		/* Bad request */
+		throw new VError({
+			'name': 'WrongParameter',
+			'info': { 'parameter': 'task_id', 'value': null, 'status': 400 }
+		}, 'For update task position need <task_id> query parameter')
+	}
+
+	/* position - id элемента в списке задач, на который будет помещаться перемещаемый элемент
+		- не обязательный параметр
+		- должен приходить от клиента в api запросе express.router.request.query
+		- ожидается number */
+	if (condition.hasOwnProperty('position')) {
+		position = condition.position
+	}
+
+	/* parent_id - идентификатор указывающий на родителя в иерархии задач
+		- не обязательный параметр, по-умолчанию значение 0 - верхний уровень
+		- должен приходить от клиента в api запросе express.router.request.query
+		- Ожидается number
+		- может быть 0 - указывает на отсутствии родителя у задачи */
+	if (!condition.hasOwnProperty('parent_id') || !isNumeric(condition.parent_id)) {
+		/* Bad request */
+		throw new VError({
+			'name': 'WrongParameter',
+			'info': { 'parameter': 'parent_id', 'value': null, 'status': 400 }
+		}, 'For update task position need: <parent_id> query parameter >= 0')
+	}
+
+	/* isBefore - параметр указывающий куда поместить элемент, в начало или конец списка
+		- необязательный параметр, отсутсвие которого полагает конец списка
+		- ожидается boolean */
+	if (condition.hasOwnProperty('isBefore')) {
+		if (condition.isBefore === null || condition.isBefore === undefined) {
+			/* Bad request */
+			throw new VError({
+				'name': 'WrongParameter',
+				'info': { 'parameter': 'isBefore', 'value': null, 'status': 400 }
+			}, '<isBefore> query has been boolean')
 		}
+
+		isBefore = (condition.isBefore === 'true')
+	}
+
+	const queryText = `SELECT reorder_task($1, $2, $3, $4, $5, $6);`
+	const params = [condition.mainUser_id, condition.group_id, condition.task_id,
+									position, isBefore, parent_id]
+	const client = await pg.pool.connect()
+	const returnObject = { task_id: condition.task_id, groupChanged: false }
+
+	try {
+		await client.query('begin')
+
+		const { rows } = await client.query(queryText, params)
+
+		/* значение 2 говорит о том, что сменилась группа, а значит необходимо сказать об этом
+			функции create_activity для создания новой активности, в обработчике api */
+		if (rows[0].reorder_task == 2) {
+			returnObject.groupChanged = true
+		}
+
+		await client.query('commit')
+
+		return Promise.resolve(returnObject)
 	} catch (error) {
-		return done(new PgError(error))
+		await client.query('ROLLBACK')
+
+		throw new VError({
+			'name': 'DatabaseError',
+			'cause': error,
+			'info': { 'status': 400 }
+		}, 'DB error')
 	} finally {
 		client.release()
 	}

@@ -251,8 +251,9 @@ WITH RECURSIVE main_visible_groups AS (
 	FROM activity_list AS al
 	RIGHT JOIN activity AS act ON al.id = act.id
 	RIGHT JOIN users_photo AS uf ON (al.user_id = uf.user_id) AND (uf.isavatar = true)
-	WHERE al.group_id IN (SELECT * FROM main_visible_groups) AND (al.type_el & 2)
+	WHERE al.group_id IN (SELECT * FROM main_visible_groups) AND (al.type_el & 2 > 0)
 	ORDER BY al.group_id, (al.p::float8/al.q) LIMIT 10 OFFSET 0;
+
 
 WITH RECURSIVE main_visible_groups AS (
 	SELECT group_id FROM groups_list AS gl
@@ -279,7 +280,8 @@ WHERE (al.user_id = 1)
 	AND (act.status = 1 OR act.status = 5);
 
 --SELECT add_activity(1, 1, 1::smallint, false);
---UPDATE activity SET status = 1 WHERE id = 'fxsXCIJ4';
+UPDATE activity_list SET group_id = 1 WHERE id = 'NJPTN9KW';
+UPDATE tasks_list SET group_id = 1 WHERE task_id = 42;
 
 select * from activity;
 select * from activity_list;

@@ -343,7 +343,7 @@ export default {
     onDragStart: function(dragResult) {
 			const { item } = dragResult
 
-			this.$store.commit('SET_ACTIVE_TASK', { sheet_id: this.sheet_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
+			this.$store.commit('SET_SELECTED', { sheet_id: this.sheet_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
 		},
 		onDrop: function(dropResult) {
 			const { newIndex, oldIndex, from, to } = dropResult
@@ -402,7 +402,7 @@ export default {
 			}
 		},
 		onBodyClick: function() {
-			this.$store.commit('SET_ACTIVE_TASK', { sheet_id: this.sheet_id, task_id: this.item.task_id })
+			this.$store.commit('SET_SELECTED', { sheet_id: this.sheet_id, task_id: this.item.task_id })
 		},
 		getDuration(duration) {
 			let timeDiff = duration / 1000

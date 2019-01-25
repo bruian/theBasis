@@ -442,20 +442,20 @@ export default {
 		}
 	},
 
-	SET_ACTIVE_TASK: (state, obj) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === obj.sheet_id)
-		let activedTask = recursiveFind(activeSheet.sheet, el => el.isActive === true).element
-		if (activedTask) {
-			activedTask.isActive = false
-		}
+	// SET_ACTIVE_TASK: (state, obj) => {
+	// 	const activeSheet = state.sheets.find(el => el.sheet_id === obj.sheet_id)
+	// 	let activedTask = recursiveFind(activeSheet.sheet, el => el.isActive === true).element
+	// 	if (activedTask) {
+	// 		activedTask.isActive = false
+	// 	}
 
-		let activeTask = recursiveFind(activeSheet.sheet, el => el.task_id === obj.task_id).element
-		if (activeTask) {
-			activeTask.isActive = true
-			activeSheet.selectedItem = activeTask.task_id
-			state.selectedSheet = null
-		}
-	},
+	// 	let activeTask = recursiveFind(activeSheet.sheet, el => el.task_id === obj.task_id).element
+	// 	if (activeTask) {
+	// 		activeTask.isActive = true
+	// 		activeSheet.selectedItem = activeTask.task_id
+	// 		state.selectedSheet = null
+	// 	}
+	// },
 
 /* --------------------------------------Contexts mutations------------------------------------- */
 
@@ -658,13 +658,32 @@ export default {
 		state.updateQueue.push(queue)
 	},
 
-	SET_SELECTED_SHEET: (state, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
-		activeSheet.selectedItem = null
-		state.selectedSheet = activeSheet
+	SET_SELECTED: (state, options) => {
+		// Сброс всех выделений
+		// debugger
+		state.selectedSheet = null
+		state.selectedSheetsManager = false
+		for (const sheet of state.sheets) {
+			if (sheet.selectedItem) {
+				sheet.selectedItem.isActive = false
+			}
 
-		const activeTask = recursiveFind(activeSheet.sheet, el => el.isActive).element
-		if (activeTask) activeTask.isActive = false
+			sheet.selectedItem = null
+		}
+
+		// options === null is select sheets manager
+		if (options === null) {
+			state.selectedSheetsManager = true
+		} else if (options.hasOwnProperty('sheet_id')) {
+			const thisSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+
+			if (options.hasOwnProperty('task_id')) {
+				thisSheet.selectedItem = recursiveFind(thisSheet.sheet, el => el.task_id === options.task_id).element
+				thisSheet.selectedItem.isActive = true
+			} else {
+				state.selectedSheet = thisSheet
+			}
+		}
 	},
 
 	SET_LAYOUT: (state, value) => {

@@ -54,7 +54,7 @@ async function getActivity(condition) {
 			'info': { 'parameter': 'type_el', 'value': condition.type_el, 'status': 400 }
 		}, 'For get activity need: <type_el> query parameter >= 0')
 	} else {
-		params.push(condition.type_el)
+		params.push(Number(condition.type_el))
 	}
 
 	/* group_id - идентификатор группы относительно, которой будут извлекаться активности
@@ -178,8 +178,9 @@ async function getActivity(condition) {
 		FROM activity_list AS al
 		RIGHT JOIN activity AS act ON al.id = act.id
 		RIGHT JOIN users_photo AS uf ON (al.user_id = uf.user_id) AND (uf.isavatar = true)
-		WHERE al.group_id IN (SELECT * FROM ${pgGroups}) AND (al.type_el & $2) ${pgСonditions}
-		ORDER BY al.group_id, (al.p::float8/al.q) ${pgLimit};`
+		WHERE al.group_id IN (SELECT * FROM ${pgGroups}) AND (al.type_el & $2 > 0) ${pgСonditions}
+		ORDER BY act.start ${pgLimit};`
+		// ORDER BY al.group_id, (al.p::float8/al.q) ${pgLimit};`
 
 	const client = await pg.pool.connect()
 
@@ -399,25 +400,25 @@ async function createActivity(condition) {
 
 				returnElements.push(existsElements[0].task_id)
 			}
+		}
 
-			// Поиск активности у той задачи, которая в данный момент принадлежит
-			// переданной пользователем задаче и имеет атрибут "ends" == null
-			queryText = `SELECT al.id, al.group_id
-				FROM activity_list AS al
-				RIGHT JOIN activity AS act ON al.id = act.id
-				WHERE (al.user_id = $1)
-					AND (act.task_id = $2)
-					AND (act.ends is null);`
-			params = [condition.mainUser_id, task_id]
-			let { rows } = await client.query(queryText, params)
+		// Поиск активности у той задачи, которая в данный момент принадлежит
+		// переданной пользователем задаче и имеет атрибут "ends" == null
+		queryText = `SELECT al.id, al.group_id
+			FROM activity_list AS al
+			RIGHT JOIN activity AS act ON al.id = act.id
+			WHERE (al.user_id = $1)
+				AND (act.task_id = $2)
+				AND (act.ends is null);`
+		params = [condition.mainUser_id, task_id]
+		let { rows } = await client.query(queryText, params)
 
-			// Если есть такая активность, то запрос вернёт массив с результатом
-			if (rows && rows.length) {
-				// Обновление значения активности на переданное от пользователя
-				queryText = 'UPDATE activity SET ends = $1 WHERE id = $2;'
-				params = [start, rows[0].id]
-				await client.query(queryText, params)
-			}
+		// Если есть такая активность, то запрос вернёт массив с результатом
+		if (rows && rows.length) {
+			// Обновление значения активности на переданное от пользователя
+			queryText = 'UPDATE activity SET ends = $1 WHERE id = $2;'
+			params = [start, rows[0].id]
+			await client.query(queryText, params)
 		}
 
 		// Создание в таблице activity элемента и добавление в activity_list
@@ -465,7 +466,8 @@ async function createActivity(condition) {
 			RIGHT JOIN activity AS act ON al.id = act.id
 			RIGHT JOIN users_photo AS uf ON (al.user_id = uf.user_id) AND (uf.isavatar = true)
 			WHERE act.task_id IN (SELECT * FROM UNNEST ($1::integer[]))
-			ORDER BY act.task_id, (al.p::float8/al.q);`
+			ORDER BY act.start;`
+			// ORDER BY act.task_id, (al.p::float8/al.q);`
 			params = [returnElements]
 		} else {
 			// Получение одной активности по activity id

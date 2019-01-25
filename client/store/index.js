@@ -44,11 +44,12 @@ export function createStore () {
   return new Vuex.Store({
     state: {
 			default: { mainUser: def.mainUser }, //?
-			/* -APPLICATION STATE- */
-			appReady: false,				//if True - appliacation loaded and ready to render
-			logStatus: true,				//ON/OFF api status logging
-			apiStatus: [],			 		//log api status
-			//apiError: [], 			  //log api error (from server)
+/* --------------------------------------Application state-------------------------------------- */
+			appReady: false,				// if true - application loaded and ready to render
+			logStatus: true,				// ON/OFF api status logging
+			apiStatus: [],			 		// log api status
+			selectedSheetsManager: false,
+
 layout: 2, //TEMPORARY. Need move to main user
 
 			/* -AUTHENTICATED STATUS -*/

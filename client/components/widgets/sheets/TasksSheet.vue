@@ -53,7 +53,7 @@
 						v-bind:data-task_id="item.task_id"
 						v-bind:data-parent_id="(item.parent) ? item.parent.task_id : 0"
 					>
-						<TaskItem :sheet_id="sheet_id" :item="item" ></TaskItem>
+						<TaskItem :sheet_id="thisSheet.sheet_id" :item="item" ></TaskItem>
 					</div>
 				</draggable>
 
@@ -103,13 +103,11 @@ export default {
 	computed: {
 		items: {
 			get() {
-				// return this.$store.getters.tasksSheet(this.sheet_id)
 				return this.thisSheet.sheet
 			},
 			set(value) {}
 		},
 		selectedSheet() {
-			// const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
 			return (this.thisSheet === this.$store.state.selectedSheet) ? 'primary' : ''
 		},
 		/*
@@ -122,9 +120,9 @@ export default {
 		*/
 		isAllowedOperation() {
 			let result = 0
-			const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
+			// const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
 
-			if (activeSheet.selectedItem) {
+			if (this.thisSheet.selectedItem) {
 				result += 2
 
 				function recurr(sheet, task_id) {
@@ -158,7 +156,7 @@ export default {
 					return res
 				}
 
-				result = result + recurr(activeSheet.sheet, activeSheet.selectedItem)
+				result = result + recurr(this.thisSheet.sheet, this.thisSheet.selectedItem.task_id)
 			}
 
 			return result
@@ -169,7 +167,7 @@ export default {
 			return { group:this.sheet_id, handle:'.task-handle' }
 		},
 		onSelectSheet: function() {
-			this.$store.commit('SET_SELECTED_SHEET', { sheet_id: this.sheet_id })
+			this.$store.commit('SET_SELECTED', { sheet_id: this.sheet_id })
 		},
 		onChange: function(value) {
 			console.log('changed searchText: ' + value)
@@ -195,7 +193,7 @@ export default {
     onDragStart: function(dragResult) {
 			const { item } = dragResult
 
-			this.$store.commit('SET_ACTIVE_TASK', { sheet_id: this.sheet_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
+			this.$store.commit('SET_SELECTED', { sheet_id: this.sheet_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
 		},
 		onDrop: function(dropResult) {
 			const { newIndex, oldIndex, from, to } = dropResult
@@ -220,12 +218,13 @@ export default {
 			})
 		},
 		onMoveIn: function() {
-			const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
-			if (activeSheet.selectedItem) {
+			// const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
+			if (this.thisSheet.selectedItem) {
 				let toParent_id
-				const { index, element } = recursiveFind(activeSheet.sheet, el => el.isActive)
+				const { index, element } = recursiveFind(this.thisSheet.sheet, el => el.isActive)
+
 				if (element.parent === null) {
-					toParent_id = activeSheet.sheet[index - 1].task_id
+					toParent_id = this.thisSheet.sheet[index - 1].task_id
 				} else {
 					if (element.parent.children && element.parent.children.length > 1) {
 						toParent_id = element.parent.children[index - 1].task_id
@@ -255,16 +254,16 @@ export default {
 		},
 		onMoveOut: function() {
 			//debugger
-			const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
-			if (activeSheet.selectedItem) {
+			// const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
+			if (this.thisSheet.selectedItem) {
 				let toParent,	lastParentIndex
-				const { index, element } = recursiveFind(activeSheet.sheet, el => el.isActive)
+				const { index, element } = recursiveFind(this.thisSheet.sheet, el => el.isActive)
 				if (element.parent !== null) {
 					toParent = element.parent.parent
 
 					if (toParent === null) {
-						lastParentIndex = recursiveFind(activeSheet.sheet, el => el.task_id === element.parent.task_id).index
-						if (lastParentIndex < activeSheet.sheet.length) lastParentIndex++
+						lastParentIndex = recursiveFind(this.thisSheet.sheet, el => el.task_id === element.parent.task_id).index
+						if (lastParentIndex < this.thisSheet.sheet.length) lastParentIndex++
 					} else {
 						lastParentIndex = recursiveFind(toParent.children, el => el.task_id === element.parent.task_id).index
 						if (lastParentIndex < toParent.children.length) lastParentIndex++
@@ -290,10 +289,10 @@ export default {
 			}
 		},
 		onMove: function(UP = true) {
-			const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
-			if (activeSheet.selectedItem) {
+			// const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
+			if (this.thisSheet.selectedItem) {
 				let newIndex
-				const { index, element } = recursiveFind(activeSheet.sheet, el => el.isActive)
+				const { index, element } = recursiveFind(this.thisSheet.sheet, el => el.isActive)
 
 				/* Выбор новой позиции для перемещаемого элемента, перемещаем вверх/вниз, из-за наличия
 					divider на первом уровне, логика для первого и вложенного уровней различна */
@@ -302,20 +301,20 @@ export default {
 					/* divider в списке является разделителем групп, если наткнулись на разделитель выше,
 						значит достигнуто начало списка и элемент по кругу необходимо переместить в конец
 						списка, для этого прокрутим список назад до конца или следующего разделителя */
-					if (UP && index > 0 && activeSheet.sheet[index - 1].isDivider) {
+					if (UP && index > 0 && this.thisSheet.sheet[index - 1].isDivider) {
 						/* бежим вниз до границы */
-						for (let i = index; i < activeSheet.sheet.length; i++) {
-							if (activeSheet.sheet[i].isDivider) break
+						for (let i = index; i < this.thisSheet.sheet.length; i++) {
+							if (this.thisSheet.sheet[i].isDivider) break
 
 							newIndex = i
 						}
-					} else if ( (!UP) && ( (index === activeSheet.sheet.length)
-														  || (index < activeSheet.sheet.length && activeSheet.sheet[index + 1].isDivider))) {
+					} else if ( (!UP) && ( (index === this.thisSheet.sheet.length)
+														  || (index < this.thisSheet.sheet.length && this.thisSheet.sheet[index + 1].isDivider))) {
 						/* перемещаемся на позицию ниже, если достигли конца списка или достигли divider
 							необходимо переместить элемент по кругу в начало divider этой группы
 							бежим вверх по списку, пока не обнаружим начало */
 						for (let i = index; i >= 0; i--) {
-							if (activeSheet.sheet[i].isDivider) break
+							if (this.thisSheet.sheet[i].isDivider) break
 
 							newIndex = i
 						}

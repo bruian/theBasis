@@ -82,11 +82,11 @@ export default {
 			let result
 
 			for (let i = 0; i < mainGroups.length; i++) {
-				if (mainGroups[i].children && mainGroups[i].children.length > 0) {
-					result = findGroup(mainGroups[i].children)
+				if (mainGroups[i].id === id) {
+					result = mainGroups[i]
 				} else {
-					if (mainGroups[i].id === id) {
-						result = mainGroups[i]
+					if (mainGroups[i].children && mainGroups[i].children.length > 0) {
+						result = findGroup(mainGroups[i].children)
 					}
 				}
 
