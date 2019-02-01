@@ -46,9 +46,9 @@ async function getSheets(condition) {
 	const client = await pg.pool.connect()
 
 	try {
-		const { rows: elements } = await client.query(queryText, params)
+		const { rows: data } = await client.query(queryText, params)
 
-		return Promise.resolve(elements)
+		return Promise.resolve(data)
 	} catch (error) {
 		throw new VError({
 			'name': 'DatabaseError',

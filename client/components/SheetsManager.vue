@@ -1,5 +1,5 @@
 <template>
-	<div id="panelSettings">
+	<div id="sheetsManager">
 		<v-toolbar color="primary" dark>
 			<v-toolbar-title>
 				Sheets layout
@@ -38,7 +38,7 @@
 import SettingsList from './Widgets/SettingsList.vue'
 
 export default {
-	name: 'panel-settings',
+	name: 'sheets-manager',
 	components: {
 		SettingsList
 	},
@@ -60,7 +60,7 @@ export default {
 				return this.$store.state.mainSheets
 			},
 			set(value) {
-				this.$store.dispatch('UPDATE_MAIN_SHEETS_VALUES', value)
+				this.$store.dispatch('UPDATE_SHEETS_VALUES', value)
 				.catch((err) => {	console.warn(err)	})
 			}
 		}

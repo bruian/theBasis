@@ -43,7 +43,7 @@
 					top="top" right="right"
 					class="setting-fab" color="red"
 					@click="settingsDrawer = !settingsDrawer"
-					v-if="isAuth"
+					v-if="isAuth && getComponentName"
 				>
 					<v-icon>settings</v-icon>
 				</v-btn>
@@ -56,7 +56,9 @@
 					hide-overlay
 					fixed
 				>
-					<panel-settings></panel-settings>
+					<keep-alive>
+						<component v-bind:is="getComponentName"></component>
+					</keep-alive>
 				</v-navigation-drawer>
 
 				<Login v-model="authDialog"></Login>
@@ -143,10 +145,12 @@
 <script>
 import AppDrawer from './components/AppDrawer.vue'
 import AppToolbar from './components/AppToolbar.vue'
-import PanelSettings from './components/PanelSettings.vue'
+import SheetsManager from './components/SheetsManager.vue'
+import SheetManager from './components/SheetManager.vue'
 import Login from './views/Login.vue'
 import MessageDialog from './views/MessageDialog.vue'
 //#2195f3
+
 function getUserByToken(store, done) {
 	const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
 	if (storage && storage.getItem('access_token')) {
@@ -170,7 +174,8 @@ export default {
 		AppToolbar,
 		Login,
 		MessageDialog,
-		PanelSettings,
+		SheetsManager,
+		SheetManager
 	},
 	data: () => ({
 		dialog: false,
@@ -184,12 +189,24 @@ export default {
 			{ text: "Main", disabled: true, to: 'css' }
 		],
 	}),
-	created() {
+	created () {
+		/* При создании главного окна приложения, необходимо получить состояние пользователя от сервера.
+			Если это возможно и у нас есть токен пользователя в localStorage.
+			Однако прежде всего необходимо обработать ситуацию, когда приложение получает url /verified с
+			токеном верификации в query. Это означает, что пользователь перешел по ссылке полученной в
+			письме, которое отправил сервер в запросе подтверждения регистрации пользователя. Этот токен
+			отправляется приложением auth-серверу для процедуры подтверждения верификации пользователя.
+		*/
 		if (this.$route.matched.some(record => record.meta.action === 'verified')) {
+			// Перешли по маршруту верификации
 			if (this.$route.query.token) {
+				// Получили токен верификации регистрации, и вызвали action аутентификации
 				this.$store.dispatch('AUTH_REQUEST', { verifytoken: this.$route.query.token })
 				.then(() => {
+					// Получили данные пользователя успешно, отобразим об этом диалоговое сообщение
 					this.messageDialog = true
+					// Отобразим по маршруту домашнюю страницу
+					// После перехода установим флаг, что приложение готово к работе
 					return this.$router.push({ name: 'home' },
 						() => { this.$store.commit('CHANGE_APP_READY', true) },
 						() => {	this.$store.commit('CHANGE_APP_READY', true) })
@@ -200,9 +217,10 @@ export default {
 				})
 			}
 		} else {
-			//debugger
+			/* Перешли по стандартным маршрутам или просто в корневой маршрут приложения, получим состо-
+				яние пользователя, если на клиенте храниться свежий токен пользователя в localStorage.
+				Если токена нет или он просрочен, то приложение перейдет на домашнюю страницу */
 			getUserByToken(this.$store, (err) => {
-				//debugger
 				if (err) {
 					return this.$router.push({ name: 'home' },
 						() => { this.$store.commit('CHANGE_APP_READY', true) },
@@ -220,18 +238,29 @@ export default {
 		}
 	},
 	computed: {
-		selectedSheet() {
+		selectedSheet () {
 			return (this.$store.state.selectedSheetsManager) ? 'primary' : ''
 		},
-		appReady() {
+		appReady () {
 			return this.$store.state.appReady
 		},
-		isAuth() {
+		isAuth () {
 			return this.$store.getters.isAuth
+		},
+		getComponentName () {
+			if (this.$store.state.selectedSheetsManager) {
+				return 'sheets-manager'
+			} else {
+				if (this.$store.state.selectedSheet) {
+					return 'sheet-manager'
+				}
+			}
+
+			return false
 		},
 	},
 	methods: {
-		onSelectSheet: function() {
+		onSelectSheet: function () {
 			this.$store.commit('SET_SELECTED', null)
 		},
 	},

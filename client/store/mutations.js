@@ -543,7 +543,7 @@ export default {
 
 /* --------------------------------------Sheets mutations--------------------------------------- */
 
-	MAIN_SHEETS_SUCCESS: (state, data) => {
+	SHEETS_SUCCESS: (state, data) => {
 		let mainSheet, sheet, type_obj, condition
 		for (let i = 0; i < data.length; i++) {
 			type_obj = typeForSheet(data[i].type_el)
@@ -551,7 +551,6 @@ export default {
 
 			sheet = {
 				sheet_id: data[i].id,
-				// selectedSheet: false,
 				selectedItem: null,
 				sheet: [],
 				limit: 10,
@@ -578,7 +577,7 @@ export default {
 		}
 	},
 
-	UPDATE_MAIN_SHEETS_VALUES: (state, data) => {
+	UPDATE_SHEETS_VALUES: (state, data) => {
 		for (const dataItem of data) {
 			if (dataItem.hasOwnProperty('id')) {
 				const thisMainSheet = state.mainSheets.find(el => el.sheet_id === dataItem.id)

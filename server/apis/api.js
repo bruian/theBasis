@@ -546,10 +546,10 @@ router.put('/sheets', (req, res) => {
 	const values = Object.assign({}, req.body)
 
 	SheetController.updateSheet(condition, values)
-	.then(sheetData => {
-		log.debug(`/sheets:put ${Date.now()-timeStart}ms |-> id:${sheetData.id} | for user:${condition.mainUser_id}`)
+	.then(data => {
+		log.debug(`/sheets:put ${Date.now()-timeStart}ms |-> id:${data.id} | for user:${condition.mainUser_id}`)
 
-		return res.json({ data: sheetData })
+		return res.json({ data: data })
 	})
 	.catch(err => {
 		log.warn(`/sheets:put |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)

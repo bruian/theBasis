@@ -3,7 +3,7 @@ import Vue from 'vue'
 import { recursiveFind, findGroup } from '../util/helpers'
 import querystring from 'querystring'
 
-const logRequests = !!config.DEBUG_API
+const dbg = !!config.DEBUG_API
 const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
 
 const mainPacket = [{
@@ -34,7 +34,7 @@ const mainPacket = [{
 		method: 'GET',
 		headers: { packet: 3 },
 	},
-	mutations: ['MAIN_SHEETS_SUCCESS']
+	mutations: ['SHEETS_SUCCESS']
 }]
 
 function getTokensFromSessionStorage() {
@@ -91,7 +91,189 @@ async function fetchSrv(query) {
 let userPartID = 0, groupPartID = 0, taskPartID = 0
 
 export default {
-	/*** USERS SHEET actions */
+
+/* -----------------------------------Authentication actions------------------------------------ */
+
+	AUTH_REQUEST: ({ commit, dispatch }, user) => {
+		return new Promise((resolve, reject) => {
+			let axiosData = {}
+
+			if (user.verifytoken) {
+				axiosData = {
+					url: 'oauth2/verifytoken',
+					method: 'POST',
+					headers: { 'content-type': 'application/x-www-form-urlencoded',
+										 'Authorization': 'Bearer ' + user.verifytoken }
+				}
+			} else {
+				const bodyData = {
+					grant_type: 'password',
+					scope: '*',
+					client_name: 'WebBrowser'
+				}
+
+				axiosData = {
+					url: 'oauth2/login',
+					data: bodyData,
+					method: 'POST',
+					auth: user
+				}
+			}
+
+			commit('AUTH_REQUEST')
+
+			Vue.axios(axiosData)
+			.then((res) => {
+				const token = res.data
+
+				storage.setItem('access_token', token.access_token)
+				commit('AUTH_SUCCESS', token.access_token)
+
+				//we have token, then we can log in user
+				dispatch('MAINUSER_REQUEST')
+				resolve(res)
+			})
+			.catch((err) => {
+				let errorData = {}
+				if (err.response) {
+					errorData = err.response.data
+				} else {
+					errorData.name = err.name
+					switch(err.name) {
+						case 'InvalidCharacterError':
+							errorData.error_description = 'Неверный пароль. Используйте для пароля латинские символы.'
+							break
+						default:
+							errorData.error_description = 'Unknown error'
+					}
+				}
+
+				commit('API_ERROR', errorData)
+				storage.removeItem('access_token')
+				reject(errorData)
+			})
+		})
+	},
+
+	//*** Registration actions */
+	REG_REQUEST: ({ commit }, userData) => {
+		return new Promise((resolve, reject) => {
+			const payload = {
+				username: '',
+				scope: '*',
+				client_name: 'WebBrowser'
+			}
+			const bodyData = Object.assign(payload, userData)
+			let axiosData = {
+				url: 'oauth2/registration',
+				data: bodyData,
+				method: 'POST'
+			}
+
+			commit('REG_REQUEST')
+
+			Vue.axios(axiosData)
+			.then((res) => {
+				const token = res.data
+
+				storage.setItem('access_token', token.access_token)
+				commit('REG_SUCCESS', token.access_token)
+				resolve(res)
+			})
+			.catch((err) => {
+				let errorData = {}
+				if (err.response) {
+					errorData = err.response.data
+				} else {
+					errorData.name = err.name
+					switch(err.name) {
+						case 'InvalidCharacterError':
+							errorData.error_description = 'Неверный пароль. Используйте для пароля латинские символы.'
+							break
+						default:
+							errorData.error_description = 'Unknown error'
+					}
+				}
+
+				commit('API_ERROR', errorData)
+				storage.removeItem('access_token')
+				reject(errorData)
+			})
+		})
+	},
+
+	//*** LogOut actions */
+	AUTH_LOGOUT: ({ commit, state }) => {
+		return new Promise((resolve, reject) => {
+			const axiosData = {
+				url: 'oauth2/logout',
+				method: 'GET',
+				headers: { 'content-type': 'application/x-www-form-urlencoded',
+									 'Authorization': 'Bearer ' + state.auth.token }
+			}
+
+			commit('AUTH_REQUEST')
+
+			Vue.axios(axiosData)
+			.then((res) => {
+				storage.removeItem('access_token')
+				commit('AUTH_LOGOUT')
+
+				//we have token, then we can log in user
+				resolve(res)
+			})
+			.catch((err) => {
+				commit('API_ERROR', err.response.data)
+
+				storage.removeItem('access_token')
+				reject(err.response.data)
+			})
+		})
+	},
+
+/* ------------------------------------------MAIN USER------------------------------------------ */
+
+	MAINUSER_REQUEST: ({ commit, state }) => {
+		commit('MAINUSER_REQUEST')
+
+		return Promise.all([
+			fetchSrv(mainPacket[0].fetchQuery),
+			fetchSrv(mainPacket[1].fetchQuery),
+			fetchSrv(mainPacket[2].fetchQuery),
+			fetchSrv(mainPacket[3].fetchQuery)
+		]).then(datasFromSrv => {
+			for (const dataFromSrv of datasFromSrv) {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					continue
+				} else {
+					if (!state.auth.token) {
+						//if need refressh token in store
+						commit('AUTH_SUCCESS', getTokensFromSessionStorage().access_token)
+					}
+
+					for (let mutation of mainPacket[dataFromSrv.packet].mutations) {
+						commit(mutation, dataFromSrv.data)
+					}
+
+					Promise.resolve(1)
+				}
+			}
+		})
+		.catch((err) => {
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
+		})
+	},
+
+/* -------------------------------------USERS SHEET action-------------------------------------- */
+
 	FETCH_USERS_SHEET: ({ commit, state }) => {
 		const activeSheet = state.activeUsersSheet.sheet
 		const searchText = state[activeSheet].searchText
@@ -129,9 +311,15 @@ export default {
 			}
 		})
 		.catch((err) => {
-			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
@@ -156,9 +344,15 @@ export default {
 				commit('RESET_INACTIVE_USERS_SHEET')
 			}
 		}).catch((err) => {
-			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
@@ -181,15 +375,21 @@ export default {
 				commit('RESET_INACTIVE_USERS_SHEET')
 			}
 		}).catch((err) => {
-			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
-	/*** GROUPS SHEET actions */
+/* -------------------------------------GROUPS SHEET action------------------------------------- */
+
 	FETCH_GROUPS_SHEET: ({ commit, state }) => {
-		//debugger
 		const activeSheet = state.activeGroupsSheet.sheet
 		const searchText = state[activeSheet].searchText
 		const fetchQuery = {
@@ -225,9 +425,15 @@ export default {
 			}
 		})
 		.catch((err) => {
-			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
@@ -255,9 +461,15 @@ export default {
 			}
 		})
 		.catch((err) => {
-			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
@@ -282,9 +494,15 @@ export default {
 				commit('RESET_INACTIVE_GROUPS_SHEET')
 			}
 		}).catch((err) => {
-			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
@@ -307,13 +525,20 @@ export default {
 				commit('RESET_INACTIVE_GROUPS_SHEET')
 			}
 		}).catch((err) => {
-			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
-	//*** TASKS SHEET actions */
+/* -------------------------------------TASKS SHEET action-------------------------------------- */
+
 	FETCH_TASKS: ({ commit, state }, options) => {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
 		const fetchQuery = {
@@ -366,9 +591,15 @@ export default {
 			}
 		})
 		.catch((err) => {
-			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
@@ -425,9 +656,15 @@ export default {
 			}
 		})
 		.catch((err) => {
-			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
@@ -471,9 +708,15 @@ export default {
 			}
 		})
 		.catch((err) => {
-			debugger
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
@@ -699,7 +942,6 @@ export default {
 
 					return res
 				}
-				//debugger
 
 				let tempParent, tempParentTwo
 				if (fromParent) {
@@ -744,7 +986,7 @@ export default {
 				return Promise.reject({ message: err.message, data: null })
 			}
 
-			debugger
+			if (dbg) debugger
 		})
 	},
 
@@ -797,7 +1039,6 @@ export default {
 				} else {
 					/* Для элементов последующих уровней необходимо найти самый первый элемент
 						 принадлежащий искомой группе и поместить нашу задачу выше этого элемента */
-					//debugger
 					idxTask = element.parent.children.findIndex(el => el.task_id == options.task_id)
 					movedItem = element.parent.children.splice(idxTask, 1)[0]
 
@@ -825,7 +1066,7 @@ export default {
 				return Promise.reject({ message: err.message, data: null })
 			}
 
-			debugger
+			if (dbg) debugger
 		})
 	},
 
@@ -837,7 +1078,6 @@ export default {
 					values = {}
 
 		element.consistency = 1
-		//debugger
 
 		for (const key in options) {
 			if (key === 'task_id' || key === 'sheet_id') continue
@@ -870,10 +1110,16 @@ export default {
 			}
 		})
 		.catch((err) => {
-			debugger
 			element.consistency = 2
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
@@ -917,10 +1163,17 @@ export default {
 			}
 		})
 		.catch((err) => {
-			debugger
 			element.consistency = 2
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
 
@@ -960,12 +1213,21 @@ export default {
 			}
 		})
 		.catch((err) => {
-			debugger
 			element.consistency = 2
-			commit('API_ERROR', err.response.data)
-			return Promise.reject(err.response.data)
+
+			if (err.response.data) {
+				commit('API_ERROR', { message: err.message, data: err.response.data })
+				return Promise.reject({ message: err.message, data: err.response.data })
+			} else {
+				commit('API_ERROR', { message: err.message, data: null })
+				return Promise.reject({ message: err.message, data: null })
+			}
+
+			if (dbg) debugger
 		})
 	},
+
+/* ------------------------------------ACTIVITY SHEET action------------------------------------ */
 
 	/** options = { sheet_id, task_id } */
 	FETCH_ACTIVITY: ({ commit, state }, options) => {
@@ -995,6 +1257,7 @@ export default {
 		})
 		.catch((err) => {
 			element.consistency = 2
+
 			if (err.response.data) {
 				commit('API_ERROR', { message: err.message, data: err.response.data })
 				return Promise.reject({ message: err.message, data: err.response.data })
@@ -1003,7 +1266,7 @@ export default {
 				return Promise.reject({ message: err.message, data: null })
 			}
 
-			debugger
+			if (dbg) debugger
 		})
 	},
 
@@ -1076,6 +1339,7 @@ export default {
 		})
 		.catch((err) => {
 			activeElement.consistency = 2
+
 			if (err.response.data) {
 				commit('API_ERROR', { message: err.message, data: err.response.data })
 				return Promise.reject({ message: err.message, data: err.response.data })
@@ -1084,60 +1348,20 @@ export default {
 				return Promise.reject({ message: err.message, data: null })
 			}
 
-			debugger
-		})
-	},
-
-	//*** User actions */
-	MAINUSER_REQUEST: ({ commit, state }) => {
-		commit('MAINUSER_REQUEST')
-
-		return Promise.all([
-			fetchSrv(mainPacket[0].fetchQuery),
-			fetchSrv(mainPacket[1].fetchQuery),
-			fetchSrv(mainPacket[2].fetchQuery),
-			fetchSrv(mainPacket[3].fetchQuery)
-		]).then(datasFromSrv => {
-			// debugger
-			for (const dataFromSrv of datasFromSrv) {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					continue
-					//return Promise.resolve(0)
-				} else {
-					if (!state.auth.token) {
-						//if need refressh token in store
-						commit('AUTH_SUCCESS', getTokensFromSessionStorage().access_token)
-					}
-
-					for (let mutation of mainPacket[dataFromSrv.packet].mutations) {
-						commit(mutation, dataFromSrv.data)
-					}
-
-					Promise.resolve(1)
-				}
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			debugger
+			if (dbg) debugger
 		})
 	},
 
 	// options - { id, field, value }
-	UPDATE_MAIN_SHEETS_VALUES: ({ commit, state }, options) => {
+	UPDATE_SHEETS_VALUES: ({ commit, state }, options) => {
 		const values = {}
 
 		if (options.field === 'visible') {
 			if (options.values === true) {
 				commit('UPDATE_QUEUE', { sheet_id: options.id })
 			}
+		} else if (options.field === 'condition') {
+
 		}
 
 		values[options.field] = options.value
@@ -1156,7 +1380,7 @@ export default {
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(false)
 			} else {
-				commit('UPDATE_MAIN_SHEETS_VALUES', dataFromSrv.data)
+				commit('UPDATE_SHEETS_VALUES', dataFromSrv.data)
 
 				return Promise.resolve(true)
 			}
@@ -1170,7 +1394,7 @@ export default {
 				return Promise.reject({ message: err.message, data: null })
 			}
 
-			debugger
+			if (dbg) debugger
 		})
 	},
 
@@ -1196,7 +1420,7 @@ export default {
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(false)
 			} else {
-				commit('MAIN_SHEETS_SUCCESS', dataFromSrv.data)
+				commit('SHEETS_SUCCESS', dataFromSrv.data)
 
 				return Promise.resolve(true)
 			}
@@ -1210,7 +1434,7 @@ export default {
 				return Promise.reject({ message: err.message, data: null })
 			}
 
-			debugger
+			if (dbg) debugger
 		})
 	},
 
@@ -1235,7 +1459,6 @@ export default {
 			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 				return Promise.resolve(false)
 			} else {
-				debugger
 				commit('DELETE_SHEET_ELEMENT', dataFromSrv.data)
 
 				return Promise.resolve(true)
@@ -1250,145 +1473,7 @@ export default {
 				return Promise.reject({ message: err.message, data: null })
 			}
 
-			debugger
-		})
-	},
-
-	//*** Authentication actions */
-	AUTH_REQUEST: ({ commit, dispatch }, user) => {
-		return new Promise((resolve, reject) => {
-			let axiosData = {}
-
-			if (user.verifytoken) {
-				axiosData = {
-					url: 'oauth2/verifytoken',
-					method: 'POST',
-					headers: { 'content-type': 'application/x-www-form-urlencoded',
-										 'Authorization': 'Bearer ' + user.verifytoken }
-				}
-			} else {
-				const bodyData = {
-					grant_type: 'password',
-					scope: '*',
-					client_name: 'WebBrowser'
-				}
-
-				axiosData = {
-					url: 'oauth2/login',
-					data: bodyData,
-					method: 'POST',
-					auth: user
-				}
-			}
-
-			commit('AUTH_REQUEST')
-
-			Vue.axios(axiosData)
-			.then((res) => {
-				const token = res.data
-
-				storage.setItem('access_token', token.access_token)
-				commit('AUTH_SUCCESS', token.access_token)
-
-				//we have token, then we can log in user
-				dispatch('MAINUSER_REQUEST')
-				resolve(res)
-			})
-			.catch((err) => {
-				let errorData = {}
-				if (err.response) {
-					errorData = err.response.data
-				} else {
-					errorData.name = err.name
-					switch(err.name) {
-						case 'InvalidCharacterError':
-							errorData.error_description = 'Неверный пароль. Используйте для пароля латинские символы.'
-							break
-						default:
-							errorData.error_description = 'Unknown error'
-					}
-				}
-
-				commit('API_ERROR', errorData)
-				storage.removeItem('access_token')
-				reject(errorData)
-			})
-		})
-	},
-
-	//*** Registration actions */
-	REG_REQUEST: ({ commit }, userData) => {
-		return new Promise((resolve, reject) => {
-			const payload = {
-				username: '',
-				scope: '*',
-				client_name: 'WebBrowser'
-			}
-			const bodyData = Object.assign(payload, userData)
-			let axiosData = {
-				url: 'oauth2/registration',
-				data: bodyData,
-				method: 'POST'
-			}
-
-			commit('REG_REQUEST')
-
-			Vue.axios(axiosData)
-			.then((res) => {
-				const token = res.data
-
-				storage.setItem('access_token', token.access_token)
-				commit('REG_SUCCESS', token.access_token)
-				resolve(res)
-			})
-			.catch((err) => {
-				let errorData = {}
-				if (err.response) {
-					errorData = err.response.data
-				} else {
-					errorData.name = err.name
-					switch(err.name) {
-						case 'InvalidCharacterError':
-							errorData.error_description = 'Неверный пароль. Используйте для пароля латинские символы.'
-							break
-						default:
-							errorData.error_description = 'Unknown error'
-					}
-				}
-
-				commit('API_ERROR', errorData)
-				storage.removeItem('access_token')
-				reject(errorData)
-			})
-		})
-	},
-
-	//*** LogOut actions */
-	AUTH_LOGOUT: ({ commit, state }) => {
-		return new Promise((resolve, reject) => {
-			const axiosData = {
-				url: 'oauth2/logout',
-				method: 'GET',
-				headers: { 'content-type': 'application/x-www-form-urlencoded',
-									 'Authorization': 'Bearer ' + state.auth.token }
-			}
-
-			commit('AUTH_REQUEST')
-
-			Vue.axios(axiosData)
-			.then((res) => {
-				storage.removeItem('access_token')
-				commit('AUTH_LOGOUT')
-
-				//we have token, then we can log in user
-				resolve(res)
-			})
-			.catch((err) => {
-				commit('API_ERROR', err.response.data)
-
-				storage.removeItem('access_token')
-				reject(err.response.data)
-			})
+			if (dbg) debugger
 		})
 	},
 
