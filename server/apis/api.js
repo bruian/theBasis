@@ -13,21 +13,30 @@ const srvPath = process.cwd() + '/server/'
 const log     = require(srvPath + 'log')(module)
 const router = express.Router();
 
-//get authenticated user
+/* ------------------------------------------USERS API------------------------------------------ */
+
+/***
+ * @func router.get("/main-user")
+ * @param {String} path - http path from METHOD
+ * @param {function(...args): Callback} response - to client
+ * @returns { Response: Object }
+ * @description http METHOD. Call api function "getUser" and responce data: JSON
+*/
 router.get('/main-user', (req, res) => {
-	const condition = {
-		mainUser_id: req.auth.userId,
-		packet: ('packet' in req.headers) ? req.headers.packet : null
-	}
+	const timeStart = Date.now()
+	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query)
+	condition = Object.assign(condition, req.headers)
 
-	UserController.getUser(condition, (err, data) => {
-		if (err) return res.send(err)
+	UserController.getUser(condition)
+	.then(data => {
+	 	log.debug(`/main-user:get ${Date.now()-timeStart}ms |-> for user:${condition.mainUser_id}`)
 
-		if (condition.packet === null) {
-			return res.json(data)
-		} else {
-			return res.json({ data: data, packet: condition.packet })
-		}
+		return res.json({ data: data, packet: condition.packet })
+	})
+	.catch(err => {
+		log.warn(`/main-user:get |-> name:${err.name} | status:${err.jse_info.status} | message:${err.message}`)
+
+		return res.status(err.jse_info.status).end(err.message)
 	})
 })
 

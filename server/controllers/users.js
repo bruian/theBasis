@@ -136,32 +136,46 @@ async function newUser(condition) {
 	}
 }
 
-async function getUser(condition, done) {
-	let client
-
-	if (!condition.mainUser_id) {
-		return done(new PgError(`The condition must contain the <user_id> field that sets the current user relatively,
-			because regarding his rights there will be a request for information from the database`))
+/***
+ * @func getUser
+ * @param {{ mainUser_id: Number }}
+ * @returns { function(...args): Promise }
+ * @description Get user from database
+ */
+async function getUser(condition) {
+	/* mainUser_id - идентификатор пользователя, который аутентифицирован в системе	относительно
+		этого пользователя происходит запрос данных у базы, с ним же связаны все права доступа.
+		- Находится в свойстве auth объекта express.router.request, помещается туда сервером
+			авторизации
+		- Ожидается number */
+	if (!condition.hasOwnProperty('mainUser_id') || !isNumeric(condition.mainUser_id)) {
+		/* Unauthorized */
+		throw new VError({
+			'name': 'WrongParameter',
+			'info': { 'parameter': 'mainUser_id', 'value': condition.mainUser_id, 'status': 401 }
+		}, 'User authentication required')
 	}
 
 	const queryText = `
-	SELECT id, username, name, email, verified, loged, dateofbirth, city, country, gender, phone, url as avatar FROM users AS mainUser
+		SELECT id, username, name, email, verified, loged, dateofbirth, city, country, gender, phone,
+			url as avatar FROM users AS mainUser
 		RIGHT JOIN users_personality AS usr_p ON mainUser.id = usr_p.user_id
 		RIGHT JOIN users_photo AS usr_ph ON mainUser.id = usr_ph.user_id AND usr_ph.isAvatar = true
 		WHERE mainUser.id = ${condition.mainUser_id};`
 
+	const	client = await pg.pool.connect()
+	const params = [condition.mainUser_id)]
+
 	try {
-		client = await pg.pool.connect()
+		const { rows: elements } = await client.query(queryText, params)
 
-		const { rowCount, rows } = await client.query(queryText)
-
-		if (rowCount === 0) {
-			return done({ message: 'User contained in token not found', status: 400, code: 'invalid_verification', name: 'AuthError' })
-		} else {
-			return done(null, rows[0])
-		}
+		return Promise.resolve(elements)
 	} catch (error) {
-		return done(new PgError(error))
+		throw new VError({
+			'name': 'DatabaseError',
+			'cause': error,
+			'info': { 'status': 400 }
+		}, 'DB error')
 	} finally {
 		client.release()
 	}
