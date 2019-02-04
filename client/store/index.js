@@ -1,10 +1,10 @@
-import Vue from 'vue'
-import Vuex from 'vuex'
-import actions from './actions'
-import mutations from './mutations'
-import getters from './getters'
+import Vue from 'vue';
+import Vuex from 'vuex';
+import actions from './actions';
+import mutations from './mutations';
+import getters from './getters';
 
-Vue.use(Vuex)
+Vue.use(Vuex);
 
 const def = {
 	mainUser: {
@@ -20,7 +20,7 @@ const def = {
 		phone: '',
 		avatar: '',
 		friend: 0,
-		layout: 2 // 1 - "one-column", 2 - "two-column"
+		layout: 2, // 1 - "one-column", 2 - "two-column"
 	},
 	mainGroup: {
 		group_id: 0,
@@ -32,31 +32,30 @@ const def = {
 		updating: 1,
 		deleting: 1,
 		el_creating: 1,
-		el_reading:1 ,
+		el_reading: 1,
 		el_updating: 1,
 		el_deleting: 1,
 		group_type: 2,
-		haveChild: 0
-	}
-}
+		haveChild: 0,
+	},
+};
 
-export function createStore () {
-  return new Vuex.Store({
-    state: {
-			default: { mainUser: def.mainUser }, //?
-/* --------------------------------------Application state-------------------------------------- */
-			appReady: false,				// if true - application loaded and ready to render
-			logStatus: true,				// ON/OFF api status logging
-			apiStatus: [],			 		// log api status
+function createStore() {
+	let store = new Vuex.Store({
+		state: {
+			default: { mainUser: def.mainUser }, // ?
+			/* --------------------------------------Application state-------------------------------------- */
+			appReady: false, // if true - application loaded and ready to render
+			logStatus: true, // ON/OFF api status logging
+			apiStatus: [], // log api status
 			selectedSheetsManager: false,
 
-layout: 2, //TEMPORARY. Need move to main user
+			layout: 2, // TEMPORARY. Need move to main user
 
 			/* -AUTHENTICATED STATUS -*/
-			auth: {	token: ''	},
+			auth: { token: '' } /* api request: /auth-user */,
 
-			/* -LOGGED USERS DATAS- *//* api request: /auth-user */
-			mainUser: Object.assign({}, def.mainUser),
+			/* -LOGGED USERS DATAS- */ mainUser: Object.assign({}, def.mainUser),
 			mainUsers: [],
 			mainUsersMini: [],
 			mainGroups: [],
@@ -68,63 +67,103 @@ layout: 2, //TEMPORARY. Need move to main user
 			theUser: {},
 
 			theGroup: {
-				id: 0
+				id: 0,
 			},
 
 			updateQueue: [],
 
-			subgroupsCache: [],
+			subgroupsCache: [] /* api request: /users or /users/:id */,
 
-			/* -USERS SHEET DATAS- *//* api request: /users or /users/:id */
-			activeUsersSheet: { text: 'all', whose: 'all', id: 0, sheet: 'usersSheetAll', visible: true, condition: [] },
+			/* -USERS SHEET DATAS- */ activeUsersSheet: {
+				text: 'all',
+				whose: 'all',
+				id: 0,
+				sheet: 'usersSheetAll',
+				visible: true,
+				condition: [],
+			},
 			availableUsersSheet: [
-				{ text: 'my', whose: 'user', id: 1, sheet: 'usersSheetMy', visible: true, condition: ['user_id'] },
-				{ text: 'group', whose: 'group', id: 2, sheet: 'usersSheetGroup', visible: false, condition: ['user_id', 'group_id'] }
+				{
+					text: 'my',
+					whose: 'user',
+					id: 1,
+					sheet: 'usersSheetMy',
+					visible: true,
+					condition: ['user_id'],
+				},
+				{
+					text: 'group',
+					whose: 'group',
+					id: 2,
+					sheet: 'usersSheetGroup',
+					visible: false,
+					condition: ['user_id', 'group_id'],
+				},
 			],
 			usersSheetAll: {
 				sheet: [],
 				limit: 10,
 				offset: 0,
-				searchText: ''
+				searchText: '',
 			},
 			usersSheetMy: {
 				sheet: [],
 				limit: 10,
 				offset: 0,
-				searchText: ''
+				searchText: '',
 			},
 			usersSheetGroup: {
 				sheet: [],
 				limit: 10,
 				offset: 0,
-				searchText: ''
-			},
+				searchText: '',
+			} /* api request: /groups or /groups/:id */,
 
-			/* -GROUPS SHEET DATAS- *//* api request: /groups or /groups/:id */
-			activeGroupsSheet: { text: 'all', whose: 'all', id: 0, sheet: 'groupsSheetAll', visible: true, condition: [] },
+			/* -GROUPS SHEET DATAS- */ activeGroupsSheet: {
+				text: 'all',
+				whose: 'all',
+				id: 0,
+				sheet: 'groupsSheetAll',
+				visible: true,
+				condition: [],
+			},
 			availableGroupsSheet: [
-				{ text: 'my', whose: 'user', id: 1, sheet: 'groupsSheetMy', visible: true, condition: ['user_id'] }
+				{
+					text: 'my',
+					whose: 'user',
+					id: 1,
+					sheet: 'groupsSheetMy',
+					visible: true,
+					condition: ['user_id'],
+				},
 			],
 			groupsSheetAll: {
 				sheet: [],
 				limit: 10,
 				offset: 0,
-				searchText: ''
+				searchText: '',
 			},
 			groupsSheetMy: {
 				sheet: [],
 				limit: 10,
 				offset: 0,
-				searchText: ''
+				searchText: '',
 			},
-/* ----------------------------------------Sheets state----------------------------------------- */
+			/* ----------------------------------------Sheets state----------------------------------------- */
 			selectedSheet: null,
-			mainSheets: [
-			],
 			sheets: [],
-    },
-    actions,
-    mutations,
-    getters
-  })
+		},
+		actions,
+		mutations,
+		getters,
+	});
+
+	// Установка опроса очереди
+	// setInterval(() => {
+	// 	store.dispatch('UPDATE_QUEUE', 3);
+	// }, 500);
+
+	return store;
 }
+
+export default createStore;

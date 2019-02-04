@@ -34,7 +34,7 @@
 			</v-btn>
 
 			<div style="margin: auto;">
-				<p style="margin: auto;">{{mainSheet.name}}</p>
+				<p style="margin: auto;">{{thisSheet.name}}</p>
 			</div>
 		</div>
 
@@ -87,7 +87,6 @@ export default {
 	},
 	data: () => ({
 		thisSheet: null,
-		mainSheet: null,
 		searchText: '',
 		scrollSettings: {
 			maxScrollLength: 10
@@ -98,7 +97,6 @@ export default {
 	}),
 	created() {
 		this.thisSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
-		this.mainSheet = this.$store.state.mainSheets.find(el => el.sheet_id === this.sheet_id)
 	},
 	computed: {
 		items: {

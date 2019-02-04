@@ -1,62 +1,63 @@
 export function recursiveFind(sheet, cb) {
 	let result = {
 		index: null,
-		element: null
-	}
+		element: null,
+	};
 
 	for (let i = 0; i < sheet.length; i++) {
 		if (cb(sheet[i])) {
-			result.index = i
-			result.element = sheet[i]
+			result.index = i;
+			result.element = sheet[i];
 		} else if (sheet[i].children && sheet[i].children.length > 0) {
-			result = recursiveFind(sheet[i].children, cb)
+			result = recursiveFind(sheet[i].children, cb);
 		}
 
-		if (result.element) break
+		if (result.element) break;
 	}
 
-	return result
+	return result;
 }
 
 export function isNumeric(n) {
-  return !isNaN(parseFloat(n)) && isFinite(n)
+	// eslint-disable-next-line
+	return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
 export function recursiveSet(sheet, key, value) {
 	for (let i = 0; i < sheet.length; i++) {
-		if (sheet[i].hasOwnProperty(key)) {
-			sheet[i][key] = value
+		if (Object.prototype.hasOwnProperty.call(sheet[i], key)) {
+			sheet[i][key] = value;
 		}
 
 		if (sheet[i].children && sheet[i].children.length > 0) {
-			recursiveSet(sheet[i].children, key, value)
+			recursiveSet(sheet[i].children, key, value);
 		}
 	}
 }
 
 export function findGroup(mainGroups, id) {
-	let result
+	let result;
 
 	for (let i = 0; i < mainGroups.length; i++) {
 		if (mainGroups[i].children && mainGroups[i].children.length > 0) {
 			if (mainGroups[i].id === id) {
-				result = mainGroups[i]
+				result = mainGroups[i];
 			} else {
-				result = findGroup(mainGroups[i].children, id)
+				result = findGroup(mainGroups[i].children, id);
 			}
 		} else {
 			if (mainGroups[i].id === id) {
-				result = mainGroups[i]
+				result = mainGroups[i];
 			}
 		}
 
-		if (result) break
+		if (result) break;
 	}
 
-	return result
+	return result;
 }
 
-/*** Return tree depth
+/** Return tree depth
  *(Top) - depth 1
  *    (Child) - depth 2
  *    (Child) - depth 2
@@ -68,17 +69,17 @@ export function findGroup(mainGroups, id) {
  *return 2
  */
 export function treeDepth(tree) {
-	let depth = 1
+	let depth = 1;
+	let childrenDepth = 0;
 
 	if (tree.children && tree.children.length) {
-		let childrenDepth = 0
 		for (let i = 0; i < tree.children.length; i++) {
-			let stepDepth = treeDepth(tree.children)
-			if (stepDepth > childrenDepth) childrenDepth = stepDepth
+			let stepDepth = treeDepth(tree.children);
+			if (stepDepth > childrenDepth) childrenDepth = stepDepth;
 		}
 	}
 
-	return depth + childrenDepth
+	return depth + childrenDepth;
 }
 
 /* Return string constants from binary value
@@ -93,115 +94,118 @@ export function treeDepth(tree) {
 */
 export function typeForSheet(value) {
 	if (value & 2) {
-		return { type_el: 'activity-sheet', icon: 'A' }
+		return { type_el: 'activity-sheet', icon: 'A' };
 	}
 
 	if (value & 4) {
-		return { type_el: 'tasks-sheet', icon: 'T' }
+		return { type_el: 'tasks-sheet', icon: 'T' };
 	}
 
 	if (value & 8) {
-		return { type_el: 'groups-sheet', icon: 'G' }
+		return { type_el: 'groups-sheet', icon: 'G' };
 	}
 
 	if (value & 16) {
-		return { type_el: 'users-sheet', icon: 'U' }
+		return { type_el: 'users-sheet', icon: 'U' };
 	}
 
 	if (value & 32) {
-		return { type_el: 'post-notes', icon: 'P' }
+		return { type_el: 'post-notes', icon: 'P' };
 	}
 
 	if (value & 64) {
-		return { type_el: 'images', icon: 'I' }
+		return { type_el: 'images', icon: 'I' };
 	}
 
-	return undefined
+	return undefined;
 }
 
-/* Get sheets_conditions
-	condition:
-		1 - group_id
-		2 - user_id
-		3 - parent_id
-		4 - task_id
-		... others
-*/
+/**
+ *	Get sheets_conditions
+ * condition:
+ *	1 - group_id
+ *	2 - user_id
+ *	3 - parent_id
+ *	4 - task_id
+ *	... others
+ */
 export function conditionsForSheet(conditions, values) {
 	const result = {
 		group_id: null,
 		user_id: null,
 		parent_id: null,
-		task_id: null
-	}
+		task_id: null,
+	};
 
 	for (let i = 0; i < conditions.length; i++) {
-		if (values[i] === '') continue
-
-		switch (conditions[i]) {
-			case 1:
-				result.group_id = values[i]
-				break
-			case 2:
-				result.user_id = values[i]
-				break
-			case 3:
-				result.parent_id = values[i]
-				break
-			case 4:
-				result.task_id = values[i]
-				break
+		if (values.length > 0) {
+			switch (conditions[i]) {
+				case 1:
+					result.group_id = values[i];
+					break;
+				case 2:
+					result.user_id = values[i];
+					break;
+				case 3:
+					result.parent_id = values[i];
+					break;
+				case 4:
+					result.task_id = values[i];
+					break;
+				default:
+					break;
+			}
 		}
 	}
 
-	return result
+	return result;
 }
 
-/***
+/**
  * Статусы активностей, иконки из MaterialDesign и разрешенные
  * действия относительно выбранного статуса
  */
 export const activityStatus = [
 	{
-		name: 'Assigned', //Назначено - 0
-		action: 'Assign', //Назначить
+		name: 'Assigned', // Назначено - 0
+		action: 'Assign', // Назначить
 		icon: 'queue',
-		allowedActions: [1, 4]
+		allowedActions: [1, 4],
 	},
 	{
-		name: 'Started', //Начато - 1
-		action: 'Start', //Начать
+		name: 'Started', // Начато - 1
+		action: 'Start', // Начать
 		icon: 'play_circle_filled',
-		allowedActions: [3, 2, 4]
+		allowedActions: [3, 2, 4],
 	},
 	{
-		name: 'Completed',	//Завершено - 2
-		action: 'Complete',	//Завершить
+		name: 'Completed', // Завершено - 2
+		action: 'Complete', // Завершить
 		icon: 'done',
-		allowedActions: [0]
+		allowedActions: [0],
 	},
 	{
-		name: 'Suspended', //Приостановлено - 3
-		action: 'Suspend', //Приостановить
+		name: 'Suspended', // Приостановлено - 3
+		action: 'Suspend', // Приостановить
 		icon: 'pause',
-		allowedActions: [5, 2, 4]
+		allowedActions: [5, 2, 4],
 	},
 	{
-		name: 'Canceled', //Отменено - 4
-		action: 'Cancel', //Отклонить
+		name: 'Canceled', // Отменено - 4
+		action: 'Cancel', // Отклонить
 		icon: 'cancel',
-		allowedActions: [0]
+		allowedActions: [0],
 	},
 	{
-		name: 'Continued', //Продолжено - 5
-		action: 'Continue',//Продолжить
+		name: 'Continued', // Продолжено - 5
+		action: 'Continue', // Продолжить
 		icon: 'play_arrow',
-		allowedActions: [3, 2, 4]
+		allowedActions: [3, 2, 4],
 	},
 	{
-		name: 'Removed',  //Удалено - 6
-		action: 'Remove', //Удалить
+		name: 'Removed', // Удалено - 6
+		action: 'Remove', // Удалить
 		icon: 'delete',
-		allowedActions: []
-	}
-]
+		allowedActions: [],
+	},
+];

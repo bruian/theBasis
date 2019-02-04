@@ -1,636 +1,673 @@
-import config from '../config'
-import Vue from 'vue'
-import { recursiveFind, findGroup } from '../util/helpers'
-import querystring from 'querystring'
+import Vue from 'vue';
+import querystring from 'querystring';
+import qs from 'qs';
+import config from '../config';
+import { recursiveFind, findGroup } from '../util/helpers';
 
-const dbg = !!config.DEBUG_API
-const storage = (process.env.VUE_ENV === 'server') ? null : window.localStorage
+const dbg = !!config.DEBUG_API;
+const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
 
-const mainPacket = [{
-	fetchQuery: {
-		url: 'main-user',
-		method: 'GET',
-		headers: { packet: 0 },
+const mainPacket = [
+	{
+		fetchQuery: {
+			url: 'main-user',
+			method: 'GET',
+			headers: { packet: 0 },
+		},
+		mutations: ['MAIN_USER_SUCCESS', 'THEUSER_SUCCESS'],
 	},
-	mutations: ['MAIN_USER_SUCCESS', 'THEUSER_SUCCESS']
-},{
-	fetchQuery: {
-		url: 'groups',
-		method: 'GET',
-		params: { whose: 'main' },
-		headers: { packet: 1 },
+	{
+		fetchQuery: {
+			url: 'groups',
+			method: 'GET',
+			params: { whose: 'main' },
+			headers: { packet: 1 },
+		},
+		mutations: ['MAIN_GROUPS_SUCCESS'],
 	},
-	mutations: ['MAIN_GROUPS_SUCCESS']
-},{
-	fetchQuery: {
-		url: 'contexts',
-		method: 'GET',
-		headers: { packet: 2 },
+	{
+		fetchQuery: {
+			url: 'contexts',
+			method: 'GET',
+			headers: { packet: 2 },
+		},
+		mutations: ['MAIN_CONTEXTS_SUCCESS'],
 	},
-	mutations: ['MAIN_CONTEXTS_SUCCESS']
-},{
-	fetchQuery: {
-		url: 'sheets',
-		method: 'GET',
-		headers: { packet: 3 },
+	{
+		fetchQuery: {
+			url: 'sheets',
+			method: 'GET',
+			headers: { packet: 3 },
+		},
+		mutations: ['SHEETS_SUCCESS'],
 	},
-	mutations: ['SHEETS_SUCCESS']
-}]
+];
 
 function getTokensFromSessionStorage() {
-	const tokens = { access_token: '', refresh_token: '' }
+	const tokens = { access_token: '', refresh_token: '' };
 	if (storage && storage.getItem('access_token')) {
-		tokens.access_token = storage.getItem('access_token')
+		tokens.access_token = storage.getItem('access_token');
 	}
 
 	if (storage && storage.getItem('refresh_token')) {
-		tokens.refresh_token = storage.getItem('refresh_token')
+		tokens.refresh_token = storage.getItem('refresh_token');
 	}
 
-	return tokens
+	return tokens;
 }
 
-async function fetchSrv(query) {
-	const headers = { 'content-type': 'application/x-www-form-urlencoded',
-										'Authorization': 'Bearer ' + getTokensFromSessionStorage().access_token }
-	let axiosData = Object.assign({}, query)
+async function fetchSrv(query, commit) {
+	const headers = {
+		'content-type': 'application/x-www-form-urlencoded',
+		Authorization: `Bearer ${getTokensFromSessionStorage().access_token}`,
+	};
+
+	let axiosData = Object.assign({}, query);
+
 	if (axiosData.headers) {
-		axiosData.headers = Object.assign(axiosData.headers, headers)
+		axiosData.headers = Object.assign(axiosData.headers, headers);
 	} else {
-		axiosData.headers = headers
+		axiosData.headers = headers;
 	}
 
 	try {
-		let dataFromSrv = await Vue.axios(axiosData)
-		if (dataFromSrv.data.action && (dataFromSrv.data.action === 'token' || dataFromSrv.data.action === 'refreshed')) {
-			storage.setItem('access_token', dataFromSrv.data.access_token)
-			commit('AUTH_SUCCESS', dataFromSrv.data.access_token)
+		let dataFromSrv = await Vue.axios(axiosData);
+		if (
+			dataFromSrv.data.action &&
+			(dataFromSrv.data.action === 'token' || dataFromSrv.data.action === 'refreshed')
+		) {
+			storage.setItem('access_token', dataFromSrv.data.access_token);
+			commit('AUTH_SUCCESS', dataFromSrv.data.access_token);
 
-			//have received a new token and do it again for our data
-			axiosData.headers.Authorization = 'Bearer ' + dataFromSrv.data.access_token
-			dataFromSrv = await Vue.axios(axiosData)
+			// have received a new token and do it again for our data
+			axiosData.headers.Authorization = `Bearer ${dataFromSrv.data.access_token}`;
+			dataFromSrv = await Vue.axios(axiosData);
 		}
 
-		return Promise.resolve(dataFromSrv.data)
+		return Promise.resolve(dataFromSrv.data);
 	} catch (err) {
 		if (Array.isArray(err.response.data) && err.response.data.length > 0) {
-			commit('API_ERROR', err.response.data)
+			commit('API_ERROR', err.response.data);
 
 			if (err.response.data[0].action && err.response.data[0].action === 'error') {
 				if (err.response.data[0].name === 'TokenExpiredError') {
-					storage.removeItem('access_token')
-					commit('AUTH_LOGOUT')
+					storage.removeItem('access_token');
+					commit('AUTH_LOGOUT');
 				}
 			}
 		}
 
-		throw err
+		throw err;
 	}
 }
 
-let userPartID = 0, groupPartID = 0, taskPartID = 0
+let userPartID = 0;
+let groupPartID = 0;
+let taskPartID = 0;
 
 export default {
-
-/* -----------------------------------Authentication actions------------------------------------ */
+	/* -----------------------------------Authentication actions------------------------------------ */
 
 	AUTH_REQUEST: ({ commit, dispatch }, user) => {
 		return new Promise((resolve, reject) => {
-			let axiosData = {}
+			let axiosData = {};
 
 			if (user.verifytoken) {
 				axiosData = {
 					url: 'oauth2/verifytoken',
 					method: 'POST',
-					headers: { 'content-type': 'application/x-www-form-urlencoded',
-										 'Authorization': 'Bearer ' + user.verifytoken }
-				}
+					headers: {
+						'content-type': 'application/x-www-form-urlencoded',
+						Authorization: `Bearer ${user.verifytoken}`,
+					},
+				};
 			} else {
 				const bodyData = {
 					grant_type: 'password',
 					scope: '*',
-					client_name: 'WebBrowser'
-				}
+					client_name: 'WebBrowser',
+				};
 
 				axiosData = {
 					url: 'oauth2/login',
 					data: bodyData,
 					method: 'POST',
-					auth: user
-				}
+					auth: user,
+				};
 			}
 
-			commit('AUTH_REQUEST')
+			commit('AUTH_REQUEST');
 
 			Vue.axios(axiosData)
-			.then((res) => {
-				const token = res.data
+				.then(res => {
+					const token = res.data;
 
-				storage.setItem('access_token', token.access_token)
-				commit('AUTH_SUCCESS', token.access_token)
+					storage.setItem('access_token', token.access_token);
+					commit('AUTH_SUCCESS', token.access_token);
 
-				//we have token, then we can log in user
-				dispatch('MAINUSER_REQUEST')
-				resolve(res)
-			})
-			.catch((err) => {
-				let errorData = {}
-				if (err.response) {
-					errorData = err.response.data
-				} else {
-					errorData.name = err.name
-					switch(err.name) {
-						case 'InvalidCharacterError':
-							errorData.error_description = 'Неверный пароль. Используйте для пароля латинские символы.'
-							break
-						default:
-							errorData.error_description = 'Unknown error'
+					// we have token, then we can log in user
+					dispatch('MAINUSER_REQUEST');
+					resolve(res);
+				})
+				.catch(err => {
+					let errorData = {};
+					if (err.response) {
+						errorData = err.response.data;
+					} else {
+						errorData.name = err.name;
+						switch (err.name) {
+							case 'InvalidCharacterError':
+								errorData.error_description =
+									'Неверный пароль. Используйте для пароля латинские символы.';
+								break;
+							default:
+								errorData.error_description = 'Unknown error';
+						}
 					}
-				}
 
-				commit('API_ERROR', errorData)
-				storage.removeItem('access_token')
-				reject(errorData)
-			})
-		})
+					commit('API_ERROR', errorData);
+					storage.removeItem('access_token');
+					reject(errorData);
+				});
+		});
 	},
 
-	//*** Registration actions */
+	/* Registration actions */
 	REG_REQUEST: ({ commit }, userData) => {
 		return new Promise((resolve, reject) => {
 			const payload = {
 				username: '',
 				scope: '*',
-				client_name: 'WebBrowser'
-			}
-			const bodyData = Object.assign(payload, userData)
+				client_name: 'WebBrowser',
+			};
+			const bodyData = Object.assign(payload, userData);
 			let axiosData = {
 				url: 'oauth2/registration',
 				data: bodyData,
-				method: 'POST'
-			}
+				method: 'POST',
+			};
 
-			commit('REG_REQUEST')
+			commit('REG_REQUEST');
 
 			Vue.axios(axiosData)
-			.then((res) => {
-				const token = res.data
+				.then(res => {
+					const token = res.data;
 
-				storage.setItem('access_token', token.access_token)
-				commit('REG_SUCCESS', token.access_token)
-				resolve(res)
-			})
-			.catch((err) => {
-				let errorData = {}
-				if (err.response) {
-					errorData = err.response.data
-				} else {
-					errorData.name = err.name
-					switch(err.name) {
-						case 'InvalidCharacterError':
-							errorData.error_description = 'Неверный пароль. Используйте для пароля латинские символы.'
-							break
-						default:
-							errorData.error_description = 'Unknown error'
+					storage.setItem('access_token', token.access_token);
+					commit('REG_SUCCESS', token.access_token);
+					resolve(res);
+				})
+				.catch(err => {
+					let errorData = {};
+					if (err.response) {
+						errorData = err.response.data;
+					} else {
+						errorData.name = err.name;
+						switch (err.name) {
+							case 'InvalidCharacterError':
+								errorData.error_description =
+									'Неверный пароль. Используйте для пароля латинские символы.';
+								break;
+							default:
+								errorData.error_description = 'Unknown error';
+						}
 					}
-				}
 
-				commit('API_ERROR', errorData)
-				storage.removeItem('access_token')
-				reject(errorData)
-			})
-		})
+					commit('API_ERROR', errorData);
+					storage.removeItem('access_token');
+					reject(errorData);
+				});
+		});
 	},
 
-	//*** LogOut actions */
+	/* LogOut actions */
 	AUTH_LOGOUT: ({ commit, state }) => {
 		return new Promise((resolve, reject) => {
 			const axiosData = {
 				url: 'oauth2/logout',
 				method: 'GET',
-				headers: { 'content-type': 'application/x-www-form-urlencoded',
-									 'Authorization': 'Bearer ' + state.auth.token }
-			}
+				headers: {
+					'content-type': 'application/x-www-form-urlencoded',
+					Authorization: `Bearer ${state.auth.token}`,
+				},
+			};
 
-			commit('AUTH_REQUEST')
+			commit('AUTH_REQUEST');
 
 			Vue.axios(axiosData)
-			.then((res) => {
-				storage.removeItem('access_token')
-				commit('AUTH_LOGOUT')
+				.then(res => {
+					storage.removeItem('access_token');
+					commit('AUTH_LOGOUT');
 
-				//we have token, then we can log in user
-				resolve(res)
-			})
-			.catch((err) => {
-				commit('API_ERROR', err.response.data)
+					// we have token, then we can log in user
+					resolve(res);
+				})
+				.catch(err => {
+					commit('API_ERROR', err.response.data);
 
-				storage.removeItem('access_token')
-				reject(err.response.data)
-			})
-		})
+					storage.removeItem('access_token');
+					reject(err.response.data);
+				});
+		});
 	},
 
-/* ------------------------------------------MAIN USER------------------------------------------ */
+	/* ------------------------------------------MAIN USER------------------------------------------ */
 
 	MAINUSER_REQUEST: ({ commit, state }) => {
-		commit('MAINUSER_REQUEST')
+		commit('MAINUSER_REQUEST');
 
 		return Promise.all([
 			fetchSrv(mainPacket[0].fetchQuery),
 			fetchSrv(mainPacket[1].fetchQuery),
 			fetchSrv(mainPacket[2].fetchQuery),
-			fetchSrv(mainPacket[3].fetchQuery)
-		]).then(datasFromSrv => {
-			for (const dataFromSrv of datasFromSrv) {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					continue
+			fetchSrv(mainPacket[3].fetchQuery),
+		])
+			.then(datasFromSrv => {
+				Array.prototype.forEach.call(datasFromSrv, dataFromSrv => {
+					if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'data')) {
+						if (!state.auth.token) {
+							commit('AUTH_SUCCESS', getTokensFromSessionStorage().access_token);
+						}
+
+						Array.prototype.forEach.call(mainPacket[dataFromSrv.packet].mutations, mutation => {
+							commit(mutation, dataFromSrv.data);
+						});
+
+						Promise.resolve(1);
+					}
+				});
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
 				} else {
-					if (!state.auth.token) {
-						//if need refressh token in store
-						commit('AUTH_SUCCESS', getTokensFromSessionStorage().access_token)
-					}
-
-					for (let mutation of mainPacket[dataFromSrv.packet].mutations) {
-						commit(mutation, dataFromSrv.data)
-					}
-
-					Promise.resolve(1)
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
 				}
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+			});
 	},
 
-/* -------------------------------------USERS SHEET action-------------------------------------- */
+	/* -------------------------------------USERS SHEET action-------------------------------------- */
 
 	FETCH_USERS_SHEET: ({ commit, state }) => {
-		const activeSheet = state.activeUsersSheet.sheet
-		const searchText = state[activeSheet].searchText
+		const activeSheet = state.activeUsersSheet.sheet;
+		const searchText = state[activeSheet].searchText;
 		const fetchQuery = {
 			url: 'users',
 			method: 'GET',
 			params: {
-				like: (searchText) ? searchText : '',
-				whose: state.activeUsersSheet.whose
+				like: searchText,
+				whose: state.activeUsersSheet.whose,
 			},
-			headers: { limit: state[activeSheet].limit, offset: state[activeSheet].offset, partid: ++userPartID }
-		}
+			headers: {
+				limit: state[activeSheet].limit,
+				offset: state[activeSheet].offset,
+				partid: ++userPartID,
+			},
+		};
 
-		const condition = state.activeUsersSheet.condition
+		const condition = state.activeUsersSheet.condition;
 		for (let i = 0; i < condition.length; i++) {
 			switch (condition[i]) {
 				case 'user_id':
-					fetchQuery.url += '/' + state.theUser.id
-					//params.id = state.theUser.id
-					break
+					fetchQuery.url += `/${state.theUser.id}`;
+					break;
 				case 'group_id':
-					fetchQuery.params.group_id = state.theGroup.id
-					break
+					fetchQuery.params.group_id = state.theGroup.id;
+					break;
+				default:
+					break;
 			}
 		}
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(0)
-			} else {
-				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${userPartID}`)
-				commit('SET_USERS_SHEET', dataFromSrv.data)
-				return Promise.resolve(dataFromSrv.data.length)
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(0);
+				} else {
+					console.log(`actions partID: srv-${dataFromSrv.partid} glb-${userPartID}`);
+					commit('SET_USERS_SHEET', dataFromSrv.data);
+					return Promise.resolve(dataFromSrv.data.length);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-	LINK_USERS_SHEET: ({ commit, state }, id) => {
+	LINK_USERS_SHEET: ({ commit }, id) => {
 		const fetchQuery = {
 			url: 'users',
 			method: 'POST',
 			params: {
 				user_id: id,
-			}
-		}
+			},
+		};
 
-		commit('UPDATE_VALUES_USERS_SHEET', { id, loadingButton: true })
+		commit('UPDATE_VALUES_USERS_SHEET', { id, loadingButton: true });
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'rejected_addusers') {
-				return Promise.resolve(0)
-			} else {
-				console.log('user linked')
-				commit('UPDATE_VALUES_USERS_SHEET', { id, friend: 1, loadingButton: false })
-				commit('RESET_INACTIVE_USERS_SHEET')
-			}
-		}).catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'rejected_addusers') {
+					return Promise.resolve(0);
+				} else {
+					console.log('user linked');
 
-			if (dbg) debugger
-		})
+					commit('UPDATE_VALUES_USERS_SHEET', { id, friend: 1, loadingButton: false });
+					commit('RESET_INACTIVE_USERS_SHEET');
+					return Promise.resolve(1);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-	UNLINK_USERS_SHEET: ({ commit, state }, id) => {
+	UNLINK_USERS_SHEET: ({ commit }, id) => {
 		const fetchQuery = {
 			url: 'users',
 			method: 'DELETE',
 			params: {
-				user_id: id
-			}
-		}
+				user_id: id,
+			},
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'rejected_deleteusers') {
-				return Promise.resolve(0)
-			} else {
-				console.log('user unlinked')
-				commit('REMOVE_VALUES_USERS_SHEET', { id })
-				commit('RESET_INACTIVE_USERS_SHEET')
-			}
-		}).catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'rejected_deleteusers') {
+					return Promise.resolve(0);
+				} else {
+					console.log('user unlinked');
 
-			if (dbg) debugger
-		})
+					commit('REMOVE_VALUES_USERS_SHEET', { id });
+					commit('RESET_INACTIVE_USERS_SHEET');
+					return Promise.resolve(1);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-/* -------------------------------------GROUPS SHEET action------------------------------------- */
+	/* -------------------------------------GROUPS SHEET action------------------------------------- */
 
 	FETCH_GROUPS_SHEET: ({ commit, state }) => {
-		const activeSheet = state.activeGroupsSheet.sheet
-		const searchText = state[activeSheet].searchText
+		const activeSheet = state.activeGroupsSheet.sheet;
+		const searchText = state[activeSheet].searchText;
 		const fetchQuery = {
 			url: 'groups',
 			method: 'GET',
 			params: {
-				like: (searchText) ? searchText : '',
-				whose: state.activeGroupsSheet.whose
+				like: searchText,
+				whose: state.activeGroupsSheet.whose,
 			},
-			headers: { limit: state[activeSheet].limit, offset: state[activeSheet].offset, partid: ++groupPartID }
-		}
+			headers: {
+				limit: state[activeSheet].limit,
+				offset: state[activeSheet].offset,
+				partid: ++groupPartID,
+			},
+		};
 
-		const condition = state.activeGroupsSheet.condition
+		const condition = state.activeGroupsSheet.condition;
 		for (let i = 0; i < condition.length; i++) {
 			switch (condition[i]) {
 				case 'user_id':
-					fetchQuery.params.user_id = state.theUser.id
-					break
+					fetchQuery.params.user_id = state.theUser.id;
+					break;
 				case 'group_id':
-					fetchQuery.url += '/' + state.theGroup.id
-					break
+					fetchQuery.url += `/${state.theGroup.id}`;
+					break;
+				default:
+					break;
 			}
 		}
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(0)
-			} else {
-				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${groupPartID}`)
-				commit('SET_GROUPS_SHEET', dataFromSrv.data)
-				return Promise.resolve(dataFromSrv.data.length)
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(0);
+				} else {
+					console.log(`actions partID: srv-${dataFromSrv.partid} glb-${groupPartID}`);
 
-			if (dbg) debugger
-		})
+					commit('SET_GROUPS_SHEET', dataFromSrv.data);
+					return Promise.resolve(dataFromSrv.data.length);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
 	FETCH_SUBGROUPS: ({ commit, state }, group_id) => {
-		const activeSheet = state.activeGroupsSheet.sheet
-		const searchText = state[activeSheet].searchText
+		const activeSheet = state.activeGroupsSheet.sheet;
+		const searchText = state[activeSheet].searchText;
 		const fetchQuery = {
 			url: 'groups',
 			method: 'GET',
 			params: {
-				like: (searchText) ? searchText : '',
-				whose: 'group'
-			}
-		}
+				like: searchText,
+				whose: 'group',
+			},
+		};
 
-		fetchQuery.url += '/' + group_id
+		fetchQuery.url += `/${group_id}`;
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(0)
-			} else {
-				commit('SET_SUBGROUPS', dataFromSrv.data)
-				return Promise.resolve(dataFromSrv.data.length)
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(0);
+				} else {
+					commit('SET_SUBGROUPS', dataFromSrv.data);
+					return Promise.resolve(dataFromSrv.data.length);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-	LINK_GROUPS_SHEET: ({ commit, state }, id) => {
+	LINK_GROUPS_SHEET: ({ commit }, id) => {
 		const fetchQuery = {
 			url: 'groups',
 			method: 'POST',
 			params: {
 				group_id: id,
-			}
-		}
+			},
+		};
 
-		commit('UPDATE_VALUES_GROUPS_SHEET', { id, loadingButton: true })
+		commit('UPDATE_VALUES_GROUPS_SHEET', { id, loadingButton: true });
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'rejected_linkgroups') {
-				return Promise.resolve(0)
-			} else {
-				console.log('group linked')
-				commit('UPDATE_VALUES_GROUPS_SHEET', { id, friend: 1, loadingButton: false })
-				commit('RESET_INACTIVE_GROUPS_SHEET')
-			}
-		}).catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'rejected_linkgroups') {
+					return Promise.resolve(0);
+				} else {
+					console.log('group linked');
 
-			if (dbg) debugger
-		})
+					commit('UPDATE_VALUES_GROUPS_SHEET', { id, friend: 1, loadingButton: false });
+					commit('RESET_INACTIVE_GROUPS_SHEET');
+					return Promise.resolve(1);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-	UNLINK_GROUPS_SHEET: ({ commit, state }, id) => {
+	UNLINK_GROUPS_SHEET: ({ commit }, id) => {
 		const fetchQuery = {
 			url: 'groups',
 			method: 'DELETE',
 			params: {
-				group_id: id
-			}
-		}
+				group_id: id,
+			},
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'rejected_unlinkgroups') {
-				return Promise.resolve(0)
-			} else {
-				console.log('group unlinked')
-				commit('REMOVE_VALUES_GROUPS_SHEET', { id })
-				commit('RESET_INACTIVE_GROUPS_SHEET')
-			}
-		}).catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'rejected_unlinkgroups') {
+					return Promise.resolve(0);
+				} else {
+					console.log('group unlinked');
 
-			if (dbg) debugger
-		})
+					commit('REMOVE_VALUES_GROUPS_SHEET', { id });
+					commit('RESET_INACTIVE_GROUPS_SHEET');
+					return Promise.resolve(1);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-/* -------------------------------------TASKS SHEET action-------------------------------------- */
+	/* -------------------------------------TASKS SHEET action-------------------------------------- */
 
 	FETCH_TASKS: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+
+		let isRefresh = false;
+		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
+			activeSheet.limit = 10;
+			activeSheet.offset = 0;
+			isRefresh = true;
+		}
+
 		const fetchQuery = {
 			url: 'tasks',
 			method: 'GET',
 			params: {},
-			headers: { limit: activeSheet.limit, offset: activeSheet.offset, partid: ++taskPartID }
-		}
+			headers: { limit: activeSheet.limit, offset: activeSheet.offset, partid: ++taskPartID },
+		};
 
 		// apply global condition
-		for (const key in activeSheet.condition) {
-			if (activeSheet.condition[key] === null) continue
-
-			switch (key) {
-				case 'group_id':
-					fetchQuery.params.group_id = activeSheet.condition[key]
-					break
-				case 'user_id':
-					fetchQuery.params.user_id = activeSheet.condition[key]
-					break
-				case 'parent_id':
-					fetchQuery.params.parent_id = activeSheet.condition[key]
-					break
-				case 'task_id':
-					fetchQuery.params.task_id =  activeSheet.condition[key]
-					break
-				case 'searchText':
-					fetchQuery.params.searchText = activeSheet[key]
-					break
-				default:
-					break
+		Object.keys(activeSheet.condition).forEach(key => {
+			if (activeSheet.condition[key] !== null) {
+				switch (key) {
+					case 'group_id':
+						fetchQuery.params.group_id = activeSheet.condition[key];
+						break;
+					case 'user_id':
+						fetchQuery.params.user_id = activeSheet.condition[key];
+						break;
+					case 'parent_id':
+						fetchQuery.params.parent_id = activeSheet.condition[key];
+						break;
+					case 'task_id':
+						fetchQuery.params.task_id = activeSheet.condition[key];
+						break;
+					case 'searchText':
+						fetchQuery.params.searchText = activeSheet[key];
+						break;
+					default:
+						break;
+				}
 			}
-		}
+		});
 
 		// apply local condition
-		for (const key in options) {
-			if (key === 'sheet_id') continue
-
-			fetchQuery.params[key] = options[key]
-		}
+		Object.keys(options).forEach(key => {
+			if (key !== 'sheet_id' && key !== 'refresh') {
+				fetchQuery.params[key] = options[key];
+			}
+		});
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(0)
-			} else {
-				console.log(`actions partID: srv-${dataFromSrv.partid} glb-${taskPartID}`)
-				commit('SET_TASKS', { sheet_id: options.sheet_id, data: dataFromSrv.data })
-				return Promise.resolve(dataFromSrv.data.length)
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(0);
+				} else {
+					console.log(`actions partID: srv-${dataFromSrv.partid} glb-${taskPartID}`);
+					commit('SET_TASKS', {
+						sheet_id: options.sheet_id,
+						refresh: isRefresh,
+						data: dataFromSrv.data,
+					});
+					return Promise.resolve(dataFromSrv.data.length);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
 	/** Создание нового элемента в списке sheet принадлежащему множеству списков sheets по sheet_id
 	 * обязательные входящие опции: options = { sheet_id:string, isSubelement:bool, isStart:bool }
 	 */
 	CREATE_ELEMENT: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
-		const thisSheet = activeSheet.sheet
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		const thisSheet = activeSheet.sheet;
 
-		let group_id, parent_id = 0
+		let group_id;
+		let parent_id = 0;
 
 		/* Определим, что добавляется элемент или субэлемент */
 		if (options.isSubelement) {
-			const activeElement = recursiveFind(thisSheet, el => el.isActive).element
+			const activeElement = recursiveFind(thisSheet, el => el.isActive).element;
 			if (activeElement) {
 				if (activeElement.level < 3) {
-					parent_id = activeElement.task_id
-					group_id = activeElement.group_id
+					parent_id = activeElement.task_id;
+					group_id = activeElement.group_id;
 				} else {
-					return Promise.reject('Maximum is 3 levels')
+					return Promise.reject(new Error({ message: 'Maximum is 3 levels' }));
 				}
 			} else {
-				return Promise.reject('To add an unselected item')
+				return Promise.reject(new Error({ message: 'To add an unselected item' }));
 			}
 		} else {
 			if (thisSheet.length > 0) {
-				group_id = thisSheet[0].group_id
+				group_id = thisSheet[0].group_id;
 			} else {
 				/* Если список элементов пуст, найдем primary group в которую по-умолчанию добавим элемент */
-				group_id = state.mainGroups.find(el => el.group_type === 1).id
+				group_id = state.mainGroups.find(el => el.group_type === 1).id;
 			}
 		}
 
@@ -638,86 +675,90 @@ export default {
 			url: 'tasks',
 			method: 'POST',
 			params: {
-				group_id: group_id,
-				parent_id: parent_id,
+				group_id,
+				parent_id,
 				start: new Date().toISOString(),
-				isStart: options.isStart
-			}
-		}
+				isStart: options.isStart,
+			},
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(0)
-			} else {
-				console.log(`Actions add item recieve datas:`)
-				commit('SET_TASKS', { sheet_id: options.sheet_id, data: dataFromSrv.data, isStart: options.isStart })
-				return Promise.resolve(dataFromSrv.data.length)
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(0);
+				} else {
+					console.log(`Actions add item recieve datas:`);
 
-			if (dbg) debugger
-		})
+					commit('SET_TASKS', {
+						sheet_id: options.sheet_id,
+						data: dataFromSrv.data,
+						isStart: options.isStart,
+					});
+					return Promise.resolve(dataFromSrv.data.length);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
 	/** Удаление текущего элемента в списке sheet принадлежащему множеству списков sheets по sheet_id
 	 * обязательные входящие опции: options = { sheet_id:string }
 	 */
 	DELETE_ELEMENT: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
-		const thisSheet = activeSheet.sheet
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		const thisSheet = activeSheet.sheet;
 
-		let task_id = null, group_id = null
+		let task_id = null;
+		let group_id = null;
 
-		const activeElement = recursiveFind(thisSheet, el => el.isActive).element
+		const activeElement = recursiveFind(thisSheet, el => el.isActive).element;
 		if (activeElement) {
 			if (activeElement.havechild) {
-				return Promise.reject('I can not delete an element containing other elements')
+				return Promise.reject(
+					new Error({ message: 'I can not delete an element containing other elements' }),
+				);
 			}
 
-			task_id = activeElement.task_id
-			group_id = activeElement.group_id
+			task_id = activeElement.task_id;
+			group_id = activeElement.group_id;
 		} else {
-			return Promise.resolve('No item selected for deletion')
+			return Promise.resolve('No item selected for deletion');
 		}
 
 		const fetchQuery = {
 			url: 'tasks',
 			method: 'DELETE',
 			params: {
-				task_id: task_id,
-				group_id: group_id
-			}
-		}
+				task_id,
+				group_id,
+			},
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(false)
-			} else {
-				commit('DELETE_TASK', { sheet_id: options.sheet_id, task_id: task_id })
-				return Promise.resolve(true)
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(false);
+				} else {
+					commit('DELETE_TASK', { sheet_id: options.sheet_id, task_id });
+					return Promise.resolve(true);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
 	/** Перемещение элементов в списке sheet принадлежащему множеству списков sheets по sheet_id
@@ -731,70 +772,76 @@ export default {
 	 * - клиент ориентирует положение элемента относительно idx, сервер относительно id элементов
 	 * */
 	REORDER_TASKS: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
-		const taskSheet = activeSheet.sheet
-		if (options.fromParent_id === 0) options.fromParent_id = null
-		if (options.toParent_id === 0) options.toParent_id = null
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		const taskSheet = activeSheet.sheet;
+		if (options.fromParent_id === 0) options.fromParent_id = null;
+		if (options.toParent_id === 0) options.toParent_id = null;
 
-		let fromTask, toTask, fromParent, toParent, newGroupId,
-			isBefore = (options.oldIndex > options.newIndex)
+		let fromTask;
+		let toTask;
+		let fromParent;
+		let toParent;
+		let newGroupId;
+		let isBefore = options.oldIndex > options.newIndex;
 
 		if (options.fromParent_id === null) {
-			fromTask = taskSheet[options.oldIndex]
+			fromTask = taskSheet[options.oldIndex];
 		} else {
-			fromParent = recursiveFind(taskSheet, el => el.task_id === options.fromParent_id).element
-			fromTask = fromParent.children[options.oldIndex]
+			fromParent = recursiveFind(taskSheet, el => el.task_id === options.fromParent_id).element;
+			fromTask = fromParent.children[options.oldIndex];
 		}
-		fromTask.consistency = 1
+		fromTask.consistency = 1;
 
 		if (options.toParent_id === null) {
 			if (taskSheet.length === options.newIndex) {
-				toTask = taskSheet[options.newIndex - 1]
-				newGroupId = toTask.group_id
-				toTask = null
-				isBefore = true
+				toTask = taskSheet[options.newIndex - 1];
+				newGroupId = toTask.group_id;
+				toTask = null;
+				isBefore = true;
 			} else {
-				toTask = taskSheet[options.newIndex]
+				toTask = taskSheet[options.newIndex];
 				if (toTask.isDivider) {
-					newGroupId = toTask.group_id
+					newGroupId = toTask.group_id;
 					if (options.newIndex === 0) {
-						toTask = null
-						isBefore = false
+						toTask = null;
+						isBefore = false;
 					} else {
-						//Если элемент перемещается выше своей позиции, иначе ниже
+						// Если элемент перемещается выше своей позиции, иначе ниже
 						if (options.oldIndex > options.newIndex) {
-							toTask = taskSheet[options.newIndex - 1]
-							newGroupId = toTask.group_id
-							isBefore = false
+							toTask = taskSheet[options.newIndex - 1];
+							newGroupId = toTask.group_id;
+							isBefore = false;
 						} else {
 							if (taskSheet.length > options.newIndex + 1) {
-								isBefore = true
-								toTask = taskSheet[options.newIndex + 1]
+								isBefore = true;
+								toTask = taskSheet[options.newIndex + 1];
 							} else {
-								//достигнут конец списка
-								toTask = null
+								// Достигнут конец списка
+								toTask = null;
 							}
 						}
 					}
 				}
 			}
 		} else {
-			toParent = recursiveFind(taskSheet, el => el.task_id === options.toParent_id).element
+			toParent = recursiveFind(taskSheet, el => el.task_id === options.toParent_id).element;
 			if (!toParent.children || toParent.children.length === 0) {
-				toTask = null
-				newGroupId = fromTask.group_id
+				toTask = null;
+				newGroupId = fromTask.group_id;
 			} else {
 				if (toParent.children.length === options.newIndex) {
-					toTask = toParent.children[options.newIndex - 1]
+					toTask = toParent.children[options.newIndex - 1];
 				} else {
-					toTask = toParent.children[options.newIndex]
+					toTask = toParent.children[options.newIndex];
 				}
 
-				if ( ((fromTask.parent === null) && (toTask.parent !== null)) ||
-						 ((fromTask.parent !== null) && (toTask.parent === null)) ) {
-					newGroupId = fromTask.group_id
+				if (
+					(fromTask.parent === null && toTask.parent !== null) ||
+					(fromTask.parent !== null && toTask.parent === null)
+				) {
+					newGroupId = fromTask.group_id;
 				} else {
-					newGroupId = toTask.group_id
+					newGroupId = toTask.group_id;
 				}
 			}
 		}
@@ -803,27 +850,24 @@ export default {
 			т.к. вложенные элементы не содержат divider разделение по группам идёт только
 			в порядке сортировки элементов */
 		if (toTask !== null) {
-			if ( ((fromTask.parent !== null) && (toTask.parent !== null)) &&
-		  			(fromTask.parent === toTask.parent) ) {
+			if (fromTask.parent !== null && toTask.parent !== null && fromTask.parent === toTask.parent) {
 				if (fromTask.group_id !== toTask.group_id) {
-					fromTask.consistency = 0
-					return Promise.resolve(false)
+					fromTask.consistency = 0;
+					return Promise.resolve(false);
 				}
 			}
 		}
 
-		//Определим куда переместить задачау (до или после) при перемещении между разными родителями
+		// Определим куда переместить задачау (до или после) при перемещении между разными родителями
 		if (toTask !== null && options.toParent_id !== options.fromParent_id) {
 			if (fromTask.parent !== null && fromTask.parent === toTask) {
-				isBefore = true
+				isBefore = true;
 			} else {
 				if (toTask.parent === null) {
-					//Если до новой позиции сразу стоит разделитель группы, то ставим на позицию выше
-					//if (options.newIndex > 0 && taskSheet[options.newIndex - 1].isDivider) {
-						isBefore = true
-					//}
+					// Если до новой позиции сразу стоит разделитель группы, то ставим на позицию выше
+					isBefore = true;
 				} else {
-					isBefore = !(options.newIndex === toParent.children.length)
+					isBefore = !(options.newIndex === toParent.children.length);
 				}
 			}
 		}
@@ -841,15 +885,15 @@ export default {
 			// if (fromTask.parent && fromTask.parent.group_id !== fromTask.group_id) {
 			// }
 			if (fromTask.parent) {
-				toTask = fromTask.parent
-				isBefore = false
-				newGroupId = fromTask.parent.group_id
+				toTask = fromTask.parent;
+				isBefore = false;
+				newGroupId = fromTask.parent.group_id;
 			}
 		}
 
 		/* Серверу всегда необходимо передавать в запрос id группы новой позиции элемента */
 		if (newGroupId === undefined) {
-			newGroupId = toTask.group_id
+			newGroupId = toTask.group_id;
 		}
 
 		/* api сервера размещает элементы в списке по следующим правилам:
@@ -873,129 +917,143 @@ export default {
 			params: {
 				group_id: newGroupId,
 				task_id: fromTask.task_id,
-				position: (toTask === null) ? null : toTask.task_id,
-				isBefore: isBefore,
+				position: toTask === null ? null : toTask.task_id,
+				isBefore,
 				start: new Date().toISOString(),
-				parent_id: (toParent === undefined) ? 0 : toParent.task_id
+				parent_id: toParent === undefined ? 0 : toParent.task_id,
+			},
+		};
+
+		function recalculationDepth(el, level) {
+			let res = 0;
+			el.level = level;
+
+			if (el.children && el.children.length > 0) {
+				for (let i = 0; i < el.children.length; i++) {
+					let locRes = recalculationDepth(el.children[i], level + 1);
+					if (locRes > res) {
+						res = locRes;
+					}
+				}
+			} else {
+				res = level;
 			}
+
+			if (res) el.depth = res - level + 1;
+
+			return res;
 		}
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(false)
-			} else {
-				let movedItem
-
-				if (options.fromParent_id === null) {
-					movedItem = taskSheet.splice(options.oldIndex, 1)[0]
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(false);
 				} else {
-					movedItem = fromParent.children.splice(options.oldIndex, 1)[0]
-					fromParent.havechild--
-				}
+					let movedItem;
 
-				if (movedItem) movedItem.isShowed = true
-
-				if (options.toParent_id === null) {
-					taskSheet.splice((options.newIndex === 0) ? 1 : options.newIndex, 0, movedItem)
-				} else {
-					if (!toParent.children) {
-						Vue.set(toParent, 'children', new Array)
-						Vue.set(toParent.children, 0, movedItem)
-					} else if (toParent.children.length === options.newIndex) {
-						if (toParent.children.length > 0) {
-							toParent.children.splice(options.newIndex, 0, movedItem)
-						} else {
-							toParent.children.splice(0, 0, movedItem)
-						}
+					if (options.fromParent_id === null) {
+						movedItem = taskSheet.splice(options.oldIndex, 1)[0];
 					} else {
-						if (toParent.children[(options.newIndex > 0) ? options.newIndex - 1 : options.newIndex].group_id === movedItem.group_id) {
-							toParent.children.splice(options.newIndex, 0, movedItem)
-						} else {
-							toParent.children.splice(0, 0, movedItem)
-						}
+						movedItem = fromParent.children.splice(options.oldIndex, 1)[0];
+						fromParent.havechild--;
 					}
 
-					toParent.havechild++
-					toParent.isSubtaskExpanded = 2
-				}
+					if (movedItem) movedItem.isShowed = true;
 
-				movedItem.parent = (toParent) ? toParent : null
-
-				function recalculationDepth(el, level) {
-					let res = 0
-					el.level = level
-
-					if (el.children && el.children.length > 0) {
-						for (let i = 0; i < el.children.length; i++) {
-							let locRes = recalculationDepth(el.children[i], level + 1)
-							if (locRes > res) {
-								res = locRes
+					if (options.toParent_id === null) {
+						taskSheet.splice(options.newIndex === 0 ? 1 : options.newIndex, 0, movedItem);
+					} else {
+						if (!toParent.children) {
+							Vue.set(toParent, 'children', []);
+							Vue.set(toParent.children, 0, movedItem);
+						} else if (toParent.children.length === options.newIndex) {
+							if (toParent.children.length > 0) {
+								toParent.children.splice(options.newIndex, 0, movedItem);
+							} else {
+								toParent.children.splice(0, 0, movedItem);
+							}
+						} else {
+							if (
+								toParent.children[options.newIndex > 0 ? options.newIndex - 1 : options.newIndex]
+									.group_id === movedItem.group_id
+							) {
+								toParent.children.splice(options.newIndex, 0, movedItem);
+							} else {
+								toParent.children.splice(0, 0, movedItem);
 							}
 						}
+
+						toParent.havechild++;
+						toParent.isSubtaskExpanded = 2;
+					}
+
+					// eslint-disable-next-line
+					movedItem.parent = toParent ? toParent : null;
+
+					let tempParent;
+					let tempParentTwo;
+
+					if (fromParent) {
+						tempParent = fromParent;
+						while (tempParent.parent) {
+							tempParent = tempParent.parent;
+						}
+
+						if (tempParent) {
+							recalculationDepth(tempParent, 1, 0);
+						}
+					}
+
+					// eslint-disable-next-line
+					tempParentTwo = toParent ? toParent : movedItem;
+					while (tempParentTwo.parent) {
+						tempParentTwo = tempParentTwo.parent;
+					}
+
+					if (tempParentTwo) {
+						recalculationDepth(tempParentTwo, 1, 0);
 					} else {
-						res = level
+						recalculationDepth(movedItem, 1, 0);
 					}
 
-					if (res)
-						el.depth = (res - level) + 1
-
-					return res
-				}
-
-				let tempParent, tempParentTwo
-				if (fromParent) {
-					tempParent = fromParent
-					while(tempParent.parent) {
-						tempParent = tempParent.parent
+					// изменение значения группы на новую группу, если она задана
+					if (newGroupId !== undefined) {
+						commit('UPDATE_TASK_VALUES', {
+							sheet_id: options.sheet_id,
+							task_id: movedItem.task_id,
+							group_id: newGroupId,
+						});
+						commit('SET_ACTIVITY', {
+							sheet_id: options.sheet_id,
+							task_id: movedItem.task_id,
+							data: dataFromSrv.activity_data,
+						});
 					}
 
-					if (tempParent) {
-						recalculationDepth(tempParent, 1, 0)
-					}
+					movedItem.consistency = 0;
+					return Promise.resolve(true);
 				}
+			})
+			.catch(err => {
+				fromTask.consistency = 2;
 
-				tempParentTwo = (toParent) ? toParent : movedItem
-				while(tempParentTwo.parent) {
-					tempParentTwo = tempParentTwo.parent
-				}
-
-				if (tempParentTwo) {
-					recalculationDepth(tempParentTwo, 1, 0)
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
 				} else {
-					recalculationDepth(movedItem, 1, 0)
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
 				}
-
-				//изменение значения группы на новую группу, если она задана
-				if (newGroupId !== undefined) {
-					commit('UPDATE_TASK_VALUES', { sheet_id: options.sheet_id, task_id: movedItem.task_id, group_id: newGroupId })
-					commit('SET_ACTIVITY', { sheet_id: options.sheet_id, task_id: movedItem.task_id, data: dataFromSrv.activity_data })
-				}
-
-				movedItem.consistency = 0
-				return Promise.resolve(true)
-			}
-		})
-		.catch((err) => {
-			element.consistency = 2
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+			});
 	},
 
 	/** options = { sheet_id, task_id, group_id } */
 	UPDATE_TASK_GROUP: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id),
-		taskSheet = activeSheet.sheet,
-		element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element
-		element.consistency = 1
+		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		let taskSheet = activeSheet.sheet;
+		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
+
+		element.consistency = 1;
 
 		const fetchQuery = {
 			url: 'tasks/order',
@@ -1006,87 +1064,98 @@ export default {
 				position: null,
 				isBefore: false,
 				start: new Date().toISOString(),
-				parent_id: (element.parent) ? element.parent.task_id : 0
-			}
-		}
+				parent_id: element.parent ? element.parent.task_id : 0,
+			},
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(false)
-			} else {
-				let idxGroup = -1, idxTask = -1, movedItem
-				/* Для элементов первого уровня существуют разделы групп с задачами,
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(false);
+				} else {
+					let idxGroup = -1;
+					let idxTask = -1;
+					let movedItem;
+
+					/* Для элементов первого уровня существуют разделы групп с задачами,
 					 перемещение происходит по этим разделам
 					 Для уровней ниже применяется распределение по группам без разделов */
-				if (element.level === 1) {
-					/* Необходимо найти divider он будет являться началом размещения задачи в новой группе */
-					idxTask = taskSheet.findIndex(el => el.task_id == options.task_id)
-					movedItem = taskSheet.splice(idxTask, 1)[0]
+					if (element.level === 1) {
+						/* Необходимо найти divider он будет являться началом размещения задачи в новой группе */
+						idxTask = taskSheet.findIndex(el => el.task_id === options.task_id);
+						movedItem = taskSheet.splice(idxTask, 1)[0];
 
-					idxGroup = taskSheet.findIndex(el => (el.group_id === options.group_id && el.isDivider))
-					if (idxGroup === -1) {
-						const group = findGroup(state.mainGroups, options.group_id)
-						//Такой разделитель не найден, значит необходимо создать новый
-						idxGroup = taskSheet.push({ isDivider: true,
-							group_id: options.group_id,
-							name: group.name,
-							isActive: false })
-					}
-					idxGroup++
+						idxGroup = taskSheet.findIndex(el => el.group_id === options.group_id && el.isDivider);
+						if (idxGroup === -1) {
+							const group = findGroup(state.mainGroups, options.group_id);
+							// Такой разделитель не найден, значит необходимо создать новый
+							idxGroup = taskSheet.push({
+								isDivider: true,
+								group_id: options.group_id,
+								name: group.name,
+								isActive: false,
+							});
+						}
+						idxGroup++;
 
-					taskSheet.splice(idxGroup, 0, movedItem)
-				} else {
-					/* Для элементов последующих уровней необходимо найти самый первый элемент
+						taskSheet.splice(idxGroup, 0, movedItem);
+					} else {
+						/* Для элементов последующих уровней необходимо найти самый первый элемент
 						 принадлежащий искомой группе и поместить нашу задачу выше этого элемента */
-					idxTask = element.parent.children.findIndex(el => el.task_id == options.task_id)
-					movedItem = element.parent.children.splice(idxTask, 1)[0]
+						idxTask = element.parent.children.findIndex(el => el.task_id === options.task_id);
+						movedItem = element.parent.children.splice(idxTask, 1)[0];
 
-					idxGroup = element.parent.children.findIndex(el => (el.group_id === options.group_id))
-					idxGroup = (idxGroup === -1 || idxGroup === 0) ? 0 : idxGroup--
+						idxGroup = element.parent.children.findIndex(el => el.group_id === options.group_id);
+						idxGroup = idxGroup === -1 || idxGroup === 0 ? 0 : idxGroup--;
 
-					element.parent.children.splice(idxGroup, 0, movedItem)
+						element.parent.children.splice(idxGroup, 0, movedItem);
+					}
+
+					// изменение значения группы на новую группу
+					commit('UPDATE_TASK_VALUES', {
+						sheet_id: options.sheet_id,
+						task_id: movedItem.task_id,
+						group_id: options.group_id,
+					});
+					commit('SET_ACTIVITY', {
+						sheet_id: options.sheet_id,
+						task_id: movedItem.task_id,
+						data: dataFromSrv.activity_data,
+					});
+
+					movedItem.consistency = 0;
+					return Promise.resolve(true);
 				}
-
-				//изменение значения группы на новую группу
-				commit('UPDATE_TASK_VALUES', { sheet_id: options.sheet_id, task_id: movedItem.task_id, group_id: options.group_id })
-				commit('SET_ACTIVITY', { sheet_id: options.sheet_id, task_id: movedItem.task_id, data: dataFromSrv.activity_data })
-
-				movedItem.consistency = 0
-				return Promise.resolve(true)
-			}
-		})
-		.catch((err) => {
-			element.consistency = 2
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+			})
+			.catch(err => {
+				element.consistency = 2;
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
 	/** options = { sheet_id, task_id, ...values } */
 	UPDATE_TASK_VALUES: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id),
-					taskSheet = activeSheet.sheet,
-					element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element,
-					values = {}
+		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		let taskSheet = activeSheet.sheet;
+		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
+		let values = {};
 
-		element.consistency = 1
+		element.consistency = 1;
 
-		for (const key in options) {
-			if (key === 'task_id' || key === 'sheet_id') continue
-
-			if (element.hasOwnProperty(key)) {
-				values[key] = options[key]
-				element[key] = options[key]
+		Object.keys(options).forEach(key => {
+			if (key !== 'task_id' && key !== 'sheet_id') {
+				if (Object.prototype.hasOwnProperty.call(element, key)) {
+					values[key] = options[key];
+					element[key] = options[key];
+				}
 			}
-		}
+		});
 
 		const fetchQuery = {
 			url: 'tasks',
@@ -1094,183 +1163,181 @@ export default {
 			params: {
 				task_id: options.task_id,
 			},
-			data: querystring.stringify(values)
-		}
+			data: querystring.stringify(values),
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(false)
-			} else {
-				//изменение значения группы на новую группу
-				//commit('UPDATE_TASK_VALUES', options)
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(false);
+				} else {
+					// изменение значения группы на новую группу
+					// commit('UPDATE_TASK_VALUES', options)
 
-				element.consistency = 0
-				return Promise.resolve(true)
-			}
-		})
-		.catch((err) => {
-			element.consistency = 2
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+					element.consistency = 0;
+					return Promise.resolve(true);
+				}
+			})
+			.catch(err => {
+				element.consistency = 2;
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
 	ADD_TASK_CONTEXT: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id),
-					taskSheet = activeSheet.sheet,
-					element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element,
-					values = {}
+		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		let taskSheet = activeSheet.sheet;
+		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
+		let values = {};
 
-		element.consistency = 1
+		element.consistency = 1;
 
 		if ('context_id' in options) {
-			values.context_id = options.context_id
+			values.context_id = options.context_id;
 		}
 
 		if ('context_value' in options) {
-			values.context_value = options.context_value
+			values.context_value = options.context_value;
 		}
 
 		const fetchQuery = {
 			url: 'contexts',
 			method: 'POST',
 			params: {
-				task_id: options.task_id
+				task_id: options.task_id,
 			},
-			data: querystring.stringify(values)
-		}
+			data: querystring.stringify(values),
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			element.consistency = 0
+			.then(dataFromSrv => {
+				element.consistency = 0;
 
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(false)
-			} else {
-				const data = Object.assign({}, dataFromSrv.data)
-				data.sheet_id = options.sheet_id
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(false);
+				} else {
+					const data = Object.assign({}, dataFromSrv.data);
+					data.sheet_id = options.sheet_id;
 
-				commit('ADD_TASK_CONTEXT', data)
-				return Promise.resolve(true)
-			}
-		})
-		.catch((err) => {
-			element.consistency = 2
+					commit('ADD_TASK_CONTEXT', data);
+					return Promise.resolve(true);
+				}
+			})
+			.catch(err => {
+				element.consistency = 2;
 
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-	REMOVE_TASK_CONTEXT: ({commit, state}, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id),
-					taskSheet = activeSheet.sheet,
-					element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element,
-					values = {}
+	REMOVE_TASK_CONTEXT: ({ commit, state }, options) => {
+		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		let taskSheet = activeSheet.sheet;
+		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
+		let values = {};
 
-		element.consistency = 1
+		element.consistency = 1;
 
 		if ('context_id' in options) {
-			values.context_id = options.context_id
+			values.context_id = options.context_id;
 		}
 
 		const fetchQuery = {
 			url: 'contexts',
 			method: 'DELETE',
 			params: {
-				task_id: options.task_id
+				task_id: options.task_id,
 			},
-			data: querystring.stringify(values)
-		}
+			data: querystring.stringify(values),
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			element.consistency = 0
+			.then(dataFromSrv => {
+				element.consistency = 0;
 
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(false)
-			} else {
-				const data = Object.assign({}, dataFromSrv.data)
-				data.sheet_id = options.sheet_id
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(false);
+				} else {
+					const data = Object.assign({}, dataFromSrv.data);
+					data.sheet_id = options.sheet_id;
 
-				commit('REMOVE_TASK_CONTEXT', data)
-				return Promise.resolve(true)
-			}
-		})
-		.catch((err) => {
-			element.consistency = 2
+					commit('REMOVE_TASK_CONTEXT', data);
+					return Promise.resolve(true);
+				}
+			})
+			.catch(err => {
+				element.consistency = 2;
 
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-/* ------------------------------------ACTIVITY SHEET action------------------------------------ */
+	/* ----------------------------------ACTIVITY SHEET actions----------------------------------- */
 
-	/** options = { sheet_id, task_id } */
+	/**
+	 * @func FETCH_ACTIVITY
+	 * @param { VUEX action parametres: Object }
+	 * @param { { sheet_id, task_id }: Object } - options
+	 * @returns { function(...args): Promise }
+	 * @description Функция для получения списка активностей с сервера
+	 */
 	FETCH_ACTIVITY: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id),
-			taskSheet = activeSheet.sheet,
-			element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element
+		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		let taskSheet = activeSheet.sheet;
+		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
 
-		if (!element) return Promise.reject(null)
-		element.consistency = 1
+		if (!element) return Promise.reject(new Error({ message: 'task element not found' }));
+		element.consistency = 1;
 
 		const fetchQuery = {
 			url: 'activity',
 			method: 'GET',
-			params: { task_id: element.task_id,	type_el: 2 },
-			headers: { limit: 100, offset: 0 }
-		}
+			params: { task_id: element.task_id, type_el: 2 },
+			headers: { limit: 100, offset: 0 },
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(null)
-			} else {
-				element.consistency = 0
-				commit('SET_ACTIVITY', { sheet_id: options.sheet_id, data: dataFromSrv.data })
-				return Promise.resolve(dataFromSrv.data.length)
-			}
-		})
-		.catch((err) => {
-			element.consistency = 2
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(null);
+				} else {
+					element.consistency = 0;
+					commit('SET_ACTIVITY', { sheet_id: options.sheet_id, data: dataFromSrv.data });
+					return Promise.resolve(dataFromSrv.data.length);
+				}
+			})
+			.catch(err => {
+				element.consistency = 2;
 
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-	/***
+	/**
 	 * @func CREATE_ACTIVITY_ELEMENT
 	 * @param { VUEX action parametres: Object }
 	 * @param { { sheet_id, task_id, ...other options }: Object } - options
@@ -1293,78 +1360,83 @@ export default {
 	 * 	чением "start" равным "options.start". Активность создается в DB.
 	 * 	3) Пересчитывается значение "duration" у задач из пункта 1 и 2. Обновляются ста-
 	 * 	тусы иконок
-	*/
+	 */
 	CREATE_ACTIVITY_ELEMENT: ({ commit, state }, options) => {
-		//Получим элемент задачи относительно которой добавляется активность
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id)
-		const thisSheet = activeSheet.sheet
-		const activeElement = recursiveFind(thisSheet, el => el.task_id === options.task_id).element
+		// Получим элемент задачи относительно которой добавляется активность
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		const thisSheet = activeSheet.sheet;
+		const activeElement = recursiveFind(thisSheet, el => el.task_id === options.task_id).element;
 
-		let status, start, group_id = activeElement.group_id
-		activeElement.consistency = 1
+		let status;
+		let start;
+		let group_id = activeElement.group_id;
 
-		//Определим меняется ли статус задачи или это обычное добавление активности
-		//Т.к. статус должен обязательно включать время смены, то заранее его зададим
-		if (options.hasOwnProperty('status')) {
-			status = options.status
-			start = new Date().toISOString()
+		activeElement.consistency = 1;
+
+		// Определим меняется ли статус задачи или это обычное добавление активности
+		// Т.к. статус должен обязательно включать время смены, то заранее его зададим
+		if (Object.prototype.hasOwnProperty.call(options, 'status')) {
+			status = options.status;
+			start = new Date().toISOString();
 		}
 
-		//Убедимся не было ли передано иное время смены, отличное от автоматического
-		if (options.hasOwnProperty('start')) {
-			values.start = options.start
+		// Убедимся не было ли передано иное время смены, отличное от автоматического
+		if (Object.prototype.hasOwnProperty.call(options, 'start')) {
+			start = options.start;
 		}
 
 		const fetchQuery = {
 			url: 'activity',
 			method: 'POST',
 			params: {
-				group_id: group_id,
+				group_id,
 				type_el: 2,
 				task_id: activeElement.task_id,
-				start: start,
-				status: status
-			}
-		}
+				start,
+				status,
+			},
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(null)
-			} else {
-				activeElement.consistency = 0
-				commit('SET_ACTIVITY', { sheet_id: options.sheet_id, task_id: options.task_id, data: dataFromSrv.data })
-				return Promise.resolve(dataFromSrv.data.length)
-			}
-		})
-		.catch((err) => {
-			activeElement.consistency = 2
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(null);
+				} else {
+					activeElement.consistency = 0;
+					commit('SET_ACTIVITY', {
+						sheet_id: options.sheet_id,
+						task_id: options.task_id,
+						data: dataFromSrv.data,
+					});
+					return Promise.resolve(dataFromSrv.data.length);
+				}
+			})
+			.catch(err => {
+				activeElement.consistency = 2;
 
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-	// options - { id, field, value }
-	UPDATE_SHEETS_VALUES: ({ commit, state }, options) => {
-		const values = {}
+	/* --------------------------------------SHEETS actions--------------------------------------- */
 
-		if (options.field === 'visible') {
-			if (options.values === true) {
-				commit('UPDATE_QUEUE', { sheet_id: options.id })
-			}
-		} else if (options.field === 'condition') {
+	/**
+	 * @func UPDATE_SHEETS_VALUES
+	 * @param { VUEX action parametres: Object }
+	 * @param { { id, field, value }: Object } - options
+	 * @returns { function(...args): Promise }
+	 * @description Функция для обновление элементов в списке
+	 */
+	UPDATE_SHEETS_VALUES: ({ commit, dispatch }, options) => {
+		const values = {};
 
-		}
-
-		values[options.field] = options.value
+		values[options.field] = options.value;
 
 		const fetchQuery = {
 			url: 'sheets',
@@ -1372,132 +1444,187 @@ export default {
 			params: {
 				id: options.id,
 			},
-			data: querystring.stringify(values)
-		}
+			data: qs.stringify(values),
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(false)
-			} else {
-				commit('UPDATE_SHEETS_VALUES', dataFromSrv.data)
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(false);
+				}
 
-				return Promise.resolve(true)
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
+				commit('UPDATE_SHEETS_VALUES', dataFromSrv.data);
 
-			if (dbg) debugger
-		})
+				let needUpdateSheet = false;
+				Array.prototype.forEach.call(dataFromSrv.data, dataItem => {
+					/* Если изменились найстройки фильтров sheet, тогда необходимо запросить данные для sheet
+						по новой у сервера */
+					if (Object.prototype.hasOwnProperty.call(dataItem, 'condition')) {
+						needUpdateSheet = true;
+					}
+
+					/* Так же sheet обновляется полностью, когда у него включается visible. Связанное обновление
+						смежных sheet происходит только для видимых sheet */
+					if (Object.prototype.hasOwnProperty.call(dataItem, 'visible') && dataItem.visible) {
+						needUpdateSheet = true;
+					}
+				});
+
+				if (needUpdateSheet) {
+					commit('ADD_QUEUE', { sheet_id: options.id, method: 'refresh' });
+					dispatch('UPDATE_QUEUE', 3);
+				}
+
+				return Promise.resolve(true);
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-	/***
+	/**
 	 * @func CREATE_SHEET_ELEMENT
 	 * @param { VUEX action parametres: Object }
 	 * @param { { type_el, layout, name, visible }: Object } - options
 	 * @returns { function(...args): Promise }
 	 * @description Функция для создания списка элементов
-	*/
+	 */
 	CREATE_SHEET_ELEMENT: ({ commit }, options) => {
-		const values = Object.assign({}, options)
+		const values = Object.assign({}, options);
 
 		const fetchQuery = {
 			url: 'sheets',
 			method: 'POST',
 			params: {},
-			data: querystring.stringify(values)
-		}
+			data: querystring.stringify(values),
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(false)
-			} else {
-				commit('SHEETS_SUCCESS', dataFromSrv.data)
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(false);
+				} else {
+					commit('SHEETS_SUCCESS', dataFromSrv.data);
 
-				return Promise.resolve(true)
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+					return Promise.resolve(true);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-	/***
+	/**
 	 * @func DELETE_SHEET_ELEMENT
 	 * @param { VUEX action parametres: Object }
 	 * @param { { id }: Object } - options
 	 * @returns { function(...args): Promise }
 	 * @description Функция для удаления списка элементов
-	*/
+	 */
 	DELETE_SHEET_ELEMENT: ({ commit }, options) => {
 		const fetchQuery = {
 			url: 'sheets',
 			method: 'DELETE',
 			params: {
-				id: options.id
+				id: options.id,
 			},
-		}
+		};
 
 		return fetchSrv(fetchQuery)
-		.then((dataFromSrv) => {
-			if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-				return Promise.resolve(false)
-			} else {
-				commit('DELETE_SHEET_ELEMENT', dataFromSrv.data)
+			.then(dataFromSrv => {
+				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
+					return Promise.resolve(false);
+				} else {
+					commit('DELETE_SHEET_ELEMENT', dataFromSrv.data);
 
-				return Promise.resolve(true)
-			}
-		})
-		.catch((err) => {
-			if (err.response.data) {
-				commit('API_ERROR', { message: err.message, data: err.response.data })
-				return Promise.reject({ message: err.message, data: err.response.data })
-			} else {
-				commit('API_ERROR', { message: err.message, data: null })
-				return Promise.reject({ message: err.message, data: null })
-			}
-
-			if (dbg) debugger
-		})
+					return Promise.resolve(true);
+				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
 	},
 
-	//*** Other actions */
-  ENSURE_TGMUSER_ACTIVE_ITEMS: ({ dispatch, getters }) => {
-    return dispatch('FETCH_TGMUSER_ITEMS', {
-      ids: getters.activeIds
-    })
-  },
+	/* ---------------------------------------QUEUE actions--------------------------------------- */
 
-  // ensure data for rendering given  type
-  FETCH_LIST_DATA: ({ commit, dispatch, state }, { type }) => {
-    commit('SET_ACTIVE_TYPE', { type })
+	/**
+	 * @func UPDATE_QUEUE
+	 * @param { VUEX action parametres: Object }
+	 * @param { Number } - limit количество элементов в очереди обрабатываемых за один вызов
+	 * @returns { function(...args): Promise }
+	 * @description Функция для обработки очереди actions
+	 */
+	UPDATE_QUEUE: ({ commit, dispatch, state }, limit) => {
+		let queueLimit = 0;
+		let promiseResult = false;
 
-    if (type == 'tgmUsers') {
-      return fetchTgmUserIds(type)
-      .then(ids => commit('SET_LIST', { type, ids }))
-      .then(() => dispatch('ENSURE_TGMUSER_ACTIVE_ITEMS'))
-    } else {
-      /*
-      return fetchIdsByType(type)
-        .then(ids => commit('SET_LIST', { type, ids }))
-        .then(() => dispatch('ENSURE_ACTIVE_ITEMS'))
-      */
-    }
-  },
-}
+		/* Опрос очереди с проверкой состояния actions в очереди, у каждого action есть параметр
+			processed указывающий на то что action находится в асинхронном потоке обработки и пока
+			не переключится в состояние false, нет нужды его обрабатывать.
+			Асинхронно можно запустить не больше limit */
+
+		for (let i = 0; i < state.updateQueue.length; i++) {
+			if (queueLimit === limit) {
+				// выбрасывается null, как индикатор что с очередью ничего не сделано
+				return Promise.resolve(promiseResult);
+			}
+			queueLimit++;
+
+			let queue = state.updateQueue[i];
+			if (!queue.processed) {
+				// Установка флага обработки и запуск элемента очереди на обработку
+				queue.processed = true;
+
+				if (queue.method === 'refresh') {
+					// Обработка метода refresh, который говорит о необходимости обновить элементы в sheets
+					let thisSheet = state.sheets.find(el => el.sheet_id === queue.sheet_id);
+					if (thisSheet) {
+						/* Вообще так менять значения store у vue нельзя, для этого рекомендуется использовать
+							mutations, будем считать это техническим долгом */
+
+						// thisSheet.limit = 10;
+						// thisSheet.offset = 0;
+
+						// Для соответсвующего типа sheet, вызывается свой асинхронный метод
+						if (thisSheet.type_el === 'tasks-sheet') {
+							promiseResult = true;
+
+							dispatch('FETCH_TASKS', { sheet_id: thisSheet.sheet_id, refresh: true })
+								.then(() => {
+									// Метод успешно выполнился, элемент удаляется из очереди
+									commit('DELETE_QUEUE', queue.id);
+								})
+								.catch(err => {
+									// eslint-disable-next-line
+									dbg && console.warn(err);
+
+									return Promise.reject(err);
+								});
+						}
+					}
+				}
+			}
+		}
+
+		// выбрасывается null, как индикатор что с очередью ничего не сделано
+		return Promise.resolve(promiseResult);
+	},
+};
