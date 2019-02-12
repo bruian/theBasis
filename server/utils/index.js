@@ -1,9 +1,10 @@
-import neh from 'nodemailer-express-handlebars';
-import path from 'path';
+// import neh from 'nodemailer-express-handlebars';
+// import path from 'path';
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
-import configPrivate from '../config-private';
+// import nodemailer from 'nodemailer';
+// import configPrivate from '../config-private';
 
+/*
 const email = configPrivate.email.address || 'auth_email_address@gmail.com';
 const passw = configPrivate.email.password || 'auth_email_pass';
 const provider = configPrivate.email.provider || 'Gmail';
@@ -25,6 +26,19 @@ const handlebarsOptions = {
 smtpTransport.use('compile', neh(handlebarsOptions));
 
 module.exports.smtpTransport = smtpTransport;
+*/
+
+/**
+ * Return a random int, used by `utils.getUid()`.
+ *
+ * @param {Number} min
+ * @param {Number} max
+ * @return {Number}
+ * @api private
+ */
+function getRandomInt(min, max) {
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
 /**
  * Return a unique identifier with the given `len`.
@@ -61,18 +75,6 @@ module.exports.validateEmail = value => {
 module.exports.randomToken = () => {
 	return crypto.randomBytes(32).toString('hex');
 };
-
-/**
- * Return a random int, used by `utils.getUid()`.
- *
- * @param {Number} min
- * @param {Number} max
- * @return {Number}
- * @api private
- */
-function getRandomInt(min, max) {
-	return Math.floor(Math.random() * (max - min + 1)) + min;
-}
 
 /**
  * Returns various elements when comparing two arrays

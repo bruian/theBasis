@@ -1,6 +1,8 @@
 import Vue from 'vue';
 import { recursiveFind, findGroup, typeForSheet, conditionsForSheet } from '../util/helpers';
 
+const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
+
 /* use only for api srv mutations */
 function setApiStatus(state, status, error) {
 	if (state.logStatus) {
@@ -15,20 +17,29 @@ export default {
 	},
 
 	/* Authentication mutations */
-	AUTH_REQUEST: state => {
-		setApiStatus(state, 'AUTH_REQUEST', null);
+	AUTH_SUCCESS: (state, data) => {
+		storage.setItem('token', data.token);
+		storage.setItem('refreshToken', data.refreshToken);
+
+		state.auth.token = data.token;
+		state.auth.refreshToken = data.refreshToken;
 	},
 
-	AUTH_SUCCESS: (state, token) => {
-		setApiStatus(state, 'AUTH_SUCCESS', null);
+	AUTH_REFRESH_SUCCESS: (state, data) => {
+		storage.setItem('token', data.token);
+		storage.setItem('refreshToken', data.refreshToken);
 
-		state.auth.token = token;
+		state.auth.token = data.token;
+		state.auth.refreshToken = data.refreshToken;
 	},
 
 	AUTH_LOGOUT: state => {
-		setApiStatus(state, 'AUTH_LOGOUT', null);
+		storage.removeItem('token');
+		storage.removeItem('refreshToken');
 
 		state.auth.token = null;
+		state.auth.refreshToken = null;
+
 		state.mainUser = Object.assign({}, state.default.mainUser);
 		state.theUser = {};
 		state.theGroup = {};
@@ -55,17 +66,18 @@ export default {
 		state.usersSheetMy.offset = 0;
 		state.usersSheetGroup.sheet = [];
 		state.usersSheetGroup.offset = 0;
+
+		state.selectedSheet = null;
+		state.sheets = [];
 	},
 
 	/* Registration mutations */
-	REG_REQUEST: state => {
-		setApiStatus(state, 'REG_REQUEST', null);
-	},
+	REG_SUCCESS: (state, data) => {
+		storage.setItem('token', data.token);
+		storage.setItem('refreshToken', data.refreshToken);
 
-	REG_SUCCESS: (state, token) => {
-		setApiStatus(state, 'REG_SUCCESS', null);
-
-		state.auth.token = token;
+		state.auth.token = data.token;
+		state.auth.refreshToken = data.refreshToken;
 	},
 
 	/* Main mutations */

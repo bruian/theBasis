@@ -1,5 +1,4 @@
 <template>
-	<!-- v-bind:value="value" -->
 	<v-dialog v-model="localValue" width="500px">
 		<v-card class="elevation-12">
 			<v-toolbar dark color="primary" v-if="formState < 2">
@@ -232,24 +231,23 @@ export default {
 			this.message = ''
 
 			if (this.formState) {
-				this.$store.dispatch('REG_REQUEST', { username: email, email, password })
+				this.$store.dispatch('REG_REQUEST', { email, password })
 				.then(() => {
 					this.fetching = false
 					this.formState = 2
 				})
 				.catch((err) => {
-					this.message = err.error_description
+					this.message = err.message
 					this.fetching = false
 				})
 			} else {
-				this.$store.dispatch('AUTH_REQUEST', { username: email, password })
+				this.$store.dispatch('AUTH_REQUEST', { email, password })
 				.then(() => {
 					this.fetching = false
 					this.$emit('input', false)
-					//this.$router.push('/')
 				})
 				.catch((err) => {
-					this.message = err.error_description
+					this.message = err.message
 					this.fetching = false
 				})
 			}

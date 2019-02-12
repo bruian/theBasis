@@ -1,7 +1,9 @@
 import Vue from 'vue';
-import querystring from 'querystring';
 import qs from 'qs';
+import querystring from 'querystring';
+import { decode } from 'jsonwebtoken';
 import config from '../config';
+
 import { recursiveFind, findGroup } from '../util/helpers';
 
 const dbg = !!config.DEBUG_API;
@@ -44,22 +46,82 @@ const mainPacket = [
 ];
 
 function getTokensFromSessionStorage() {
-	const tokens = { access_token: '', refresh_token: '' };
-	if (storage && storage.getItem('access_token')) {
-		tokens.access_token = storage.getItem('access_token');
+	const tokens = { token: '', refreshToken: '' };
+	if (storage && storage.getItem('token')) {
+		tokens.token = storage.getItem('token');
 	}
 
-	if (storage && storage.getItem('refresh_token')) {
-		tokens.refresh_token = storage.getItem('refresh_token');
+	if (storage && storage.getItem('refreshToken')) {
+		tokens.refreshToken = storage.getItem('refreshToken');
 	}
 
 	return tokens;
 }
 
-async function fetchSrv(query, commit) {
+/**
+ * @func getTokens
+ * @returns {Object} - access and refresh tokens
+ * @description Функция выдаёт токены авторизации для каждого запроса к API, а так же проверяет
+ * срок жизни выдаваемых токенов и если срок истекает, то обновляет их запросом к аутентификационному
+ * API и выдаёт уже обновлённые токены. В случае неудачи бросает exception.
+ * В итоге имеется 3 сценария:
+ * 1) Извлечение токенов из хранилища и проверка их жизненного срока. В случае валидности, токен
+ * возвращается вызывающей функции.
+ * 2) Для access токенов, чей срок истёк делается refresh запрос к серверу Auth. В случае получения
+ * новых токенов, они сохраняются в хранилище и возвращаются вызывающей функции.
+ * 3) Если попытка обновления не удалась, тогда выбрасывается exception, а вызывающая функция дожна
+ * принять и обработать такой exception операцией logout
+ */
+async function getTokens(commit) {
+	let tokens = getTokensFromSessionStorage();
+	const decodedToken = decode(tokens.token);
+
+	if (!decodedToken) {
+		throw new Error('Invalid tokens');
+	}
+
+	if (new Date() / 1000 >= decodedToken.exp) {
+		const axiosData = {
+			url: 'http://178.32.120.216/auth/refresh',
+			method: 'POST',
+			headers: {
+				'content-type': 'application/x-www-form-urlencoded',
+			},
+			data: qs.stringify({
+				refreshToken: tokens.refreshToken,
+			}),
+		};
+
+		try {
+			const newTokens = await Vue.axios(axiosData);
+			commit('AUTH_REFRESH_SUCCESS', newTokens.data);
+
+			tokens = Object.assign({}, newTokens.data);
+		} catch (err) {
+			throw err;
+		}
+	}
+
+	return tokens;
+}
+
+async function fetchSrv(query, commit, argTokens) {
+	let tokens;
+	try {
+		if (argTokens) {
+			tokens = Object.assign({}, argTokens);
+		} else {
+			tokens = await getTokens(commit);
+		}
+	} catch (err) {
+		commit('AUTH_LOGOUT');
+
+		throw err;
+	}
+
 	const headers = {
 		'content-type': 'application/x-www-form-urlencoded',
-		Authorization: `Bearer ${getTokensFromSessionStorage().access_token}`,
+		Authorization: `Bearer ${tokens.token}`,
 	};
 
 	let axiosData = Object.assign({}, query);
@@ -72,29 +134,19 @@ async function fetchSrv(query, commit) {
 
 	try {
 		let dataFromSrv = await Vue.axios(axiosData);
-		if (
-			dataFromSrv.data.action &&
-			(dataFromSrv.data.action === 'token' || dataFromSrv.data.action === 'refreshed')
-		) {
-			storage.setItem('access_token', dataFromSrv.data.access_token);
-			commit('AUTH_SUCCESS', dataFromSrv.data.access_token);
-
-			// have received a new token and do it again for our data
-			axiosData.headers.Authorization = `Bearer ${dataFromSrv.data.access_token}`;
-			dataFromSrv = await Vue.axios(axiosData);
-		}
 
 		return Promise.resolve(dataFromSrv.data);
 	} catch (err) {
+		debugger;
 		if (Array.isArray(err.response.data) && err.response.data.length > 0) {
 			commit('API_ERROR', err.response.data);
 
-			if (err.response.data[0].action && err.response.data[0].action === 'error') {
-				if (err.response.data[0].name === 'TokenExpiredError') {
-					storage.removeItem('access_token');
-					commit('AUTH_LOGOUT');
-				}
-			}
+			// if (err.response.data[0].action && err.response.data[0].action === 'error') {
+			// 	if (err.response.data[0].name === 'TokenExpiredError') {
+			// 		storage.removeItem('token');
+			// 		commit('AUTH_LOGOUT');
+			// 	}
+			// }
 		}
 
 		throw err;
@@ -110,64 +162,54 @@ export default {
 
 	AUTH_REQUEST: ({ commit, dispatch }, user) => {
 		return new Promise((resolve, reject) => {
-			let axiosData = {};
+			const bodyData = {
+				email: user.email,
+				password: user.password,
+				client: 'browser:inTask',
+			};
 
-			if (user.verifytoken) {
-				axiosData = {
-					url: 'oauth2/verifytoken',
-					method: 'POST',
-					headers: {
-						'content-type': 'application/x-www-form-urlencoded',
-						Authorization: `Bearer ${user.verifytoken}`,
-					},
-				};
-			} else {
-				const bodyData = {
-					grant_type: 'password',
-					scope: '*',
-					client_name: 'WebBrowser',
-				};
-
-				axiosData = {
-					url: 'oauth2/login',
-					data: bodyData,
-					method: 'POST',
-					auth: user,
-				};
-			}
-
-			commit('AUTH_REQUEST');
+			const axiosData = {
+				url: 'http://178.32.120.216/auth/login',
+				data: qs.stringify(bodyData),
+				method: 'POST',
+				headers: {
+					'content-type': 'application/x-www-form-urlencoded',
+				},
+			};
 
 			Vue.axios(axiosData)
 				.then(res => {
-					const token = res.data;
-
-					storage.setItem('access_token', token.access_token);
-					commit('AUTH_SUCCESS', token.access_token);
+					commit('AUTH_SUCCESS', res.data);
 
 					// we have token, then we can log in user
 					dispatch('MAINUSER_REQUEST');
-					resolve(res);
+					return resolve(res);
 				})
 				.catch(err => {
-					let errorData = {};
+					debugger;
+					let errorData = {
+						message: 'Упс! Неожиданная ошибка сервера!',
+						caller: 'REG_REQUEST',
+					};
+
 					if (err.response) {
-						errorData = err.response.data;
-					} else {
-						errorData.name = err.name;
-						switch (err.name) {
-							case 'InvalidCharacterError':
-								errorData.error_description =
-									'Неверный пароль. Используйте для пароля латинские символы.';
+						switch (err.response.data) {
+							case 'UserNotFound':
+								errorData.message = 'Не найден пользователь с таким e-mail';
+								break;
+							case 'UserConditionWrongEmail':
+								errorData.message = 'Неверно задан e-mail. Такое бывает, проверьте внимательнее.';
+								break;
+							case 'NotMatchingPassword':
+								errorData.message = 'Не верный пароль';
 								break;
 							default:
-								errorData.error_description = 'Unknown error';
+								errorData.message = err.response.data;
 						}
 					}
 
 					commit('API_ERROR', errorData);
-					storage.removeItem('access_token');
-					reject(errorData);
+					return reject(errorData);
 				});
 		});
 	},
@@ -175,47 +217,51 @@ export default {
 	/* Registration actions */
 	REG_REQUEST: ({ commit }, userData) => {
 		return new Promise((resolve, reject) => {
-			const payload = {
-				username: '',
-				scope: '*',
-				client_name: 'WebBrowser',
-			};
-			const bodyData = Object.assign(payload, userData);
+			const bodyData = Object.assign(
+				{
+					client: 'browser:inTask',
+					redirectUri: 'http://192.168.1.37:8080/',
+				},
+				userData,
+			);
+
 			let axiosData = {
-				url: 'oauth2/registration',
-				data: bodyData,
+				url: 'http://178.32.120.216/auth/registration',
+				data: qs.stringify(bodyData),
 				method: 'POST',
 			};
 
-			commit('REG_REQUEST');
-
 			Vue.axios(axiosData)
 				.then(res => {
-					const token = res.data;
+					commit('REG_SUCCESS', res.data);
 
-					storage.setItem('access_token', token.access_token);
-					commit('REG_SUCCESS', token.access_token);
-					resolve(res);
+					return resolve(true);
 				})
 				.catch(err => {
-					let errorData = {};
+					let errorData = {
+						message: 'Упс! Неожиданная ошибка сервера!',
+						caller: 'REG_REQUEST',
+					};
+
 					if (err.response) {
-						errorData = err.response.data;
-					} else {
-						errorData.name = err.name;
-						switch (err.name) {
-							case 'InvalidCharacterError':
-								errorData.error_description =
-									'Неверный пароль. Используйте для пароля латинские символы.';
+						switch (err.response.data) {
+							case 'UserConditionNotValid':
+								errorData.message = 'Необходимо заполнить поля email и password';
+								break;
+							case 'UserConditionWrongEmail':
+								errorData.message = 'Неверно задан e-mail. Такое бывает, проверьте внимательнее.';
+								break;
+							case 'UserIsExists':
+								errorData.message =
+									'Пользователь с таким e-mail уже существует. Если вы не регистрировались ранее, то рекомендуется обратитесь в службу поддержки help@intask.me';
 								break;
 							default:
-								errorData.error_description = 'Unknown error';
+								errorData.message = err.response.data;
 						}
 					}
 
 					commit('API_ERROR', errorData);
-					storage.removeItem('access_token');
-					reject(errorData);
+					return reject(errorData);
 				});
 		});
 	},
@@ -224,50 +270,102 @@ export default {
 	AUTH_LOGOUT: ({ commit, state }) => {
 		return new Promise((resolve, reject) => {
 			const axiosData = {
-				url: 'oauth2/logout',
-				method: 'GET',
+				url: 'http://178.32.120.216/auth/logout',
+				method: 'POST',
 				headers: {
 					'content-type': 'application/x-www-form-urlencoded',
 					Authorization: `Bearer ${state.auth.token}`,
 				},
 			};
 
-			commit('AUTH_REQUEST');
-
 			Vue.axios(axiosData)
-				.then(res => {
-					storage.removeItem('access_token');
+				.then(() => {
 					commit('AUTH_LOGOUT');
 
 					// we have token, then we can log in user
-					resolve(res);
+					return resolve(true);
 				})
 				.catch(err => {
-					commit('API_ERROR', err.response.data);
+					let errorData = {
+						message: 'Упс! Неожиданная ошибка сервера!',
+						caller: 'REG_REQUEST',
+					};
 
-					storage.removeItem('access_token');
-					reject(err.response.data);
+					if (err.response) {
+						switch (err.response.data) {
+							case 'UserConditionNotValid':
+								errorData.message = 'Необходимо заполнить поля email и password';
+								break;
+							case 'UserConditionWrongEmail':
+								errorData.message = 'Неверно задан e-mail. Такое бывает, проверьте внимательнее.';
+								break;
+							case 'UserIsExists':
+								errorData.message =
+									'Пользователь с таким e-mail уже существует. Если вы не регистрировались ранее, то рекомендуется обратитесь в службу поддержки help@intask.me';
+								break;
+							default:
+								errorData.message = err.response.data;
+						}
+					}
+
+					commit('API_ERROR', errorData);
+					return reject(errorData);
 				});
+		});
+	},
+
+	CHECK_TOKENS: ({ commit, state }) => {
+		return new Promise(async (resolve, reject) => {
+			let commonTokens;
+			try {
+				commonTokens = await getTokens(commit);
+
+				// Если есть валидный токен в хранилище, но нет в state приложения, тогда такой токен
+				// помещается в state
+				if (commonTokens.token.length > 0 && state.auth.token === '') {
+					commit('AUTH_SUCCESS', commonTokens);
+				}
+
+				console.log('TOKENS CHECKED');
+				return resolve(true);
+			} catch (err) {
+				commit('AUTH_LOGOUT');
+
+				return reject(err);
+			}
 		});
 	},
 
 	/* ------------------------------------------MAIN USER------------------------------------------ */
 
-	MAINUSER_REQUEST: ({ commit, state }) => {
-		commit('MAINUSER_REQUEST');
+	MAINUSER_REQUEST: async ({ commit, state }) => {
+		let commonTokens;
+		try {
+			commonTokens = await getTokens(commit);
+
+			// Если есть валидный токен в хранилище, но нет в state приложения, тогда такой токен
+			// помещается в state
+			if (commonTokens.token.length > 0 && state.auth.token === '') {
+				commit('AUTH_SUCCESS', commonTokens);
+			}
+		} catch (err) {
+			commit('AUTH_LOGOUT');
+
+			return Promise.reject(err);
+		}
 
 		return Promise.all([
-			fetchSrv(mainPacket[0].fetchQuery),
-			fetchSrv(mainPacket[1].fetchQuery),
-			fetchSrv(mainPacket[2].fetchQuery),
-			fetchSrv(mainPacket[3].fetchQuery),
+			fetchSrv(mainPacket[0].fetchQuery, commit, commonTokens),
+			fetchSrv(mainPacket[1].fetchQuery, commit, commonTokens),
+			fetchSrv(mainPacket[2].fetchQuery, commit, commonTokens),
+			fetchSrv(mainPacket[3].fetchQuery, commit, commonTokens),
 		])
 			.then(datasFromSrv => {
 				Array.prototype.forEach.call(datasFromSrv, dataFromSrv => {
 					if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'data')) {
-						if (!state.auth.token) {
-							commit('AUTH_SUCCESS', getTokensFromSessionStorage().access_token);
-						}
+						// if (!state.auth.token) {
+						// 	commit('AUTH_SUCCESS', getTokensFromSessionStorage().token);
+						// }
 
 						Array.prototype.forEach.call(mainPacket[dataFromSrv.packet].mutations, mutation => {
 							commit(mutation, dataFromSrv.data);
@@ -1023,11 +1121,13 @@ export default {
 							task_id: movedItem.task_id,
 							group_id: newGroupId,
 						});
-						commit('SET_ACTIVITY', {
-							sheet_id: options.sheet_id,
-							task_id: movedItem.task_id,
-							data: dataFromSrv.activity_data,
-						});
+						if (dataFromSrv.activity_data) {
+							commit('SET_ACTIVITY', {
+								sheet_id: options.sheet_id,
+								task_id: movedItem.task_id,
+								data: dataFromSrv.activity_data,
+							});
+						}
 					}
 
 					movedItem.consistency = 0;

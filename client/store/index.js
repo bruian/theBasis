@@ -53,7 +53,7 @@ function createStore() {
 			layout: 2, // TEMPORARY. Need move to main user
 
 			/* -AUTHENTICATED STATUS -*/
-			auth: { token: '' } /* api request: /auth-user */,
+			auth: { token: '', refreshToken: '' } /* api request: /auth-user */,
 
 			/* -LOGGED USERS DATAS- */ mainUser: Object.assign({}, def.mainUser),
 			mainUsers: [],
@@ -157,6 +157,13 @@ function createStore() {
 		mutations,
 		getters,
 	});
+
+	// Интервальное обновление токенов
+	setInterval(() => {
+		if (store.state.auth.token) {
+			store.dispatch('CHECK_TOKENS');
+		}
+	}, 1000 * 60 * 5);
 
 	// Установка опроса очереди
 	// setInterval(() => {

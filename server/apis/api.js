@@ -24,7 +24,7 @@ const router = express.Router();
  */
 router.get('/main-user', (req, res) => {
 	const timeStart = Date.now();
-	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	let condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 	condition = Object.assign(condition, req.headers);
 
 	UserController.getUser(condition)
@@ -46,11 +46,11 @@ router.get('/main-user', (req, res) => {
 
 /* -USERS API- */
 router.get('/users/:id', (req, res) => {
-	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	let condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 	condition = Object.assign(condition, req.headers);
 
 	// const condition = {
-	// 	mainUser_id: req.auth.userId,
+	// 	mainUser_id: req.user.user_id,
 	// 	user_id: req.params.id,
 	// 	like: 'like' in req.query ? req.query.like : null,
 	// 	whose: 'whose' in req.query ? req.query.whose : null,
@@ -72,7 +72,7 @@ router.get('/users/:id', (req, res) => {
 
 router.get('/users', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		user_id: null,
 		like: 'like' in req.query ? req.query.like : null,
 		whose: 'whose' in req.query ? req.query.whose : null,
@@ -97,7 +97,7 @@ router.get('/users', (req, res) => {
 
 router.post('/users', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		user_id: 'user_id' in req.query ? req.query.user_id : null,
 	};
 
@@ -110,7 +110,7 @@ router.post('/users', (req, res) => {
 
 router.delete('/users', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		user_id: 'user_id' in req.query ? req.query.user_id : null,
 	};
 
@@ -124,7 +124,7 @@ router.delete('/users', (req, res) => {
 /* -GROUPS API- */
 router.get('/groups/:id', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		group_id: req.params.id,
 		user_id: 'user_id' in req.query ? req.query.user_id : null,
 		like: 'like' in req.query ? req.query.like : null,
@@ -147,7 +147,7 @@ router.get('/groups/:id', (req, res) => {
 
 router.get('/groups', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		group_id: null,
 		user_id: 'user_id' in req.query ? req.query.user_id : null,
 		like: 'like' in req.query ? req.query.like : null,
@@ -174,7 +174,7 @@ router.get('/groups', (req, res) => {
 
 router.post('/groups', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		group_id: 'group_id' in req.query ? req.query.group_id : null,
 	};
 
@@ -187,7 +187,7 @@ router.post('/groups', (req, res) => {
 
 router.delete('/groups', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		group_id: 'group_id' in req.query ? req.query.group_id : null,
 	};
 
@@ -202,7 +202,7 @@ router.delete('/groups', (req, res) => {
 
 router.get('/contexts', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		user_id: 'user_id' in req.query ? req.query.user_id : null,
 		task_id: 'task_id' in req.query ? req.query.task_id : null,
 		searchText: 'searchText' in req.query ? req.query.searchText : null,
@@ -227,7 +227,7 @@ router.get('/contexts', (req, res) => {
 
 router.post('/contexts', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		task_id: 'task_id' in req.query ? req.query.task_id : null,
 		values: req.body,
 	};
@@ -245,7 +245,7 @@ router.post('/contexts', (req, res) => {
 
 router.delete('/contexts', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		task_id: 'task_id' in req.query ? req.query.task_id : null,
 		values: req.body,
 	};
@@ -272,7 +272,7 @@ router.delete('/contexts', (req, res) => {
  */
 router.get('/tasks', (req, res) => {
 	const timeStart = Date.now();
-	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	let condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 	condition = Object.assign(condition, req.headers);
 
 	TaskController.getTasks(condition)
@@ -306,7 +306,7 @@ router.get('/tasks', (req, res) => {
  */
 router.post('/tasks', (req, res) => {
 	const timeStart = Date.now();
-	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	const condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 
 	const onTaskCreated = taskData => {
 		log.debug(
@@ -346,7 +346,7 @@ router.post('/tasks', (req, res) => {
 
 router.delete('/tasks', (req, res) => {
 	const condition = {
-		mainUser_id: req.auth.userId,
+		mainUser_id: req.user.user_id,
 		task_id: 'task_id' in req.query ? req.query.task_id : null,
 		group_id: 'group_id' in req.query ? req.query.group_id : null,
 	};
@@ -369,7 +369,7 @@ router.delete('/tasks', (req, res) => {
  */
 router.put('/tasks', (req, res) => {
 	const timeStart = Date.now();
-	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	const condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 	const values = Object.assign({}, req.body);
 
 	TaskController.updateTask(condition, values)
@@ -400,7 +400,7 @@ router.put('/tasks', (req, res) => {
  */
 router.put('/tasks/order', (req, res) => {
 	const timeStart = Date.now();
-	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	let condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 
 	const onTaskUpdated = taskData => {
 		log.debug(
@@ -417,7 +417,7 @@ router.put('/tasks/order', (req, res) => {
 		condition.group_id = condition.group_id;
 
 		if (!taskData.groupChanged) {
-			return res.json({ data: taskData });
+			return res.json({ data: taskData, activity_data: null });
 		}
 
 		return ActivityController.createActivity(condition)
@@ -457,7 +457,7 @@ router.put('/tasks/order', (req, res) => {
  */
 router.get('/activity', (req, res) => {
 	const timeStart = Date.now();
-	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	let condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 	condition = Object.assign(condition, req.headers);
 
 	ActivityController.getActivity(condition)
@@ -491,7 +491,7 @@ router.get('/activity', (req, res) => {
  */
 router.post('/activity', (req, res) => {
 	const timeStart = Date.now();
-	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	const condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 
 	ActivityController.createActivity(condition)
 		.then(data => {
@@ -523,7 +523,7 @@ router.post('/activity', (req, res) => {
  */
 router.put('/activity', (req, res) => {
 	const timeStart = Date.now();
-	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	const condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 	const values = Object.assign({}, req.body);
 
 	ActivityController.updateActivity(condition, values)
@@ -549,7 +549,7 @@ router.put('/activity', (req, res) => {
 
 router.delete('/activity', (req, res) => {
 	// const condition = {
-	// 	mainUser_id: req.auth.userId,
+	// 	mainUser_id: req.user.user_id,
 	// 	task_id: ('task_id' in req.query) ? req.query.task_id : null,
 	// 	group_id: ('group_id' in req.query) ? req.query.group_id : null
 	// }
@@ -565,7 +565,7 @@ router.delete('/activity', (req, res) => {
 
 router.put('/activity/order', (req, res) => {
 	// const condition = {
-	// 	mainUser_id: req.auth.userId,
+	// 	mainUser_id: req.user.user_id,
 	// 	group_id: ('group_id' in req.query) ? req.query.group_id : null,
 	// 	task_id: ('task_id' in req.query) ? req.query.task_id : null,
 	// 	parent_id: ('parent_id' in req.query) ? req.query.parent_id : null,
@@ -595,7 +595,7 @@ router.put('/activity/order', (req, res) => {
  */
 router.get('/sheets', (req, res) => {
 	const timeStart = Date.now();
-	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	let condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 	condition = Object.assign(condition, req.headers);
 
 	SheetController.getSheets(condition)
@@ -627,7 +627,7 @@ router.get('/sheets', (req, res) => {
  */
 router.post('/sheets', (req, res) => {
 	const timeStart = Date.now();
-	const condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	const condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 	const values = Object.assign({}, req.body);
 
 	SheetController.createSheet(condition, values)
@@ -656,7 +656,7 @@ router.post('/sheets', (req, res) => {
  */
 router.put('/sheets', (req, res) => {
 	const timeStart = Date.now();
-	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	let condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 	condition = Object.assign(condition, req.headers);
 	const values = Object.assign({}, req.body);
 
@@ -688,7 +688,7 @@ router.put('/sheets', (req, res) => {
  */
 router.delete('/sheets', (req, res) => {
 	const timeStart = Date.now();
-	let condition = Object.assign({ mainUser_id: req.auth.userId }, req.query);
+	let condition = Object.assign({ mainUser_id: req.user.user_id }, req.query);
 	condition = Object.assign(condition, req.headers);
 
 	SheetController.deleteSheet(condition)
