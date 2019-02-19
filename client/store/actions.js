@@ -14,7 +14,7 @@ const mainPacket = [
 		fetchQuery: {
 			url: 'main-user',
 			method: 'GET',
-			headers: { packet: 0 },
+			params: { packet: 0 },
 		},
 		mutations: ['MAIN_USER_SUCCESS', 'THEUSER_SUCCESS'],
 	},
@@ -22,8 +22,7 @@ const mainPacket = [
 		fetchQuery: {
 			url: 'groups',
 			method: 'GET',
-			params: { whose: 'main' },
-			headers: { packet: 1 },
+			params: { packet: 1 },
 		},
 		mutations: ['MAIN_GROUPS_SUCCESS'],
 	},
@@ -31,7 +30,7 @@ const mainPacket = [
 		fetchQuery: {
 			url: 'contexts',
 			method: 'GET',
-			headers: { packet: 2 },
+			params: { packet: 2 },
 		},
 		mutations: ['MAIN_CONTEXTS_SUCCESS'],
 	},
@@ -39,7 +38,7 @@ const mainPacket = [
 		fetchQuery: {
 			url: 'sheets',
 			method: 'GET',
-			headers: { packet: 3 },
+			params: { packet: 3 },
 		},
 		mutations: ['SHEETS_SUCCESS'],
 	},
@@ -82,7 +81,7 @@ async function getTokens(commit) {
 
 	if (new Date() / 1000 >= decodedToken.exp) {
 		const axiosData = {
-			url: 'http://178.32.120.216/auth/refresh',
+			url: `http://${config.authHost}:${config.authPort}/auth/refresh`,
 			method: 'POST',
 			headers: {
 				'content-type': 'application/x-www-form-urlencoded',
@@ -169,7 +168,7 @@ export default {
 			};
 
 			const axiosData = {
-				url: 'http://178.32.120.216/auth/login',
+				url: `http://${config.authHost}:${config.authPort}/auth/login`,
 				data: qs.stringify(bodyData),
 				method: 'POST',
 				headers: {
@@ -226,7 +225,7 @@ export default {
 			);
 
 			let axiosData = {
-				url: 'http://178.32.120.216/auth/registration',
+				url: `http://${config.authHost}:${config.authPort}/auth/registration`,
 				data: qs.stringify(bodyData),
 				method: 'POST',
 			};
@@ -270,7 +269,7 @@ export default {
 	AUTH_LOGOUT: ({ commit, state }) => {
 		return new Promise((resolve, reject) => {
 			const axiosData = {
-				url: 'http://178.32.120.216/auth/logout',
+				url: `http://${config.authHost}:${config.authPort}/auth/logout`,
 				method: 'POST',
 				headers: {
 					'content-type': 'application/x-www-form-urlencoded',
@@ -419,7 +418,7 @@ export default {
 			}
 		}
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(0);
@@ -451,7 +450,7 @@ export default {
 
 		commit('UPDATE_VALUES_USERS_SHEET', { id, loadingButton: true });
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'rejected_addusers') {
 					return Promise.resolve(0);
@@ -483,7 +482,7 @@ export default {
 			},
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'rejected_deleteusers') {
 					return Promise.resolve(0);
@@ -539,7 +538,7 @@ export default {
 			}
 		}
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(0);
@@ -575,7 +574,7 @@ export default {
 
 		fetchQuery.url += `/${group_id}`;
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(0);
@@ -606,7 +605,7 @@ export default {
 
 		commit('UPDATE_VALUES_GROUPS_SHEET', { id, loadingButton: true });
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'rejected_linkgroups') {
 					return Promise.resolve(0);
@@ -638,7 +637,7 @@ export default {
 			},
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'rejected_unlinkgroups') {
 					return Promise.resolve(0);
@@ -676,8 +675,7 @@ export default {
 		const fetchQuery = {
 			url: 'tasks',
 			method: 'GET',
-			params: {},
-			headers: { limit: activeSheet.limit, offset: activeSheet.offset, partid: ++taskPartID },
+			params: { limit: activeSheet.limit, offset: activeSheet.offset },
 		};
 
 		// apply global condition
@@ -687,8 +685,8 @@ export default {
 					case 'group_id':
 						fetchQuery.params.group_id = activeSheet.condition[key];
 						break;
-					case 'user_id':
-						fetchQuery.params.user_id = activeSheet.condition[key];
+					case 'userId':
+						fetchQuery.params.userId = activeSheet.condition[key];
 						break;
 					case 'parent_id':
 						fetchQuery.params.parent_id = activeSheet.condition[key];
@@ -696,8 +694,8 @@ export default {
 					case 'task_id':
 						fetchQuery.params.task_id = activeSheet.condition[key];
 						break;
-					case 'searchText':
-						fetchQuery.params.searchText = activeSheet[key];
+					case 'like':
+						fetchQuery.params.like = activeSheet[key];
 						break;
 					default:
 						break;
@@ -712,7 +710,7 @@ export default {
 			}
 		});
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(0);
@@ -772,15 +770,15 @@ export default {
 		const fetchQuery = {
 			url: 'tasks',
 			method: 'POST',
-			params: {
+			data: qs.stringify({
 				group_id,
 				parent_id,
 				start: new Date().toISOString(),
 				isStart: options.isStart,
-			},
+			}),
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(0);
@@ -833,13 +831,13 @@ export default {
 		const fetchQuery = {
 			url: 'tasks',
 			method: 'DELETE',
-			params: {
+			data: qs.stringify({
 				task_id,
 				group_id,
-			},
+			}),
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(false);
@@ -872,8 +870,8 @@ export default {
 	REORDER_TASKS: ({ commit, state }, options) => {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		const taskSheet = activeSheet.sheet;
-		if (options.fromParent_id === 0) options.fromParent_id = null;
-		if (options.toParent_id === 0) options.toParent_id = null;
+		// if (options.fromParent_id === 0) options.fromParent_id = null;
+		// if (options.toParent_id === 0) options.toParent_id = null;
 
 		let fromTask;
 		let toTask;
@@ -1012,14 +1010,14 @@ export default {
 		const fetchQuery = {
 			url: 'tasks/order',
 			method: 'PUT',
-			params: {
+			data: qs.stringify({
 				group_id: newGroupId,
 				task_id: fromTask.task_id,
 				position: toTask === null ? null : toTask.task_id,
 				isBefore,
 				start: new Date().toISOString(),
 				parent_id: toParent === undefined ? 0 : toParent.task_id,
-			},
+			}),
 		};
 
 		function recalculationDepth(el, level) {
@@ -1042,7 +1040,7 @@ export default {
 			return res;
 		}
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(false);
@@ -1158,17 +1156,17 @@ export default {
 		const fetchQuery = {
 			url: 'tasks/order',
 			method: 'PUT',
-			params: {
+			data: qs.stringify({
 				group_id: options.group_id,
 				task_id: element.task_id,
 				position: null,
 				isBefore: false,
 				start: new Date().toISOString(),
-				parent_id: element.parent ? element.parent.task_id : 0,
-			},
+				parent_id: element.parent ? element.parent.task_id : null,
+			}),
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(false);
@@ -1244,7 +1242,9 @@ export default {
 		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		let taskSheet = activeSheet.sheet;
 		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
-		let values = {};
+		let values = {
+			task_id: options.task_id,
+		};
 
 		element.consistency = 1;
 
@@ -1260,13 +1260,10 @@ export default {
 		const fetchQuery = {
 			url: 'tasks',
 			method: 'PUT',
-			params: {
-				task_id: options.task_id,
-			},
 			data: querystring.stringify(values),
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(false);
@@ -1294,7 +1291,9 @@ export default {
 		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		let taskSheet = activeSheet.sheet;
 		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
-		let values = {};
+		let values = {
+			task_id: options.task_id,
+		};
 
 		element.consistency = 1;
 
@@ -1309,13 +1308,10 @@ export default {
 		const fetchQuery = {
 			url: 'contexts',
 			method: 'POST',
-			params: {
-				task_id: options.task_id,
-			},
 			data: querystring.stringify(values),
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				element.consistency = 0;
 
@@ -1346,7 +1342,9 @@ export default {
 		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		let taskSheet = activeSheet.sheet;
 		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
-		let values = {};
+		let values = {
+			task_id: options.task_id,
+		};
 
 		element.consistency = 1;
 
@@ -1357,13 +1355,10 @@ export default {
 		const fetchQuery = {
 			url: 'contexts',
 			method: 'DELETE',
-			params: {
-				task_id: options.task_id,
-			},
 			data: querystring.stringify(values),
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				element.consistency = 0;
 
@@ -1410,11 +1405,10 @@ export default {
 		const fetchQuery = {
 			url: 'activity',
 			method: 'GET',
-			params: { task_id: element.task_id, type_el: 2 },
-			headers: { limit: 100, offset: 0 },
+			params: { task_id: element.task_id, type_el: 2, limit: 100, offset: 0 },
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(null);
@@ -1488,16 +1482,16 @@ export default {
 		const fetchQuery = {
 			url: 'activity',
 			method: 'POST',
-			params: {
+			data: qs.stringify({
 				group_id,
 				type_el: 2,
 				task_id: activeElement.task_id,
 				start,
 				status,
-			},
+			}),
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(null);
@@ -1534,20 +1528,19 @@ export default {
 	 * @description Функция для обновление элементов в списке
 	 */
 	UPDATE_SHEETS_VALUES: ({ commit, dispatch }, options) => {
-		const values = {};
+		const values = {
+			id: options.id,
+		};
 
 		values[options.field] = options.value;
 
 		const fetchQuery = {
 			url: 'sheets',
 			method: 'PUT',
-			params: {
-				id: options.id,
-			},
 			data: qs.stringify(values),
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(false);
@@ -1601,11 +1594,10 @@ export default {
 		const fetchQuery = {
 			url: 'sheets',
 			method: 'POST',
-			params: {},
 			data: querystring.stringify(values),
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(false);
@@ -1637,12 +1629,12 @@ export default {
 		const fetchQuery = {
 			url: 'sheets',
 			method: 'DELETE',
-			params: {
+			data: qs.stringify({
 				id: options.id,
-			},
+			}),
 		};
 
-		return fetchSrv(fetchQuery)
+		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(false);

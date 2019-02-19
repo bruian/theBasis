@@ -85,15 +85,16 @@ export default {
 		setApiStatus(state, 'MAINUSER_REQUEST', null);
 	},
 
-	MAIN_USER_SUCCESS: (state, user) => {
-		setApiStatus(state, 'MAIN_USER_SUCCESS', null);
-
-		state.mainUser = Object.assign({}, user);
+	MAIN_USER_SUCCESS: (state, data) => {
+		if (Array.isArray(data) && data.length === 1) {
+			state.mainUser = Object.assign({}, data[0]);
+			setApiStatus(state, 'MAIN_USER_SUCCESS', null);
+		} else {
+			setApiStatus(state, 'MAIN_USER_FAIL', data);
+		}
 	},
 
 	MAIN_GROUPS_SUCCESS: (state, groups) => {
-		setApiStatus(state, 'MAIN_GROUPS_SUCCESS', null);
-
 		state.mainGroups = groups;
 		if (!Array.isArray(state.mainGroups)) state.mainGroups = [];
 
@@ -132,6 +133,8 @@ export default {
 
 		state.mainGroupsMini = hierarchicalRows;
 		if (!Array.isArray(state.mainGroupsMini)) state.mainGroupsMini = [];
+
+		setApiStatus(state, 'MAIN_GROUPS_SUCCESS', null);
 	},
 
 	CHANGE_APP_READY: (state, ready) => {
@@ -143,13 +146,17 @@ export default {
 		setApiStatus(state, 'THEUSER_REQUEST', null);
 	},
 
-	THEUSER_SUCCESS: (state, user) => {
-		setApiStatus(state, 'THEUSER_SUCCESS', null);
+	THEUSER_SUCCESS: (state, data) => {
+		if (Array.isArray(data) && data.length === 1) {
+			if (state.mainUser.id === data[0].id) {
+				state.theUser = state.mainUser;
+			} else {
+				state.theUser = Object.assign({}, data[0]);
+			}
 
-		if (state.mainUser.id === user.id) {
-			state.theUser = state.mainUser;
+			setApiStatus(state, 'THEUSER_SUCCESS', null);
 		} else {
-			state.theUser = Object.assign({}, user);
+			setApiStatus(state, 'THEUSER_FAIL', data);
 		}
 	},
 
@@ -163,7 +170,8 @@ export default {
 		state[state.activeUsersSheet.sheet].sheet = state[state.activeUsersSheet.sheet].sheet.concat(
 			data,
 		);
-		state[state.activeUsersSheet.sheet].offset = +data.length;
+		state[state.activeUsersSheet.sheet].offset =
+			state[state.activeUsersSheet.sheet].offset + data.length;
 	},
 
 	SET_ACTIVE_USERS_SHEET: (state, activeID) => {
@@ -248,7 +256,8 @@ export default {
 		state[state.activeGroupsSheet.sheet].sheet = state[state.activeGroupsSheet.sheet].sheet.concat(
 			data,
 		);
-		state[state.activeGroupsSheet.sheet].offset = +data.length;
+		state[state.activeGroupsSheet.sheet].offset =
+			state[state.activeGroupsSheet.sheet].offset + data.length;
 	},
 
 	SET_ACTIVE_GROUPS_SHEET: (state, activeID) => {
@@ -351,8 +360,6 @@ export default {
 	/* ---------------------------------------TASKS mutations--------------------------------------- */
 
 	SET_TASKS: (state, options) => {
-		setApiStatus(state, 'SET_TASKS', null);
-
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
 			activeSheet.sheet = [];
@@ -366,7 +373,7 @@ export default {
 		let existElement = -1;
 
 		for (let i = 0; i < tasks.length; i++) {
-			if (prevGroupId !== tasks[i].group_id && tasks[i].parent === 0) {
+			if (prevGroupId !== tasks[i].group_id && tasks[i].parent === null) {
 				let grp = findGroup(state.mainGroups, tasks[i].group_id);
 				let divId = `div ${grp.id}`;
 
@@ -395,7 +402,7 @@ export default {
 				if (!tasks[i].activity) tasks[i].activity = [];
 
 				if (tasks[i].status === 1 || tasks[i].status === 5) {
-					tasks[i].duration = +(new Date() - new Date(tasks[i].start));
+					tasks[i].duration = tasks[i].duration + (new Date() - new Date(tasks[i].start));
 				}
 			}
 
@@ -414,8 +421,7 @@ export default {
 			tasks[i].consistency = 0;
 
 			// ids to object link
-			if (tasks[i].parent === 0) {
-				tasks[i].parent = null;
+			if (tasks[i].parent === null) {
 				tasks[i].level = 1;
 
 				existElement = taskSheet.findIndex(el => el.task_id === tasks[i].task_id);
@@ -459,6 +465,8 @@ export default {
 				}
 			}
 		}
+
+		setApiStatus(state, 'SET_TASKS', null);
 	},
 
 	DELETE_TASK: (state, options) => {
@@ -506,20 +514,20 @@ export default {
 
 	/* --------------------------------------Contexts mutations------------------------------------- */
 
-	MAIN_CONTEXTS_SUCCESS: (state, contexts) => {
-		setApiStatus(state, 'MAIN_CONTEXTS_SUCCESS', null);
-
+	MAIN_CONTEXTS_SUCCESS: (state, data) => {
 		let existingContexts = [];
-		state.mainContexts = contexts;
+		state.mainContexts = data;
 
-		for (let i = 0; i < contexts.length; i++) {
-			if (existingContexts.findIndex(el => el === contexts[i].value) === -1) {
-				existingContexts.push(contexts[i].value);
+		for (let i = 0; i < data.length; i++) {
+			if (existingContexts.findIndex(el => el === data[i].value) === -1) {
+				existingContexts.push(data[i].value);
 			}
 		}
 		state.mainExistingContexts = Object.assign({}, existingContexts);
 
 		if (!Array.isArray(state.mainContexts)) state.mainContexts = [];
+
+		setApiStatus(state, 'MAIN_CONTEXTS_SUCCESS', null);
 	},
 
 	// eslint-disable-next-line
@@ -560,7 +568,7 @@ export default {
 			// Накопительно считается duration для активностей со статусом "Started-1" или "Continued-5"
 			if (activity.status === 1 || activity.status === 5) {
 				let ends = activity.ends ? new Date(activity.ends) : new Date();
-				taskDuration = +(ends - new Date(activity.start));
+				taskDuration = taskDuration + (ends - new Date(activity.start));
 			}
 
 			// Обновляется статус ориентируясь на задачу с открытой датой завершения
@@ -615,6 +623,8 @@ export default {
 
 			state.sheets.push(sheet);
 		}
+
+		setApiStatus(state, 'SHEETS_SUCCESS', null);
 	},
 
 	UPDATE_SHEETS_VALUES: (state, data) => {

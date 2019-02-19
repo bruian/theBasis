@@ -127,7 +127,7 @@
         v-for="(children, index) in items"
         :key="children.task_id"
         v-bind:data-task_id="children.task_id"
-        v-bind:data-parent_id="(children.parent) ? children.parent.task_id : 0"
+        v-bind:data-parent_id="(children.parent) ? children.parent.task_id : null"
       >
         <TaskItem :sheet_id="sheet_id" :item="children"></TaskItem>
       </div>
@@ -368,7 +368,7 @@ export default {
 
       this.$store.commit("SET_SELECTED", {
         sheet_id: this.sheet_id,
-        task_id: Number.parseInt(item.dataset.task_id, 10)
+        task_id: item.dataset.task_id
       });
     },
     onDrop: function(dropResult) {
@@ -384,8 +384,8 @@ export default {
         .dispatch("REORDER_TASKS", {
           oldIndex: oldIndex,
           newIndex: newIndex,
-          fromParent_id: Number.parseInt(from.dataset.parent_id, 10),
-          toParent_id: Number.parseInt(to.dataset.parent_id, 10),
+          fromParent_id: from.dataset.parent_id ? from.dataset.parent_id : null,
+          toParent_id: to.dataset.parent_id ? to.dataset.parent_id : null,
           sheet_id: this.sheet_id
         })
         .then(res => {

@@ -46,12 +46,12 @@
 					:options="getDraggableOptions()"
 					@start="onDragStart"
 					@end="onDrop"
-					v-bind:data-parent_id="0"
+					v-bind:data-parent_id="null"
 				>
 					<div v-for="(item, index) in items"
 						:key="item.task_id"
 						v-bind:data-task_id="item.task_id"
-						v-bind:data-parent_id="(item.parent) ? item.parent.task_id : 0"
+						v-bind:data-parent_id="(item.parent) ? item.parent.task_id : null"
 					>
 						<TaskItem :sheet_id="thisSheet.sheet_id" :item="item" ></TaskItem>
 					</div>
@@ -191,7 +191,7 @@ export default {
     onDragStart: function(dragResult) {
 			const { item } = dragResult
 
-			this.$store.commit('SET_SELECTED', { sheet_id: this.sheet_id, task_id: Number.parseInt(item.dataset.task_id, 10) })
+			this.$store.commit('SET_SELECTED', { sheet_id: this.sheet_id, task_id: item.dataset.task_id })
 		},
 		onDrop: function(dropResult) {
 			const { newIndex, oldIndex, from, to } = dropResult
@@ -205,9 +205,10 @@ export default {
 			this.$store.dispatch('REORDER_TASKS', {
 				oldIndex: oldIndex,
 				newIndex: newIndex,
-				fromParent_id: Number.parseInt(from.dataset.parent_id, 10),
-				toParent_id: Number.parseInt(to.dataset.parent_id, 10),
-				sheet_id: this.sheet_id })
+				fromParent_id: (from.dataset.parent_id) ? from.dataset.parent_id : null,
+				toParent_id: (to.dataset.parent_id) ? to.dataset.parent_id : null,
+				sheet_id: this.sheet_id 
+			})
 			.then((res) => {
 				console.log('reordering sheet')
 			})
@@ -273,8 +274,8 @@ export default {
 				this.$store.dispatch('REORDER_TASKS', {
 					oldIndex: index,
 					newIndex: lastParentIndex,
-					fromParent_id: (element.parent) ? element.parent.task_id : 0,
-					toParent_id: (toParent) ? toParent.task_id : 0,
+					fromParent_id: (element.parent) ? element.parent.task_id : null,
+					toParent_id: (toParent) ? toParent.task_id : null,
 					move_out: true,
 					sheet_id: this.sheet_id
 				})
@@ -353,8 +354,8 @@ export default {
 				this.$store.dispatch('REORDER_TASKS', {
 					oldIndex: index,
 					newIndex: newIndex,
-					fromParent_id: (element.parent) ? element.parent.task_id : 0,
-					toParent_id: (element.parent) ? element.parent.task_id : 0,
+					fromParent_id: (element.parent) ? element.parent.task_id : null,
+					toParent_id: (element.parent) ? element.parent.task_id : null,
 					sheet_id: this.sheet_id
 				})
 			}

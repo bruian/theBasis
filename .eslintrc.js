@@ -33,5 +33,6 @@ module.exports = {
 		'no-lonely-if': 'off',
 		'no-bitwise': 'off',
 		'no-useless-escape': 'off',
+		'operator-assignment': 'off',
 	},
 };

@@ -21,7 +21,8 @@ import '@riophae/vue-treeselect/dist/vue-treeselect.css';
 
 Vue.use(BootstrapVue);
 Vue.use(VueAxios, axios);
-Vue.axios.defaults.baseURL = `http://${window.location.host}/api/`;
+// Vue.axios.defaults.baseURL = `http://${window.location.host}/api/`;
+Vue.axios.defaults.baseURL = `http://${config.apiHost}:${config.apiPort}/api/`;
 
 // global progress bar
 const bar = (Vue.prototype.$bar = new Vue(ProgressBar).$mount());

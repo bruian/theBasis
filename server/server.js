@@ -11,14 +11,8 @@ import { createBundleRenderer } from 'vue-server-renderer';
 
 import bodyParser from 'body-parser';
 import methodOverride from 'method-override';
-import jwtMiddleware from 'express-jwt';
 
 import config from './config';
-import configPrivate from './config-private';
-
-import api from './apis/api';
-/* eslint-disable-next-line */
-import pg from './db/postgres';
 
 const resolve = file => nodePath.resolve(__dirname, file);
 
@@ -34,7 +28,7 @@ const log = require('./log')(module);
 
 const app = express();
 /* eslint-disable-next-line */
-const router = express.Router();
+//const router = express.Router();
 
 function createRenderer(bundle, options) {
 	// https://github.com/vuejs/vue/blob/dev/packages/vue-server-renderer/README.md#why-use-bundlerenderer
@@ -111,7 +105,7 @@ if (!isProd) {
 	});
 }
 
-app.use('/api', jwtMiddleware({ secret: configPrivate.security.sessionSecret }), api);
+// app.use('/api', jwtMiddleware({ secret: configPrivate.security.sessionSecret }), api);
 
 app.use((err, req, res, next) => {
 	if (err.name === 'UnauthorizedError') {

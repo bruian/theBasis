@@ -132,7 +132,7 @@ export function typeForSheet(value) {
 export function conditionsForSheet(conditions, values) {
 	const result = {
 		group_id: null,
-		user_id: null,
+		userId: null,
 		parent_id: null,
 		task_id: null,
 	};
@@ -144,7 +144,7 @@ export function conditionsForSheet(conditions, values) {
 					result.group_id = values[i];
 					break;
 				case 2:
-					result.user_id = values[i];
+					result.userId = values[i];
 					break;
 				case 3:
 					result.parent_id = values[i];
