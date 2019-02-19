@@ -9,6 +9,12 @@ import { recursiveFind, findGroup } from '../util/helpers';
 const dbg = !!config.DEBUG_API;
 const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
 
+const authPort = config.authWOPort ? '' : `:${config.authPort}`;
+const authURL = `http://${config.authHost}${authPort}/auth/`;
+
+const apiPort = config.apiWOPort ? '' : `:${config.apiPort}`;
+const apiURL = `http://${config.apiHost}${apiPort}/api/`;
+
 const mainPacket = [
 	{
 		fetchQuery: {
@@ -81,7 +87,7 @@ async function getTokens(commit) {
 
 	if (new Date() / 1000 >= decodedToken.exp) {
 		const axiosData = {
-			url: `http://${config.authHost}:${config.authPort}/auth/refresh`,
+			url: `${authURL}refresh`,
 			method: 'POST',
 			headers: {
 				'content-type': 'application/x-www-form-urlencoded',
@@ -168,7 +174,7 @@ export default {
 			};
 
 			const axiosData = {
-				url: `http://${config.authHost}:${config.authPort}/auth/login`,
+				url: `${authURL}login`,
 				data: qs.stringify(bodyData),
 				method: 'POST',
 				headers: {
@@ -225,7 +231,7 @@ export default {
 			);
 
 			let axiosData = {
-				url: `http://${config.authHost}:${config.authPort}/auth/registration`,
+				url: `${authURL}registration`,
 				data: qs.stringify(bodyData),
 				method: 'POST',
 			};
@@ -269,7 +275,7 @@ export default {
 	AUTH_LOGOUT: ({ commit, state }) => {
 		return new Promise((resolve, reject) => {
 			const axiosData = {
-				url: `http://${config.authHost}:${config.authPort}/auth/logout`,
+				url: `${authURL}logout`,
 				method: 'POST',
 				headers: {
 					'content-type': 'application/x-www-form-urlencoded',
@@ -391,7 +397,7 @@ export default {
 		const activeSheet = state.activeUsersSheet.sheet;
 		const searchText = state[activeSheet].searchText;
 		const fetchQuery = {
-			url: 'users',
+			url: `${apiURL}users`,
 			method: 'GET',
 			params: {
 				like: searchText,
@@ -441,7 +447,7 @@ export default {
 
 	LINK_USERS_SHEET: ({ commit }, id) => {
 		const fetchQuery = {
-			url: 'users',
+			url: `${apiURL}users`,
 			method: 'POST',
 			params: {
 				user_id: id,
@@ -475,7 +481,7 @@ export default {
 
 	UNLINK_USERS_SHEET: ({ commit }, id) => {
 		const fetchQuery = {
-			url: 'users',
+			url: `${apiURL}users`,
 			method: 'DELETE',
 			params: {
 				user_id: id,
@@ -511,7 +517,7 @@ export default {
 		const activeSheet = state.activeGroupsSheet.sheet;
 		const searchText = state[activeSheet].searchText;
 		const fetchQuery = {
-			url: 'groups',
+			url: `${apiURL}groups`,
 			method: 'GET',
 			params: {
 				like: searchText,
@@ -564,7 +570,7 @@ export default {
 		const activeSheet = state.activeGroupsSheet.sheet;
 		const searchText = state[activeSheet].searchText;
 		const fetchQuery = {
-			url: 'groups',
+			url: `${apiURL}groups`,
 			method: 'GET',
 			params: {
 				like: searchText,
@@ -596,7 +602,7 @@ export default {
 
 	LINK_GROUPS_SHEET: ({ commit }, id) => {
 		const fetchQuery = {
-			url: 'groups',
+			url: `${apiURL}groups`,
 			method: 'POST',
 			params: {
 				group_id: id,
@@ -630,7 +636,7 @@ export default {
 
 	UNLINK_GROUPS_SHEET: ({ commit }, id) => {
 		const fetchQuery = {
-			url: 'groups',
+			url: `${apiURL}groups`,
 			method: 'DELETE',
 			params: {
 				group_id: id,
@@ -673,7 +679,7 @@ export default {
 		}
 
 		const fetchQuery = {
-			url: 'tasks',
+			url: `${apiURL}tasks`,
 			method: 'GET',
 			params: { limit: activeSheet.limit, offset: activeSheet.offset },
 		};
@@ -768,7 +774,7 @@ export default {
 		}
 
 		const fetchQuery = {
-			url: 'tasks',
+			url: `${apiURL}tasks`,
 			method: 'POST',
 			data: qs.stringify({
 				group_id,
@@ -829,7 +835,7 @@ export default {
 		}
 
 		const fetchQuery = {
-			url: 'tasks',
+			url: `${apiURL}tasks`,
 			method: 'DELETE',
 			data: qs.stringify({
 				task_id,
@@ -1008,7 +1014,7 @@ export default {
 				если верхний уровень то значение 0
 		*/
 		const fetchQuery = {
-			url: 'tasks/order',
+			url: `${apiURL}tasks/order`,
 			method: 'PUT',
 			data: qs.stringify({
 				group_id: newGroupId,
@@ -1154,7 +1160,7 @@ export default {
 		element.consistency = 1;
 
 		const fetchQuery = {
-			url: 'tasks/order',
+			url: `${apiURL}tasks/order`,
 			method: 'PUT',
 			data: qs.stringify({
 				group_id: options.group_id,
@@ -1258,7 +1264,7 @@ export default {
 		});
 
 		const fetchQuery = {
-			url: 'tasks',
+			url: `${apiURL}tasks`,
 			method: 'PUT',
 			data: querystring.stringify(values),
 		};
@@ -1306,7 +1312,7 @@ export default {
 		}
 
 		const fetchQuery = {
-			url: 'contexts',
+			url: `${apiURL}contexts`,
 			method: 'POST',
 			data: querystring.stringify(values),
 		};
@@ -1353,7 +1359,7 @@ export default {
 		}
 
 		const fetchQuery = {
-			url: 'contexts',
+			url: `${apiURL}contexts`,
 			method: 'DELETE',
 			data: querystring.stringify(values),
 		};
@@ -1403,7 +1409,7 @@ export default {
 		element.consistency = 1;
 
 		const fetchQuery = {
-			url: 'activity',
+			url: `${apiURL}activity`,
 			method: 'GET',
 			params: { task_id: element.task_id, type_el: 2, limit: 100, offset: 0 },
 		};
@@ -1480,7 +1486,7 @@ export default {
 		}
 
 		const fetchQuery = {
-			url: 'activity',
+			url: `${apiURL}activity`,
 			method: 'POST',
 			data: qs.stringify({
 				group_id,
@@ -1535,7 +1541,7 @@ export default {
 		values[options.field] = options.value;
 
 		const fetchQuery = {
-			url: 'sheets',
+			url: `${apiURL}sheets`,
 			method: 'PUT',
 			data: qs.stringify(values),
 		};
@@ -1592,7 +1598,7 @@ export default {
 		const values = Object.assign({}, options);
 
 		const fetchQuery = {
-			url: 'sheets',
+			url: `${apiURL}sheets`,
 			method: 'POST',
 			data: querystring.stringify(values),
 		};
@@ -1627,7 +1633,7 @@ export default {
 	 */
 	DELETE_SHEET_ELEMENT: ({ commit }, options) => {
 		const fetchQuery = {
-			url: 'sheets',
+			url: `${apiURL}sheets`,
 			method: 'DELETE',
 			data: qs.stringify({
 				id: options.id,
