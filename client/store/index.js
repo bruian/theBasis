@@ -119,36 +119,6 @@ function createStore() {
 				searchText: '',
 			} /* api request: /groups or /groups/:id */,
 
-			/* -GROUPS SHEET DATAS- */ activeGroupsSheet: {
-				text: 'all',
-				whose: 'all',
-				id: 0,
-				sheet: 'groupsSheetAll',
-				visible: true,
-				condition: [],
-			},
-			availableGroupsSheet: [
-				{
-					text: 'my',
-					whose: 'user',
-					id: 1,
-					sheet: 'groupsSheetMy',
-					visible: true,
-					condition: ['user_id'],
-				},
-			],
-			groupsSheetAll: {
-				sheet: [],
-				limit: 10,
-				offset: 0,
-				searchText: '',
-			},
-			groupsSheetMy: {
-				sheet: [],
-				limit: 10,
-				offset: 0,
-				searchText: '',
-			},
 			/* ----------------------------------------Sheets state----------------------------------------- */
 			selectedSheet: null,
 			sheets: [],

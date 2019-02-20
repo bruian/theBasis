@@ -93,7 +93,7 @@ export default {
 		},
 		countEl: 0, //pass to load data
 		blocked: false,
-		showActiveTasksSheet: false //shows selected user sheet, my or all. Its for animation
+		// showActiveTasksSheet: false //shows selected user sheet, my or all. Its for animation
 	}),
 	created() {
 		this.thisSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
@@ -388,18 +388,18 @@ export default {
 				})
 			}
 		},
-   	activeClick: function(activeID) {
-			this.countEl = 0
-			this.$store.commit('SET_ACTIVE_TASKS_SHEET', activeID)
-			this.$nextTick(() => {
-        this.$refs.infLoadingTasksSheet.$emit('$InfiniteLoading:reset')
-      })
+   	// activeClick: function(activeID) {
+		// 	this.countEl = 0
+		// 	this.$store.commit('SET_ACTIVE_TASKS_SHEET', activeID)
+		// 	this.$nextTick(() => {
+    //     this.$refs.infLoadingTasksSheet.$emit('$InfiniteLoading:reset')
+    //   })
 
-			this.showActiveTasksSheet = !this.showActiveTasksSheet
-      setTimeout(() => {
-        this.showActiveTasksSheet = !this.showActiveTasksSheet
-      }, 500)
-		}
+		// 	this.showActiveTasksSheet = !this.showActiveTasksSheet
+    //   setTimeout(() => {
+    //     this.showActiveTasksSheet = !this.showActiveTasksSheet
+    //   }, 500)
+		// }
   }
 }
 </script>
@@ -459,39 +459,40 @@ export default {
 	margin-bottom: 5px;
 }
 
-.activebox { /*what is it */
+/* .activebox {
   white-space: nowrap;
   display: flex;
   justify-content: space-between;
-}
+} */
 
-.activeTasksSheetbox {
+/* .activeTasksSheetbox {
   display: flex;
-}
+} */
 
-.opacIn {
+/* .opacIn {
   animation-name: fadeIn;
   animation-duration: .5s;
-}
+} */
 
-@keyframes fadeIn {
+/* @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
-}
+} */
 
-.activeitem {
+/* .activeitem {
 	margin-right: 5px;
 	color: blue;
-}
+} */
 
-.sheet-enter-active, .sheet-leave-active {
+/* .sheet-enter-active, .sheet-leave-active {
   transition: all 1s;
-}
+} */
 
-.sheet-enter, .sheet-leave-to /* .sheet-leave-active до версии 2.1.8 */ {
+/* .sheet-leave-active до версии 2.1.8 */
+/* .sheet-enter, .sheet-leave-to  {
   opacity: 0;
   transform: translateY(30px);
-}
+} */
 
 .smooth-dnd-container.vertical > .smooth-dnd-draggable-wrapper {
   overflow: visible;

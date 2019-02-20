@@ -250,56 +250,117 @@ export default {
 
 	/* ---------------------------------------GROUPS mutations-------------------------------------- */
 
-	SET_GROUPS_SHEET: (state, data) => {
-		setApiStatus(state, 'SET_GROUPS_SHEET', null);
+	SET_GROUPS: (state, options) => {
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
+			activeSheet.sheet = [];
+		}
+		const groupsSheet = activeSheet.sheet;
+		const groups = options.data;
 
-		state[state.activeGroupsSheet.sheet].sheet = state[state.activeGroupsSheet.sheet].sheet.concat(
-			data,
-		);
-		state[state.activeGroupsSheet.sheet].offset =
-			state[state.activeGroupsSheet.sheet].offset + data.length;
-	},
+		let existElement = -1;
+		let tempParent;
+		let tempParent_id;
 
-	SET_ACTIVE_GROUPS_SHEET: (state, activeID) => {
-		let temp = state.activeGroupsSheet;
+		for (let i = 0; i < groups.length; i++) {
+			const newGroup = Object.assign(
+				{
+					countUsers: groups[i].countUsers,
+					countTasks: groups[i].countTasks,
+					isShowed: !(groups[i].level > 1),
+					isSubgroupExpanded: 0,
+					isExpanded: false,
+					isActive: false,
+					consistency: 0,
+				},
+				groups[i],
+			);
 
-		state.activeGroupsSheet = state.availableGroupsSheet.splice(
-			state.availableGroupsSheet.findIndex(el => el.id === activeID),
-			1,
-		)[0];
-		if (temp.id > -1) {
-			if (temp.id === 0) {
-				state.availableGroupsSheet.unshift(temp);
-			} else {
-				let fIndex = state.availableGroupsSheet.findIndex(el => el.id > temp.id);
-				if (fIndex > -1) {
-					state.availableGroupsSheet.splice(fIndex, 0, temp);
+			if (newGroup.parent === null) {
+				newGroup.level = 1;
+
+				existElement = groupsSheet.findIndex(el => el.id === newGroup.id);
+				if (existElement === -1) {
+					activeSheet.offset++;
+					if (
+						Object.prototype.hasOwnProperty.call(options, 'isStart') &&
+						options.isStart &&
+						groupsSheet.length > 1
+					) {
+						groupsSheet.splice(1, 0, newGroup);
+					} else {
+						groupsSheet.push(newGroup);
+					}
 				} else {
-					state.availableGroupsSheet.push(temp);
+					Vue.set(groupsSheet, existElement, newGroup);
+				}
+			} else {
+				if (!tempParent || tempParent_id !== newGroup.parent) {
+					tempParent = recursiveFind(groupsSheet, el => el.id === newGroup.parent).element;
+					tempParent_id = tempParent.id;
+				}
+
+				newGroup.parent = tempParent;
+				newGroup.level = tempParent.level + 1;
+
+				if (options.action === 'createGroup') {
+					tempParent.havechild = tempParent.havechild + 1;
+				}
+
+				if (!Object.prototype.hasOwnProperty.call(tempParent, 'children')) {
+					Vue.set(tempParent, 'children', []);
+					Vue.set(tempParent.children, 0, newGroup);
+				} else {
+					existElement = tempParent.children.findIndex(el => el.id === newGroup.id);
+					if (existElement === -1) {
+						if (
+							Object.prototype.hasOwnProperty.call(options, 'isStart') &&
+							options.isStart &&
+							tempParent.children.length > 1
+						) {
+							tempParent.children.splice(1, 0, newGroup);
+						} else {
+							tempParent.children.push(newGroup);
+						}
+					} else {
+						Vue.set(tempParent.children, existElement, newGroup);
+					}
 				}
 			}
 		}
+
+		setApiStatus(state, 'SET_GROUPS', null);
 	},
 
-	SET_SUBGROUPS: (state, data) => {
-		setApiStatus(state, 'SET_SUBGROUPS', null);
+	DELETE_GROUP: (state, options) => {
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		const groupsSheet = activeSheet.sheet;
+		const { index, element } = recursiveFind(groupsSheet, el => el.id === options.id);
 
-		const gl = state[state.activeGroupsSheet.Sheet];
-		let fIndex = -1;
-
-		for (let i = 0; i < data.length; i++) {
-			/*
-			fIndex = state.subgroupsCache.findIndex(el => el.id === data[i].id)
-			if (fIndex === -1) {
-				state.subgroupsCache.push(data[i])
-			}
-			*/
-
-			fIndex = gl.sheet.findIndex(el => el.id === data[i].id);
-			if (fIndex > -1) {
-				gl.sheet[fIndex].children = data[i].children;
-			}
+		if (element.parent === null) {
+			groupsSheet.splice(index, 1);
+		} else if (element.parent.children && element.parent.children.length > 0) {
+			element.parent.havechild = element.parent.havechild - 1;
+			element.parent.children.splice(index, 1);
 		}
+
+		setApiStatus(state, 'DELETE_GROUP', null);
+	},
+
+	UPDATE_GROUP_VALUES: (state, options) => {
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		let groupsSheet = activeSheet.sheet;
+		const element = recursiveFind(groupsSheet, el => el.id === options.id).element;
+
+		Object.keys(options).forEach(key => {
+			if (key !== 'id' && key !== 'sheet_id') {
+				if (Object.prototype.hasOwnProperty.call(options, key)) {
+					element[key] = options[key];
+				}
+			}
+		});
+
+		setApiStatus(state, 'UPDATE_GROUP_VALUES', null);
 	},
 
 	SET_PARAMS_GROUPS_SHEET: (state, params) => {
@@ -496,21 +557,6 @@ export default {
 			}
 		});
 	},
-
-	// SET_ACTIVE_TASK: (state, obj) => {
-	// 	const activeSheet = state.sheets.find(el => el.sheet_id === obj.sheet_id)
-	// 	let activedTask = recursiveFind(activeSheet.sheet, el => el.isActive === true).element
-	// 	if (activedTask) {
-	// 		activedTask.isActive = false
-	// 	}
-
-	// 	let activeTask = recursiveFind(activeSheet.sheet, el => el.task_id === obj.task_id).element
-	// 	if (activeTask) {
-	// 		activeTask.isActive = true
-	// 		activeSheet.selectedItem = activeTask.task_id
-	// 		state.selectedSheet = null
-	// 	}
-	// },
 
 	/* --------------------------------------Contexts mutations------------------------------------- */
 
@@ -762,7 +808,9 @@ export default {
 					thisSheet.sheet,
 					el => el.task_id === options.task_id,
 				).element;
-
+				thisSheet.selectedItem.isActive = true;
+			} else if (Object.prototype.hasOwnProperty.call(options, 'id')) {
+				thisSheet.selectedItem = recursiveFind(thisSheet.sheet, el => el.id === options.id).element;
 				thisSheet.selectedItem.isActive = true;
 			} else {
 				state.selectedSheet = thisSheet;

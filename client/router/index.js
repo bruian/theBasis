@@ -29,12 +29,6 @@ function createRouter(store) {
 			}, // OK
 			// { path: '/user/:id', name: 'user', component: () => import('../views/User.vue'), mets: { auth: true } },					//OK
 			{
-				path: '/groups',
-				name: 'groups',
-				component: () => import('../views/Groups.vue'),
-				meta: { auth: true },
-			}, // OK
-			{
 				path: '/main-sheets',
 				name: 'main-sheets',
 				component: () => import('../views/MainSheets.vue'),

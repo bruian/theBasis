@@ -53,9 +53,9 @@ export default {
 		return state[state.activeUsersSheet.sheet].sheet;
 	},
 
-	groupsSheet(state) {
-		return state[state.activeGroupsSheet.sheet].sheet;
-	},
+	// groupsSheet(state) {
+	// 	return state[state.activeGroupsSheet.sheet].sheet;
+	// },
 
 	tasksSheet: state => sheet_id => {
 		// const currentSheet = state.sheets.find(el => el.sheet_id === sheet_id).sheet
