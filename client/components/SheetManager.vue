@@ -85,7 +85,7 @@ export default {
         this.groupChangeStart = false;
 
         this.$store
-          .dispatch("UPDATE_SHEETS_VALUES", {
+          .dispatch("UPDATE_SHEET_VALUES", {
             id: this.$store.state.selectedSheet.sheet_id,
             field: "condition",
             value: {

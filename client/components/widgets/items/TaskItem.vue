@@ -9,7 +9,7 @@
     <div v-bind:class="classObject" v-if="!item.isDivider && item.isShowed" @click="onBodyClick">
       <div class="task-clmn2">
         <div
-          v-bind:class="{ 'task-handle': true, 'task-handle-active': item.isActive }"
+          v-bind:class="{ 'itm-handle': true, 'itm-handle-active': item.isActive }"
           @mousedown="dragHandleDown"
           @mouseup="dragHandleUp"
         ></div>
@@ -277,7 +277,7 @@ export default {
   methods: {
     onStatusChange: function(newStatus) {
       this.$store
-        .dispatch("CREATE_ACTIVITY_ELEMENT", {
+        .dispatch("CREATE_ACTIVITY", {
           sheet_id: this.sheet_id,
           task_id: this.item.task_id,
           status: newStatus
@@ -361,7 +361,7 @@ export default {
       return status[itm];
     },
     getDraggableOptions: function() {
-      return { group: this.sheet_id, handle: ".task-handle" };
+      return { group: this.sheet_id, handle: ".itm-handle" };
     },
     onDragStart: function(dragResult) {
       const { item } = dragResult;
@@ -523,45 +523,6 @@ export default {
     /*-13px 0 15px -15px rgba(0, 0, 0, .7),
 	13px 0 15px -15px rgba(0, 0, 0, .7),*/
       0 0 40px rgba(0, 0, 0, 0.1) inset;
-}
-
-.active {
-  box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2),
-    /*-13px 0 15px -15px rgba(0, 0, 0, .7),
-	13px 0 15px -15px rgba(0, 0, 0, .7),*/
-      0 0 40px rgba(0, 0, 0, 0.1) inset;
-}
-
-.task-handle {
-  content: "...";
-  width: 10px;
-  max-width: 10px;
-  height: 40px;
-  /* display: inline-block; */
-  overflow: hidden;
-  line-height: 5px;
-  /* padding: 3px 4px; */
-  cursor: move;
-  /* vertical-align: middle; */
-  /* margin-top: -.7em; */
-  margin-left: 0.2em;
-  font-size: 12px;
-  font-family: sans-serif;
-  letter-spacing: 2px;
-  color: #cccccc;
-  text-shadow: 1px 0 1px black;
-}
-
-.task-handle::after {
-  content: ".. .. .. ..";
-}
-
-.task-handle-active {
-  color: blue;
-}
-
-.task-handle-active::after {
-  content: ".. .. .. .. .. ..";
 }
 
 .task-clmn1 {

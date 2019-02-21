@@ -53,7 +53,7 @@ export default {
         return this.$store.state.sheets;
       },
       set(value) {
-        this.$store.dispatch("UPDATE_SHEETS_VALUES", value).catch(err => {
+        this.$store.dispatch("UPDATE_SHEET_VALUES", value).catch(err => {
           console.warn(err);
         });
       }

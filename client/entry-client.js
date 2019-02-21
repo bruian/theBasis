@@ -1,37 +1,37 @@
 import Vue from 'vue';
 import 'es6-promise/auto';
-import createApp from './app';
-import ProgressBar from './components/ProgressBar.vue';
 import BootstrapVue from 'bootstrap-vue';
-
-import config from './config';
-const logRequests = !!config.DEBUG_API;
-
 import axios from 'axios';
 import VueAxios from 'vue-axios';
+
+import config from './config';
+import createApp from './app';
+import ProgressBar from './components/ProgressBar.vue';
 
 import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap-vue/dist/bootstrap-vue.css';
 
 import 'material-design-icons-iconfont/dist/material-design-icons.css';
-//import '@mdi/font/css/materialdesignicons.css'
-//import '@fortawesome/fontawesome-free/css/all.css'
+// import '@mdi/font/css/materialdesignicons.css'
+// import '@fortawesome/fontawesome-free/css/all.css'
 import 'vuetify/dist/vuetify.min.css';
 import '@riophae/vue-treeselect/dist/vue-treeselect.css';
+import './app.css';
 
 Vue.use(BootstrapVue);
 Vue.use(VueAxios, axios);
-// Vue.axios.defaults.baseURL = `http://${window.location.host}/api/`;
+
 Vue.axios.defaults.baseURL = `http://${config.apiHost}:${config.apiPort}/api/`;
 
 // global progress bar
+// eslint-disable-next-line
 const bar = (Vue.prototype.$bar = new Vue(ProgressBar).$mount());
 document.body.appendChild(bar.$el);
 
 // a global mixin that calls `asyncData` when a route component's params change
 Vue.mixin({
 	beforeRouteUpdate(to, from, next) {
-		//debugger
+		// debugger
 		const { asyncData } = this.$options;
 		if (asyncData) {
 			asyncData({
@@ -50,6 +50,7 @@ const { app, router, store } = createApp();
 
 // prime the store with server-initialized state.
 // the state is determined during SSR and inlined in the page markup.
+/* eslint-disable no-underscore-dangle */
 if (window.__INITIAL_STATE__) {
 	store.replaceState(window.__INITIAL_STATE__);
 }
@@ -66,7 +67,7 @@ router.onReady(() => {
 		const prevMatched = router.getMatchedComponents(from);
 		let diffed = false;
 		const activated = matched.filter((c, i) => {
-			return diffed || (diffed = prevMatched[i] !== c);
+			return diffed || (diffed = prevMatched[i] !== c); // eslint-disable-line
 		});
 
 		const asyncDataHooks = activated.map(c => c.asyncData).filter(_ => _);
@@ -75,12 +76,13 @@ router.onReady(() => {
 		}
 
 		bar.start();
-		Promise.all(asyncDataHooks.map(hook => hook({ store, route: to })))
+		return Promise.all(asyncDataHooks.map(hook => hook({ store, route: to })))
 			.then(() => {
 				bar.finish();
 				next();
 			})
 			.catch(next);
+		// added return
 	});
 
 	// actually mount to DOM
@@ -88,6 +90,7 @@ router.onReady(() => {
 });
 
 // service worker
+// eslint-disable-next-line
 if ('https:' === location.protocol && navigator.serviceWorker) {
 	navigator.serviceWorker.register('/service-worker.js');
 }

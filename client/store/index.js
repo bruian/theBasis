@@ -66,58 +66,9 @@ function createStore() {
 			/* -SELECTED DATAS- */
 			theUser: {},
 
-			theGroup: {
-				id: 0,
-			},
-
 			updateQueue: [],
 
-			subgroupsCache: [] /* api request: /users or /users/:id */,
-
-			/* -USERS SHEET DATAS- */ activeUsersSheet: {
-				text: 'all',
-				whose: 'all',
-				id: 0,
-				sheet: 'usersSheetAll',
-				visible: true,
-				condition: [],
-			},
-			availableUsersSheet: [
-				{
-					text: 'my',
-					whose: 'user',
-					id: 1,
-					sheet: 'usersSheetMy',
-					visible: true,
-					condition: ['user_id'],
-				},
-				{
-					text: 'group',
-					whose: 'group',
-					id: 2,
-					sheet: 'usersSheetGroup',
-					visible: false,
-					condition: ['user_id', 'group_id'],
-				},
-			],
-			usersSheetAll: {
-				sheet: [],
-				limit: 10,
-				offset: 0,
-				searchText: '',
-			},
-			usersSheetMy: {
-				sheet: [],
-				limit: 10,
-				offset: 0,
-				searchText: '',
-			},
-			usersSheetGroup: {
-				sheet: [],
-				limit: 10,
-				offset: 0,
-				searchText: '',
-			} /* api request: /groups or /groups/:id */,
+			Tasks: [],
 
 			/* ----------------------------------------Sheets state----------------------------------------- */
 			selectedSheet: null,

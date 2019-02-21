@@ -1,6 +1,6 @@
 <template>
-  <div class="groups-sheet">
-    <div class="groups-sheet-header">
+  <div class="itm-sheet">
+    <div class="itm-sheet-header">
       <v-icon style="cursor: pointer" v-bind:color="selectedSheet" @click="onSelectSheet">bookmark</v-icon>
 
       <v-btn small icon @click="onAddItem(false)">
@@ -38,7 +38,7 @@
 
     <v-divider class="ma-0"></v-divider>
 
-    <div class="groups-sheet-body">
+    <div class="itm-sheet-body">
       <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="sheet_id">
         <draggable
           v-model="items"
@@ -124,8 +124,8 @@ export default {
 
       if (this.thisSheet.selectedItem) {
         if (this.thisSheet.selectedItem.group_type > 1) {
-					result += 2;
-				}
+          result += 2;
+        }
 
         function recurr(sheet, id) {
           let res = 0;
@@ -136,11 +136,7 @@ export default {
                 res += 1;
 
                 if (i > 0) res += 4;
-                if (
-                  i < sheet.length 
-                  // && i < sheet.length - 1
-                )
-                  res += 8;
+                if (i < sheet.length) res += 8;
               } else if (sheet[i].level > 1 && sheet[i].level < 3) {
                 res += 1;
 
@@ -148,7 +144,7 @@ export default {
                 if (i < sheet.length - 1) res += 8;
               }
 
-              if (i > 0 && (sheet[i].level < 3)) {
+              if (i > 0 && sheet[i].level < 3) {
                 if (sheet[i].level + (sheet[i].depth - 1) < 3) res += 16;
               }
               if (sheet[i].level > 1) res += 32;
@@ -445,25 +441,4 @@ export default {
 </script>
 
 <style lang="css">
-.groups-sheet {
-  box-shadow: 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14),
-    0 1px 3px 0 rgba(0, 0, 0, 0.12);
-  transition: 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
-}
-
-.groups-sheet-header {
-  display: flex;
-}
-
-.groups-sheet-body {
-  padding: 1px;
-  margin: 0px;
-}
-</style>
-
-<style lang="stylus">
-.drawer-menu--scroll {
-  height: calc(70vh);
-  overflow: auto;
-}
 </style>

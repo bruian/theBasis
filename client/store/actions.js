@@ -158,10 +158,6 @@ async function fetchSrv(query, commit, argTokens) {
 	}
 }
 
-let userPartID = 0;
-// let groupPartID = 0;
-// let taskPartID = 0;
-
 export default {
 	/* -----------------------------------Authentication actions------------------------------------ */
 
@@ -393,46 +389,45 @@ export default {
 
 	/* -------------------------------------USERS SHEET action-------------------------------------- */
 
-	FETCH_USERS_SHEET: ({ commit, state }) => {
-		const activeSheet = state.activeUsersSheet.sheet;
-		const searchText = state[activeSheet].searchText;
+	FETCH_USERS: ({ commit, state }, options) => {
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+
+		let isRefresh = false;
+		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
+			activeSheet.limit = 20;
+			activeSheet.offset = 0;
+			isRefresh = true;
+		}
+
 		const fetchQuery = {
 			url: `${apiURL}users`,
 			method: 'GET',
-			params: {
-				like: searchText,
-				whose: state.activeUsersSheet.whose,
-			},
-			headers: {
-				limit: state[activeSheet].limit,
-				offset: state[activeSheet].offset,
-				partid: ++userPartID,
-			},
+			params: { limit: activeSheet.limit, offset: activeSheet.offset },
 		};
 
-		const condition = state.activeUsersSheet.condition;
-		for (let i = 0; i < condition.length; i++) {
-			switch (condition[i]) {
-				case 'user_id':
-					fetchQuery.url += `/${state.theUser.id}`;
-					break;
-				case 'group_id':
-					fetchQuery.params.group_id = state.theGroup.id;
-					break;
-				default:
-					break;
+		// apply global condition
+		Object.keys(activeSheet.condition).forEach(key => {
+			if (activeSheet.condition[key] !== undefined) {
+				fetchQuery.params[key] = activeSheet.condition[key];
 			}
-		}
+		});
+
+		// apply local condition
+		Object.keys(options).forEach(key => {
+			if (key !== 'sheet_id' && key !== 'refresh') {
+				fetchQuery.params[key] = options[key];
+			}
+		});
 
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(0);
-				} else {
-					console.log(`actions partID: srv-${dataFromSrv.partid} glb-${userPartID}`);
-					commit('SET_USERS_SHEET', dataFromSrv.data);
-					return Promise.resolve(dataFromSrv.data.length);
-				}
+				commit('SET_USERS', {
+					sheet_id: options.sheet_id,
+					refresh: isRefresh,
+					action: dataFromSrv.action,
+					data: dataFromSrv.data,
+				});
+				return Promise.resolve(dataFromSrv.data.length);
 			})
 			.catch(err => {
 				if (err.response.data) {
@@ -1038,7 +1033,7 @@ export default {
 	/** Создание нового элемента в списке sheet принадлежащему множеству списков sheets по sheet_id
 	 * обязательные входящие опции: options = { sheet_id:string, isSubelement:bool, isStart:bool }
 	 */
-	CREATE_ELEMENT: ({ commit, state }, options) => {
+	CREATE_TASK: ({ commit, state }, options) => {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		const thisSheet = activeSheet.sheet;
 
@@ -1107,7 +1102,7 @@ export default {
 	/** Удаление текущего элемента в списке sheet принадлежащему множеству списков sheets по sheet_id
 	 * обязательные входящие опции: options = { sheet_id:string }
 	 */
-	DELETE_ELEMENT: ({ commit, state }, options) => {
+	DELETE_TASK: ({ commit, state }, options) => {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		const thisSheet = activeSheet.sheet;
 
@@ -1733,7 +1728,7 @@ export default {
 	},
 
 	/**
-	 * @func CREATE_ACTIVITY_ELEMENT
+	 * @func CREATE_ACTIVITY
 	 * @param { VUEX action parametres: Object }
 	 * @param { { sheet_id, task_id, ...other options }: Object } - options
 	 * @returns { function(...args): Promise }
@@ -1756,7 +1751,7 @@ export default {
 	 * 	3) Пересчитывается значение "duration" у задач из пункта 1 и 2. Обновляются ста-
 	 * 	тусы иконок
 	 */
-	CREATE_ACTIVITY_ELEMENT: ({ commit, state }, options) => {
+	CREATE_ACTIVITY: ({ commit, state }, options) => {
 		// Получим элемент задачи относительно которой добавляется активность
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		const thisSheet = activeSheet.sheet;
@@ -1822,13 +1817,13 @@ export default {
 	/* --------------------------------------SHEETS actions--------------------------------------- */
 
 	/**
-	 * @func UPDATE_SHEETS_VALUES
+	 * @func UPDATE_SHEET_VALUES
 	 * @param { VUEX action parametres: Object }
 	 * @param { { id, field, value }: Object } - options
 	 * @returns { function(...args): Promise }
 	 * @description Функция для обновление элементов в списке
 	 */
-	UPDATE_SHEETS_VALUES: ({ commit, dispatch }, options) => {
+	UPDATE_SHEET_VALUES: ({ commit, dispatch }, options) => {
 		const values = {
 			id: options.id,
 		};
@@ -1847,7 +1842,7 @@ export default {
 					return Promise.resolve(false);
 				}
 
-				commit('UPDATE_SHEETS_VALUES', dataFromSrv.data);
+				commit('UPDATE_SHEET_VALUES', dataFromSrv.data);
 
 				let needUpdateSheet = false;
 				Array.prototype.forEach.call(dataFromSrv.data, dataItem => {

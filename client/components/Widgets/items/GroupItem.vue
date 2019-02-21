@@ -3,7 +3,7 @@
     <div v-bind:class="classObject" v-if="!item.isDivider && item.isShowed" @click="onBodyClick">
       <div class="group-clmn2">
         <div
-          v-bind:class="{ 'group-handle': true, 'group-handle-active': item.isActive }"
+          v-bind:class="{ 'itm-handle': true, 'itm-handle-active': item.isActive }"
           @mousedown="dragHandleDown"
           @mouseup="dragHandleUp"
         ></div>
@@ -48,7 +48,8 @@
         <v-icon @click class="expand-ico" color="primary" dark>more_horiz</v-icon>
       </div>
     </div>
-    <!-- task-body -->
+
+    <!-- group-body -->
     <div class="group-expander" v-show="item.isExpanded">
       <v-tabs slot="extension" slider-color="primary" v-model="currentTab">
         <v-tabs-slider></v-tabs-slider>
@@ -156,17 +157,6 @@ export default {
   watch: {
     currentTab() {
       if (this.tabs[this.currentTab].name === "Activity") {
-        // this.$store
-        //   .dispatch("FETCH_ACTIVITY", {
-        //     task_id: this.item.task_id,
-        //     sheet_id: this.sheet_id
-        //   })
-        //   .then(res => {
-        //     console.log("Loaded activity");
-        //   })
-        //   .catch(err => {
-        //     console.warn(err);
-        //   });
       }
     }
   },
@@ -190,7 +180,7 @@ export default {
       return status[itm];
     },
     getDraggableOptions: function() {
-      return { group: this.sheet_id, handle: ".group-handle" };
+      return { group: this.sheet_id, handle: ".itm-handle" };
     },
     onDragStart: function(dragResult) {
       const { item } = dragResult;
@@ -303,39 +293,6 @@ export default {
 .group-body:active {
   box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2),
     0 0 40px rgba(0, 0, 0, 0.1) inset;
-}
-
-.active {
-  box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2),
-    0 0 40px rgba(0, 0, 0, 0.1) inset;
-}
-
-.group-handle {
-  content: "...";
-  width: 10px;
-  max-width: 10px;
-  height: 40px;
-  overflow: hidden;
-  line-height: 5px;
-  cursor: move;
-  margin-left: 0.2em;
-  font-size: 12px;
-  font-family: sans-serif;
-  letter-spacing: 2px;
-  color: #cccccc;
-  text-shadow: 1px 0 1px black;
-}
-
-.group-handle::after {
-  content: ".. .. .. ..";
-}
-
-.group-handle-active {
-  color: blue;
-}
-
-.group-handle-active::after {
-  content: ".. .. .. .. .. ..";
 }
 
 .group-clmn1 {

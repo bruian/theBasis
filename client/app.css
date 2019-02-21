@@ -1,0 +1,128 @@
+/* border-radius: 2px;
+  box-shadow: 0 2px 1px -1px rgba(0,0,0,.2), 0 1px 1px 0 rgba(0,0,0,.14), 0 1px 3px 0 rgba(0,0,0,.12);
+  display: block;
+  position: relative;
+	text-decoration: none; */
+/* min-width: 550; */
+.itm-sheet {
+	box-shadow: 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14),
+		0 1px 3px 0 rgba(0, 0, 0, 0.12);
+	transition: 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+}
+
+.itm-sheet-header {
+	display: flex;
+}
+
+.itm-sheet-body {
+	padding: 1px;
+	margin: 0px;
+}
+
+.itm-handle {
+	content: '...';
+	width: 10px;
+	max-width: 10px;
+	height: 40px;
+	overflow: hidden;
+	line-height: 5px;
+	cursor: move;
+	margin-left: 0.2em;
+	font-size: 12px;
+	font-family: sans-serif;
+	letter-spacing: 2px;
+	color: #cccccc;
+	text-shadow: 1px 0 1px black;
+}
+
+.itm-handle::after {
+	content: '.. .. .. ..';
+}
+
+.itm-handle-active {
+	color: blue;
+}
+
+.itm-handle-active::after {
+	content: '.. .. .. .. .. ..';
+}
+
+.active {
+	box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2),
+		/*-13px 0 15px -15px rgba(0, 0, 0, .7),
+	13px 0 15px -15px rgba(0, 0, 0, .7),*/ 0 0 40px
+			rgba(0, 0, 0, 0.1) inset;
+}
+
+.drawer-menu--scroll {
+	height: calc(70vh);
+	overflow: auto;
+}
+
+.smooth-dnd-container.vertical > .smooth-dnd-draggable-wrapper {
+	overflow: visible;
+}
+
+/* .sheet-header .v-expansion-panel__header {
+	padding: 0px;
+}
+
+.sheet-header .v-expansion-panel__header__icon {
+	padding-top: 4px;
+	padding-right: 5px;
+}
+
+.sheet-header .search-button {
+	padding-top: 4px;
+	margin-left: 0px;
+	margin-right: 0px;
+}
+
+.sheet-header .v-toolbar__content {
+	padding-right: 5px;
+}
+
+.sheet-body .sbx-twitter {
+	width: 100%;
+}
+
+.sheet-body .main {
+	margin-left: 5px;
+	margin-right: 5px;
+	margin-bottom: 5px;
+} */
+
+/* .activebox {
+  white-space: nowrap;
+  display: flex;
+  justify-content: space-between;
+} */
+
+/* .activeTasksSheetbox {
+  display: flex;
+} */
+
+/* .opacIn {
+  animation-name: fadeIn;
+  animation-duration: .5s;
+} */
+
+/* @keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+} */
+
+/* .activeitem {
+	margin-right: 5px;
+	color: blue;
+} */
+
+/* .sheet-enter-active, .sheet-leave-active {
+  transition: all 1s;
+} */
+
+/* .sheet-leave-active до версии 2.1.8 */
+/* .sheet-enter, .sheet-leave-to  {
+  opacity: 0;
+  transform: translateY(30px);
+} */

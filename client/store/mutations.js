@@ -42,30 +42,8 @@ export default {
 
 		state.mainUser = Object.assign({}, state.default.mainUser);
 		state.theUser = {};
-		state.theGroup = {};
-		state.activeUsersSheet = {
-			text: 'all',
-			id: 0,
-			sheet: 'usersSheetAll',
-			visible: true,
-			condition: [],
-		};
-		state.availableUsersSheet = [
-			{ text: 'my', id: 1, sheet: 'usersSheetMy', visible: true, condition: ['user_id'] },
-			{
-				text: 'group',
-				id: 2,
-				sheet: 'usersSheetGroup',
-				visible: false,
-				condition: ['user_id', 'group_id'],
-			},
-		];
-		state.usersSheetAll.sheet = [];
-		state.usersSheetAll.offset = 0;
-		state.usersSheetMy.sheet = [];
-		state.usersSheetMy.offset = 0;
-		state.usersSheetGroup.sheet = [];
-		state.usersSheetGroup.offset = 0;
+
+		state.Tasks = [];
 
 		state.selectedSheet = null;
 		state.sheets = [];
@@ -160,18 +138,49 @@ export default {
 		}
 	},
 
-	/* Users sheet mutations */
-	SET_USERS_SHEET: (state, data) => {
-		setApiStatus(state, 'SET_USERS_SHEET', null);
+	/* -----------------------------------USERS SHEET mutations----------------------------------- */
 
-		data.forEach(el => {
-			el.loadingButton = false;
-		});
-		state[state.activeUsersSheet.sheet].sheet = state[state.activeUsersSheet.sheet].sheet.concat(
-			data,
-		);
-		state[state.activeUsersSheet.sheet].offset =
-			state[state.activeUsersSheet.sheet].offset + data.length;
+	SET_USERS: (state, options) => {
+		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+
+		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
+			activeSheet.sheet = [];
+		}
+		const usersSheet = activeSheet.sheet;
+		const users = options.data;
+
+		let existElement = -1;
+
+		for (let i = 0; i < users.length; i++) {
+			const newUser = Object.assign(
+				{
+					isShowed: true,
+					isSubgroupExpanded: 0,
+					isExpanded: false,
+					isActive: false,
+					consistency: 0,
+				},
+				users[i],
+			);
+
+			existElement = usersSheet.findIndex(el => el.id === newUser.id);
+			if (existElement === -1) {
+				activeSheet.offset++;
+				if (
+					Object.prototype.hasOwnProperty.call(options, 'isStart') &&
+					options.isStart &&
+					usersSheet.length > 1
+				) {
+					usersSheet.splice(1, 0, newUser);
+				} else {
+					usersSheet.push(newUser);
+				}
+			} else {
+				Vue.set(usersSheet, existElement, newUser);
+			}
+		}
+
+		setApiStatus(state, 'SET_USERS', null);
 	},
 
 	SET_ACTIVE_USERS_SHEET: (state, activeID) => {
@@ -673,7 +682,7 @@ export default {
 		setApiStatus(state, 'SHEETS_SUCCESS', null);
 	},
 
-	UPDATE_SHEETS_VALUES: (state, data) => {
+	UPDATE_SHEET_VALUES: (state, data) => {
 		let conditionKey = [];
 		let conditionValue = [];
 

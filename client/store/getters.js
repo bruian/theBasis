@@ -49,9 +49,9 @@ export default {
 		return state.layout === 2 ? !breakpoint.smAndDown : false;
 	},
 
-	usersSheet(state) {
-		return state[state.activeUsersSheet.sheet].sheet;
-	},
+	// usersSheet(state) {
+	// 	return state[state.activeUsersSheet.sheet].sheet;
+	// },
 
 	// groupsSheet(state) {
 	// 	return state[state.activeGroupsSheet.sheet].sheet;
