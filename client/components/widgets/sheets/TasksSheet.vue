@@ -49,9 +49,9 @@
         >
           <div
             v-for="(item, index) in items"
-            :key="item.task_id"
-            v-bind:data-task_id="item.task_id"
-            v-bind:data-parent_id="(item.parent) ? item.parent.task_id : null"
+            :key="item.id"
+            v-bind:data-id="item.id"
+            v-bind:data-parent_id="(item.parent) ? item.parent.id : null"
           >
             <TaskItem :sheet_id="thisSheet.sheet_id" :item="item"></TaskItem>
           </div>
@@ -89,7 +89,7 @@ export default {
   },
   data: () => ({
     thisSheet: null,
-    searchText: "",
+    like: "",
     scrollSettings: {
       maxScrollLength: 10
     },
@@ -129,11 +129,11 @@ export default {
       if (this.thisSheet.selectedItem) {
         result += 2;
 
-        function recurr(sheet, task_id) {
+        function recurr(sheet, id) {
           let res = 0;
 
           for (let i = 0; i < sheet.length; i++) {
-            if (sheet[i].task_id === task_id) {
+            if (sheet[i].id === id) {
               if (sheet[i].level === 1) {
                 res += 1;
 
@@ -156,7 +156,7 @@ export default {
               }
               if (sheet[i].level > 1) res += 32;
             } else if (sheet[i].children && sheet[i].children.length > 0) {
-              res = recurr(sheet[i].children, task_id);
+              res = recurr(sheet[i].children, id);
             }
 
             if (res) break;
@@ -166,8 +166,7 @@ export default {
         }
 
         result =
-          result +
-          recurr(this.thisSheet.sheet, this.thisSheet.selectedItem.task_id);
+          result + recurr(this.thisSheet.sheet, this.thisSheet.selectedItem.id);
       }
 
       return result;
@@ -182,7 +181,7 @@ export default {
     },
     onChange: function(value) {
       console.log("changed searchText: " + value);
-      this.searchText = value;
+      this.like = value;
       let that = this;
 
       function que(params) {
@@ -206,7 +205,7 @@ export default {
 
       this.$store.commit("SET_SELECTED", {
         sheet_id: this.sheet_id,
-        task_id: item.dataset.task_id
+        id: item.dataset.id
       });
     },
     onDrop: function(dropResult) {
@@ -243,17 +242,17 @@ export default {
         );
 
         if (element.parent === null) {
-          toParent_id = this.thisSheet.sheet[index - 1].task_id;
+          toParent_id = this.thisSheet.sheet[index - 1].id;
         } else {
           if (element.parent.children && element.parent.children.length > 1) {
-            toParent_id = element.parent.children[index - 1].task_id;
+            toParent_id = element.parent.children[index - 1].id;
           }
         }
 
         const options = {
           oldIndex: index,
           newIndex: 0,
-          fromParent_id: element.parent ? element.parent.task_id : null,
+          fromParent_id: element.parent ? element.parent.id : null,
           toParent_id: toParent_id,
           sheet_id: this.sheet_id
         };
@@ -290,14 +289,14 @@ export default {
           if (toParent === null) {
             lastParentIndex = recursiveFind(
               this.thisSheet.sheet,
-              el => el.task_id === element.parent.task_id
+              el => el.id === element.parent.id
             ).index;
             if (lastParentIndex < this.thisSheet.sheet.length)
               lastParentIndex++;
           } else {
             lastParentIndex = recursiveFind(
               toParent.children,
-              el => el.task_id === element.parent.task_id
+              el => el.id === element.parent.id
             ).index;
             if (lastParentIndex < toParent.children.length) lastParentIndex++;
           }
@@ -309,8 +308,8 @@ export default {
           .dispatch("REORDER_TASKS", {
             oldIndex: index,
             newIndex: lastParentIndex,
-            fromParent_id: element.parent ? element.parent.task_id : null,
-            toParent_id: toParent ? toParent.task_id : null,
+            fromParent_id: element.parent ? element.parent.id : null,
+            toParent_id: toParent ? toParent.id : null,
             move_out: true,
             sheet_id: this.sheet_id
           })
@@ -408,8 +407,8 @@ export default {
         this.$store.dispatch("REORDER_TASKS", {
           oldIndex: index,
           newIndex: newIndex,
-          fromParent_id: element.parent ? element.parent.task_id : null,
-          toParent_id: element.parent ? element.parent.task_id : null,
+          fromParent_id: element.parent ? element.parent.id : null,
+          toParent_id: element.parent ? element.parent.id : null,
           sheet_id: this.sheet_id
         });
       }

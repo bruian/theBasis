@@ -155,7 +155,7 @@ export default {
 			const newUser = Object.assign(
 				{
 					isShowed: true,
-					isSubgroupExpanded: 0,
+					isSubElementsExpanded: 0,
 					isExpanded: false,
 					isActive: false,
 					consistency: 0,
@@ -219,7 +219,7 @@ export default {
 		ul.sheet = [];
 		ul.offset = 0;
 		ul.limit = 10;
-		ul.searchText = '';
+		ul.like = '';
 	},
 
 	RESET_INACTIVE_USERS_SHEET: state => {
@@ -229,7 +229,7 @@ export default {
 			ul.sheet = [];
 			ul.offset = 0;
 			ul.limit = 10;
-			ul.searchText = '';
+			ul.like = '';
 		}
 	},
 
@@ -274,10 +274,8 @@ export default {
 		for (let i = 0; i < groups.length; i++) {
 			const newGroup = Object.assign(
 				{
-					countUsers: groups[i].countUsers,
-					countTasks: groups[i].countTasks,
 					isShowed: !(groups[i].level > 1),
-					isSubgroupExpanded: 0,
+					isSubElementsExpanded: 0,
 					isExpanded: false,
 					isActive: false,
 					consistency: 0,
@@ -387,7 +385,7 @@ export default {
 		gl.sheet = [];
 		gl.offset = 0;
 		gl.limit = 10;
-		gl.searchText = '';
+		gl.like = '';
 	},
 
 	RESET_INACTIVE_GROUPS_SHEET: state => {
@@ -399,7 +397,7 @@ export default {
 			gl.sheet = [];
 			gl.offset = 0;
 			gl.limit = 10;
-			gl.searchText = '';
+			gl.like = '';
 		}
 	},
 
@@ -429,6 +427,166 @@ export default {
 
 	/* ---------------------------------------TASKS mutations--------------------------------------- */
 
+	/*
+	 * @func SET_SHEET_DATA
+	 * @param {Object} state - VUEX store
+	 * @param {Object} options - mutation options
+	 * @description Sheet data mutation
+	 * options - { sheet_id: String, data: Array, action: String, refresh: Bool(optional) }
+	 */
+	SET_SHEET_DATA: (state, options) => {
+		/* При загрузке данных с сервера получается два набор данных
+			theDatas - хранит загруженные элементы для всех sheet,
+			theSheet - хранит ссылки на загруженные элементы, а так же их сортировка в разрезе каждого sheet
+		 */
+		let theDatas;
+		const theSheets = state.sheets.find(el => el.sheet_id === options.sheet_id);
+
+		switch (theSheets.type_el) {
+			case 'tasks-sheet':
+				theDatas = state.Tasks;
+				break;
+			case 'groups-sheet':
+				theDatas = state.Groups;
+				break;
+			case 'users-sheet':
+				theDatas = state.Users;
+				break;
+			case 'activity-sheet':
+				theDatas = state.Activity;
+				break;
+			default:
+				break;
+		}
+
+		const theSheet = theSheets.sheet;
+		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
+			// clear data
+			theSheets.sheet = [];
+			theDatas = [];
+		}
+
+		const datas = options.data;
+
+		let prevGroupId;
+		let tempParent;
+		let tempParent_id;
+		let existElement = -1;
+
+		for (let i = 0; i < datas.length; i++) {
+			// Вставка разделителя групп для tasks-sheet. Разделитель применяется только для верхнего
+			// уровня и делит tasks-sheet на различные группы
+			if (
+				theSheets.type_el === 'tasks-sheet' &&
+				prevGroupId !== datas[i].group_id &&
+				datas[i].parent === null
+			) {
+				let grp = recursiveFind(state.Groups, el => el.id === datas[i].group_id).element;
+				let divId = `div ${grp.id}`;
+
+				existElement = theSheet.findIndex(el => el.id === divId);
+				if (existElement === -1) {
+					theSheet.push({
+						isDivider: true,
+						id: divId,
+						group_id: grp.id,
+						name: grp.name,
+						isActive: false,
+					});
+				}
+
+				prevGroupId = datas[i].group_id;
+			}
+
+			// Загрузка элемента данных
+			const newData = Object.assign({}, datas[i]);
+			const index = theDatas.findIndex(el => el.id === newData.id);
+			if (index === -1) {
+				theDatas.push(newData);
+			} else {
+				Vue.set(theDatas, existElement, newData);
+			}
+
+			const newSheetData = {
+				isDivider: false,
+				isShowed: Object.prototype.hasOwnProperty.call(newData, 'level')
+					? !(newData.level > 1)
+					: true,
+				isSubElementsExpanded: 0,
+				isExpanded: false,
+				isActive: false,
+				/* shows the consistency of information
+					0 - consistently
+					1 - refresh
+					2 - not consistently */
+				consistency: 0,
+				el: newData,
+				children: [],
+			};
+
+			// Установка, специфичных для tasks-sheet, значений
+			if (theSheets.type_el === 'tasks-sheet') {
+				newData.context = state.Contexts.filter(el => el.task_id === newData.id).map(cont => {
+					return cont.value;
+				});
+				if (!newData.context) newData.context = [];
+
+				if (!newData.activity) newData.activity = [];
+
+				if (newData.status === 1 || newData.status === 5) {
+					newData.duration = newData.duration + (new Date() - new Date(newData.start));
+				}
+			}
+
+			// ids to object link
+			if (newData.parent === null) {
+				newData.level = 1;
+
+				existElement = theSheet.findIndex(el => el.id === newData.id);
+				if (existElement === -1) {
+					theSheet.offset++;
+					if ('isStart' in options && options.isStart && theSheet.length > 1) {
+						theSheet.splice(1, 0, datas[i]);
+					} else {
+						theSheet.push(datas[i]);
+					}
+				} else {
+					Vue.set(theSheet, existElement, datas[i]);
+				}
+			} else {
+				if (!tempParent || tempParent_id !== datas[i].parent) {
+					tempParent = recursiveFind(theSheet, el => el.id === datas[i].parent).element;
+					tempParent_id = tempParent.id;
+				}
+
+				if (tempParent) {
+					datas[i].parent = tempParent;
+					datas[i].level = tempParent.level + 1;
+
+					if (!tempParent.children) {
+						tempParent.havechild++;
+
+						Vue.set(tempParent, 'children', []);
+						Vue.set(tempParent.children, 0, datas[i]);
+					} else {
+						existElement = tempParent.children.findIndex(el => el.id === datas[i].id);
+						if (existElement === -1) {
+							if ('isStart' in options && options.isStart && tempParent.children.length > 1) {
+								tempParent.children.splice(1, 0, datas[i]);
+							} else {
+								tempParent.children.push(datas[i]);
+							}
+						} else {
+							Vue.set(tempParent.children, existElement, datas[i]);
+						}
+					}
+				}
+			}
+		}
+
+		setApiStatus(state, 'SET_TASKS', null);
+	},
+
 	SET_TASKS: (state, options) => {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
@@ -447,11 +605,11 @@ export default {
 				let grp = findGroup(state.mainGroups, tasks[i].group_id);
 				let divId = `div ${grp.id}`;
 
-				existElement = taskSheet.findIndex(el => el.task_id === divId);
+				existElement = taskSheet.findIndex(el => el.id === divId);
 				if (existElement === -1) {
 					taskSheet.push({
 						isDivider: true,
-						task_id: divId,
+						id: divId,
 						group_id: tasks[i].group_id,
 						name: grp.name,
 						isActive: false,
@@ -461,12 +619,10 @@ export default {
 				prevGroupId = tasks[i].group_id;
 			}
 
-			if (tasks[i].task_id) {
-				tasks[i].context = state.mainContexts
-					.filter(el => el.task_id === tasks[i].task_id)
-					.map(cont => {
-						return cont.value;
-					});
+			if (tasks[i].id) {
+				tasks[i].context = state.Contexts.filter(el => el.id === tasks[i].id).map(cont => {
+					return cont.value;
+				});
 				if (!tasks[i].context) tasks[i].context = [];
 
 				if (!tasks[i].activity) tasks[i].activity = [];
@@ -479,7 +635,7 @@ export default {
 			// displays the task item
 			tasks[i].isShowed = !(tasks[i].level > 1);
 			// shows that next subtasks are revealed
-			tasks[i].isSubtaskExpanded = 0;
+			tasks[i].isSubElementsExpanded = 0;
 			// shows more information on the task
 			tasks[i].isExpanded = false;
 			// shows that the task is selected
@@ -494,7 +650,7 @@ export default {
 			if (tasks[i].parent === null) {
 				tasks[i].level = 1;
 
-				existElement = taskSheet.findIndex(el => el.task_id === tasks[i].task_id);
+				existElement = taskSheet.findIndex(el => el.id === tasks[i].id);
 				if (existElement === -1) {
 					activeSheet.offset++;
 					if ('isStart' in options && options.isStart && taskSheet.length > 1) {
@@ -507,8 +663,8 @@ export default {
 				}
 			} else {
 				if (!tempParent || tempParent_id !== tasks[i].parent) {
-					tempParent = recursiveFind(taskSheet, el => el.task_id === tasks[i].parent).element;
-					tempParent_id = tempParent.task_id;
+					tempParent = recursiveFind(taskSheet, el => el.id === tasks[i].parent).element;
+					tempParent_id = tempParent.id;
 				}
 
 				if (tempParent) {
@@ -521,7 +677,7 @@ export default {
 						Vue.set(tempParent, 'children', []);
 						Vue.set(tempParent.children, 0, tasks[i]);
 					} else {
-						existElement = tempParent.children.findIndex(el => el.task_id === tasks[i].task_id);
+						existElement = tempParent.children.findIndex(el => el.id === tasks[i].id);
 						if (existElement === -1) {
 							if ('isStart' in options && options.isStart && tempParent.children.length > 1) {
 								tempParent.children.splice(1, 0, tasks[i]);
@@ -542,7 +698,7 @@ export default {
 	DELETE_TASK: (state, options) => {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		const taskSheet = activeSheet.sheet;
-		const { index, element } = recursiveFind(taskSheet, el => el.task_id === options.task_id);
+		const { index, element } = recursiveFind(taskSheet, el => el.id === options.id);
 
 		if (element.parent === null) {
 			taskSheet.splice(index, 1);
@@ -552,14 +708,14 @@ export default {
 		}
 	},
 
-	// values must contain task_id of element task_id:id
+	// values must contain id
 	UPDATE_TASK_VALUES: (state, options) => {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		let taskSheet = activeSheet.sheet;
-		const element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
+		const element = recursiveFind(taskSheet, el => el.id === options.id).element;
 
 		Object.keys(options).forEach(key => {
-			if (key !== 'task_id' && key !== 'sheet_id') {
+			if (key !== 'id' && key !== 'sheet_id') {
 				if (Object.prototype.hasOwnProperty.call(options, key)) {
 					element[key] = options[key];
 				}
@@ -571,7 +727,7 @@ export default {
 
 	MAIN_CONTEXTS_SUCCESS: (state, data) => {
 		let existingContexts = [];
-		state.mainContexts = data;
+		state.Contexts = data;
 
 		for (let i = 0; i < data.length; i++) {
 			if (existingContexts.findIndex(el => el === data[i].value) === -1) {
@@ -580,7 +736,7 @@ export default {
 		}
 		state.mainExistingContexts = Object.assign({}, existingContexts);
 
-		if (!Array.isArray(state.mainContexts)) state.mainContexts = [];
+		if (!Array.isArray(state.Contexts)) state.Contexts = [];
 
 		setApiStatus(state, 'MAIN_CONTEXTS_SUCCESS', null);
 	},
@@ -603,7 +759,7 @@ export default {
 		// Обновление активностей и статусов задач информацией полученной в options.data
 		Array.prototype.forEach.call(data, activity => {
 			// Для каждой задачи обновляется свой список активностей, тут меняется задача для обновления
-			if (!element || element.task_id !== activity.task_id) {
+			if (!element || element.id !== activity.task_id) {
 				// Если уже был получен элемент задачи, то перед получением нового элемента, старый
 				// необходимо обновить значениями duration и status
 				if (element) {
@@ -613,7 +769,7 @@ export default {
 
 				// Получается элемент задачи из списка задач на клиенте, инициализируется заново список
 				// активностей, инициализируются переменные duration и status
-				element = recursiveFind(taskSheet, el => el.task_id === activity.task_id).element;
+				element = recursiveFind(taskSheet, el => el.id === activity.task_id).element;
 				element.activity = [];
 
 				taskDuration = 0;
@@ -664,7 +820,7 @@ export default {
 				sheet: [],
 				limit: 10,
 				offset: 0,
-				searchText: '',
+				like: '',
 				condition,
 				service: false, // Такие элементы не отображаются в списке настроек sheets
 				type_el: type_obj.type_el,
@@ -812,13 +968,7 @@ export default {
 		} else if (Object.prototype.hasOwnProperty.call(options, 'sheet_id')) {
 			const thisSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 
-			if (Object.prototype.hasOwnProperty.call(options, 'task_id')) {
-				thisSheet.selectedItem = recursiveFind(
-					thisSheet.sheet,
-					el => el.task_id === options.task_id,
-				).element;
-				thisSheet.selectedItem.isActive = true;
-			} else if (Object.prototype.hasOwnProperty.call(options, 'id')) {
+			if (Object.prototype.hasOwnProperty.call(options, 'id')) {
 				thisSheet.selectedItem = recursiveFind(thisSheet.sheet, el => el.id === options.id).element;
 				thisSheet.selectedItem.isActive = true;
 			} else {

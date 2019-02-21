@@ -715,7 +715,7 @@ export default {
 					}
 
 					toParent.havechild++;
-					toParent.isSubgroupExpanded = 2;
+					toParent.isSubElementsExpanded = 2;
 				}
 
 				// eslint-disable-next-line
@@ -865,7 +865,7 @@ export default {
 			});
 	},
 
-	/** options = { sheet_id, task_id, ...values } */
+	/** options = { sheet_id, id, ...values } */
 	UPDATE_GROUP_VALUES: ({ commit, state }, options) => {
 		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		let groupsSheet = activeSheet.sheet;
@@ -1045,7 +1045,7 @@ export default {
 			const activeElement = recursiveFind(thisSheet, el => el.isActive).element;
 			if (activeElement) {
 				if (activeElement.level < 3) {
-					parent_id = activeElement.task_id;
+					parent_id = activeElement.id;
 					group_id = activeElement.group_id;
 				} else {
 					return Promise.reject(new Error({ message: 'Maximum is 3 levels' }));
@@ -1106,7 +1106,7 @@ export default {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		const thisSheet = activeSheet.sheet;
 
-		let task_id = null;
+		let id = null;
 		let group_id = null;
 
 		const activeElement = recursiveFind(thisSheet, el => el.isActive).element;
@@ -1117,7 +1117,7 @@ export default {
 				);
 			}
 
-			task_id = activeElement.task_id;
+			id = activeElement.id;
 			group_id = activeElement.group_id;
 		} else {
 			return Promise.resolve('No item selected for deletion');
@@ -1127,7 +1127,7 @@ export default {
 			url: `${apiURL}tasks`,
 			method: 'DELETE',
 			data: qs.stringify({
-				task_id,
+				id,
 				group_id,
 			}),
 		};
@@ -1137,7 +1137,7 @@ export default {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(false);
 				} else {
-					commit('DELETE_TASK', { sheet_id: options.sheet_id, task_id });
+					commit('DELETE_TASK', { sheet_id: options.sheet_id, id });
 					return Promise.resolve(true);
 				}
 			})
@@ -1178,7 +1178,7 @@ export default {
 		if (options.fromParent_id === null) {
 			fromTask = taskSheet[options.oldIndex];
 		} else {
-			fromParent = recursiveFind(taskSheet, el => el.task_id === options.fromParent_id).element;
+			fromParent = recursiveFind(taskSheet, el => el.id === options.fromParent_id).element;
 			fromTask = fromParent.children[options.oldIndex];
 		}
 		fromTask.consistency = 1;
@@ -1215,7 +1215,7 @@ export default {
 				}
 			}
 		} else {
-			toParent = recursiveFind(taskSheet, el => el.task_id === options.toParent_id).element;
+			toParent = recursiveFind(taskSheet, el => el.id === options.toParent_id).element;
 			if (!toParent.children || toParent.children.length === 0) {
 				toTask = null;
 				newGroupId = fromTask.group_id;
@@ -1290,7 +1290,7 @@ export default {
 		/* api сервера размещает элементы в списке по следующим правилам:
 			Все атрибуты обязательны
 			а) Необходимо указать <group_id>, id группы относительно которой позиционируется элемент
-			б) Необходимо указать <task_id>, id перемещаемого элемента
+			б) Необходимо указать <id>, id перемещаемого элемента
 			в) Необходимо указать <position>, id элемента на который помещается перемещаемый элемент,
 				значения: null - предполагает начало списка при isBefore = false
 									null - предполагает конец списка при isBefore = true
@@ -1307,11 +1307,11 @@ export default {
 			method: 'PUT',
 			data: qs.stringify({
 				group_id: newGroupId,
-				task_id: fromTask.task_id,
-				position: toTask === null ? null : toTask.task_id,
+				id: fromTask.id,
+				position: toTask === null ? null : toTask.id,
 				isBefore,
 				start: new Date().toISOString(),
-				parent_id: toParent === undefined ? 0 : toParent.task_id,
+				parent_id: toParent === undefined ? 0 : toParent.id,
 			}),
 		};
 
@@ -1375,7 +1375,7 @@ export default {
 						}
 
 						toParent.havechild++;
-						toParent.isSubtaskExpanded = 2;
+						toParent.isSubElementsExpanded = 2;
 					}
 
 					// eslint-disable-next-line
@@ -1411,7 +1411,7 @@ export default {
 					if (newGroupId !== undefined) {
 						commit('UPDATE_TASK_VALUES', {
 							sheet_id: options.sheet_id,
-							task_id: movedItem.task_id,
+							id: movedItem.id,
 							group_id: newGroupId,
 						});
 					}
@@ -1419,7 +1419,7 @@ export default {
 					if (dataFromSrv.activity_data) {
 						commit('SET_ACTIVITY', {
 							sheet_id: options.sheet_id,
-							task_id: movedItem.task_id,
+							id: movedItem.id,
 							data: dataFromSrv.activity_data,
 						});
 					}
@@ -1441,11 +1441,11 @@ export default {
 			});
 	},
 
-	/** options = { sheet_id, task_id, group_id } */
+	/** options = { sheet_id, id, group_id } */
 	UPDATE_TASK_GROUP: ({ commit, state }, options) => {
 		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		let taskSheet = activeSheet.sheet;
-		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
+		let element = recursiveFind(taskSheet, el => el.id === options.id).element;
 
 		element.consistency = 1;
 
@@ -1454,11 +1454,11 @@ export default {
 			method: 'PUT',
 			data: qs.stringify({
 				group_id: options.group_id,
-				task_id: element.task_id,
+				id: element.id,
 				position: null,
 				isBefore: false,
 				start: new Date().toISOString(),
-				parent_id: element.parent ? element.parent.task_id : null,
+				parent_id: element.parent ? element.parent.id : null,
 			}),
 		};
 
@@ -1476,7 +1476,7 @@ export default {
 					 Для уровней ниже применяется распределение по группам без разделов */
 					if (element.level === 1) {
 						/* Необходимо найти divider он будет являться началом размещения задачи в новой группе */
-						idxTask = taskSheet.findIndex(el => el.task_id === options.task_id);
+						idxTask = taskSheet.findIndex(el => el.id === options.id);
 						movedItem = taskSheet.splice(idxTask, 1)[0];
 
 						idxGroup = taskSheet.findIndex(el => el.group_id === options.group_id && el.isDivider);
@@ -1496,7 +1496,7 @@ export default {
 					} else {
 						/* Для элементов последующих уровней необходимо найти самый первый элемент
 						 принадлежащий искомой группе и поместить нашу задачу выше этого элемента */
-						idxTask = element.parent.children.findIndex(el => el.task_id === options.task_id);
+						idxTask = element.parent.children.findIndex(el => el.id === options.id);
 						movedItem = element.parent.children.splice(idxTask, 1)[0];
 
 						idxGroup = element.parent.children.findIndex(el => el.group_id === options.group_id);
@@ -1508,12 +1508,12 @@ export default {
 					// изменение значения группы на новую группу
 					commit('UPDATE_TASK_VALUES', {
 						sheet_id: options.sheet_id,
-						task_id: movedItem.task_id,
+						id: movedItem.id,
 						group_id: options.group_id,
 					});
 					commit('SET_ACTIVITY', {
 						sheet_id: options.sheet_id,
-						task_id: movedItem.task_id,
+						task_id: movedItem.id,
 						data: dataFromSrv.activity_data,
 					});
 
@@ -1533,19 +1533,19 @@ export default {
 			});
 	},
 
-	/** options = { sheet_id, task_id, ...values } */
+	/** options = { sheet_id, id, ...values } */
 	UPDATE_TASK_VALUES: ({ commit, state }, options) => {
 		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		let taskSheet = activeSheet.sheet;
-		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
+		let element = recursiveFind(taskSheet, el => el.id === options.id).element;
 		let values = {
-			task_id: options.task_id,
+			id: options.id,
 		};
 
 		element.consistency = 1;
 
 		Object.keys(options).forEach(key => {
-			if (key !== 'task_id' && key !== 'sheet_id') {
+			if (key !== 'id' && key !== 'sheet_id') {
 				if (Object.prototype.hasOwnProperty.call(element, key)) {
 					values[key] = options[key];
 					element[key] = options[key];
@@ -1586,7 +1586,7 @@ export default {
 	ADD_TASK_CONTEXT: ({ commit, state }, options) => {
 		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		let taskSheet = activeSheet.sheet;
-		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
+		let element = recursiveFind(taskSheet, el => el.id === options.task_id).element;
 		let values = {
 			task_id: options.task_id,
 		};
@@ -1637,7 +1637,7 @@ export default {
 	REMOVE_TASK_CONTEXT: ({ commit, state }, options) => {
 		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		let taskSheet = activeSheet.sheet;
-		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
+		let element = recursiveFind(taskSheet, el => el.id === options.task_id).element;
 		let values = {
 			task_id: options.task_id,
 		};
@@ -1693,7 +1693,7 @@ export default {
 	FETCH_ACTIVITY: ({ commit, state }, options) => {
 		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		let taskSheet = activeSheet.sheet;
-		let element = recursiveFind(taskSheet, el => el.task_id === options.task_id).element;
+		let element = recursiveFind(taskSheet, el => el.id === options.task_id).element;
 
 		if (!element) return Promise.reject(new Error({ message: 'task element not found' }));
 		element.consistency = 1;
@@ -1755,7 +1755,7 @@ export default {
 		// Получим элемент задачи относительно которой добавляется активность
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 		const thisSheet = activeSheet.sheet;
-		const activeElement = recursiveFind(thisSheet, el => el.task_id === options.task_id).element;
+		const activeElement = recursiveFind(thisSheet, el => el.id === options.task_id).element;
 
 		let status;
 		let start;

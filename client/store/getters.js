@@ -64,11 +64,11 @@ export default {
 	},
 
 	contextByExistingTag: state => index => {
-		return state.mainContexts.find(el => el.value === state.mainExistingContexts[index]);
+		return state.Contexts.find(el => el.value === state.mainExistingContexts[index]);
 	},
 
 	contextByValue: state => (value, task_id) => {
-		return state.mainContexts.find(el => el.value === value && el.task_id === task_id);
+		return state.Contexts.find(el => el.value === value && el.task_id === task_id);
 	},
 
 	taskByIndex: state => obj => {

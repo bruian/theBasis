@@ -1,15 +1,15 @@
-export function recursiveFind(sheet, cb) {
+export function recursiveFind(arr, cb) {
 	let result = {
 		index: null,
 		element: null,
 	};
 
-	for (let i = 0; i < sheet.length; i++) {
-		if (cb(sheet[i])) {
+	for (let i = 0; i < arr.length; i++) {
+		if (cb(arr[i])) {
 			result.index = i;
-			result.element = sheet[i];
-		} else if (sheet[i].children && sheet[i].children.length > 0) {
-			result = recursiveFind(sheet[i].children, cb);
+			result.element = arr[i];
+		} else if (arr[i].children && arr[i].children.length > 0) {
+			result = recursiveFind(arr[i].children, cb);
 		}
 
 		if (result.element) break;

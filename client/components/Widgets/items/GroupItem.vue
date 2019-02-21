@@ -26,7 +26,7 @@
           slot="activator"
           color="primary"
           dark
-        >{{ (item.isSubgroupExpanded > 1) ? "expand_less" : "expand_more" }}</v-icon>
+        >{{ (item.isSubElementsExpanded > 1) ? "expand_less" : "expand_more" }}</v-icon>
       </div>
 
       <div class="group-clmn3">
@@ -64,7 +64,7 @@
 
     <draggable
       v-model="items"
-      v-show="(item.isSubgroupExpanded > 1)"
+      v-show="(item.isSubElementsExpanded > 1)"
       :options="getDraggableOptions()"
       @start="onDragStart"
       @end="onDrop"
@@ -168,7 +168,7 @@ export default {
       this.$store
         .dispatch("UPDATE_GROUP_VALUES", {
           sheet_id: this.sheet_id,
-          task_id: this.item.id,
+          id: this.item.id,
           name: text
         })
         .catch(err => {
@@ -212,13 +212,13 @@ export default {
         });
     },
     dragHandleDown: function() {
-      if (this.item.isSubgroupExpanded > 1) {
-        this.item.isSubgroupExpanded = 1;
+      if (this.item.isSubElementsExpanded > 1) {
+        this.item.isSubElementsExpanded = 1;
       }
     },
     dragHandleUp: function() {
-      if (this.item.isSubgroupExpanded === 1) {
-        this.item.isSubgroupExpanded = 2;
+      if (this.item.isSubElementsExpanded === 1) {
+        this.item.isSubElementsExpanded = 2;
       }
     },
     onBodyClick: function() {
@@ -246,7 +246,7 @@ export default {
         this.$store.commit("UPDATE_GROUP_VALUES", {
           sheet_id: this.sheet_id,
           id: this.item.id,
-          isSubgroupExpanded: this.item.isSubgroupExpanded > 1 ? 0 : 2
+          isSubElementsExpanded: this.item.isSubElementsExpanded > 1 ? 0 : 2
         });
       } else {
         return this.$store
@@ -258,7 +258,7 @@ export default {
             this.$store.commit("UPDATE_GROUP_VALUES", {
               sheet_id: this.sheet_id,
               id: this.item.id,
-              isSubgroupExpanded: this.item.isSubgroupExpanded > 1 ? 0 : 2
+              isSubElementsExpanded: this.item.isSubElementsExpanded > 1 ? 0 : 2
             });
           })
           .catch(err => {

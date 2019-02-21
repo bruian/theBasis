@@ -40,6 +40,36 @@ const def = {
 	},
 };
 
+/*
+	sheet: [
+		{
+			icon: ("G", "T", "U", "A"),
+			id: Number,
+			layout: Number,
+			limit: Number,
+			offset: Number,
+			name: String,
+			owner_id: 1,
+			like: String,
+			selectedItem: link to Object,
+			service: Boolean,
+			sheet_id: String,
+			type_el: ("groups-sheet", "tasks-sheet", "users-sheet", "activity-sheet"),
+			user_id: Number,
+			visible: Boolean,
+			condition: {
+				group_id: String,
+				parent_id: String,
+				task_id: String,
+				userId: Number
+			},
+			sheet: [{
+
+			}]
+		}
+	]
+*/
+
 function createStore() {
 	let store = new Vuex.Store({
 		state: {
@@ -60,7 +90,6 @@ function createStore() {
 			mainUsersMini: [],
 			mainGroups: [],
 			mainGroupsMini: [],
-			mainContexts: [],
 			mainExistingContexts: {},
 
 			/* -SELECTED DATAS- */
@@ -69,6 +98,10 @@ function createStore() {
 			updateQueue: [],
 
 			Tasks: [],
+			Groups: [],
+			Users: [],
+			Activity: [],
+			Contexts: [],
 
 			/* ----------------------------------------Sheets state----------------------------------------- */
 			selectedSheet: null,

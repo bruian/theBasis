@@ -51,7 +51,7 @@ export default {
   },
   data: () => ({
     thisSheet: null,
-    searchText: "",
+    like: "",
     scrollSettings: {
       maxScrollLength: 10
     },
@@ -97,7 +97,7 @@ export default {
       this.$store.commit("SET_SELECTED", { sheet_id: this.sheet_id });
     },
     onChange: function(value) {
-      this.searchText = value;
+      this.like = value;
       let that = this;
 
       function que(params) {
