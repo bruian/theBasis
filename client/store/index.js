@@ -40,8 +40,8 @@ const def = {
 	},
 };
 
-/*
-	sheet: [
+/* Data structure
+	sheets: [
 		{
 			icon: ("G", "T", "U", "A"),
 			id: Number,
@@ -63,9 +63,22 @@ const def = {
 				task_id: String,
 				userId: Number
 			},
-			sheet: [{
-
+			sh: [{
+				isDivider: Boolean,
+				isShowed: Boolean,
+				isSubElementExpanded: Number,
+				isExpanded: Boolean,
+				isActive: Boolean,
+				consistency: Number,
+				el: link to datas
 			}]
+		}
+	],
+	Tasks: [
+		{
+			id: String,
+			parent: String,
+			...
 		}
 	]
 */

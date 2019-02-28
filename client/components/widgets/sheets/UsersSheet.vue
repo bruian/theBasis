@@ -34,7 +34,7 @@
 import UserItem from "../items/UserItem.vue";
 import VuePerfectScrollbar from "../../Perfect-scrollbar.vue";
 import InfiniteLoading from "../../InfiniteLoading";
-import { recursiveFind } from "../../../util/helpers";
+import { recursiveFind, getElements } from "../../../util/helpers";
 
 export default {
   name: "users-sheet",
@@ -66,7 +66,16 @@ export default {
   computed: {
     items: {
       get() {
-        return this.thisSheet.sheet;
+        const st = this.$store.state;
+        /* Получение итогового списка элементов происходит в несколько этапов
+					1) Объединение элемента с настройками его отображения
+					2) Фильтрация элементов посредством вызова cb функции
+					3) Сортировка элементов согласно порядка их следования определённого пользователем
+					4) Вставка визуальных разделителей групп
+				*/
+        return getElements(st.Users, this.thisSheet, (el, sheets) => {
+          return true;
+        });
       },
       set(value) {}
     },
@@ -91,10 +100,10 @@ export default {
   },
   methods: {
     getDraggableOptions: function() {
-      return { group: this.sheet_id, handle: ".user-handle" };
+      return { group: this.sheet_id, handle: ".itm-handle" };
     },
     onSelectSheet: function() {
-      this.$store.commit("SET_SELECTED", { sheet_id: this.sheet_id });
+      this.$store.commit("SELECT_ELEMENT", { sheet_id: this.sheet_id });
     },
     onChange: function(value) {
       this.like = value;
@@ -119,14 +128,23 @@ export default {
     infiniteHandler($state) {
       if (this.countEl == 0) {
         this.countEl++;
+        console.log(`1** infiniteHandler fetch users CNT: ${this.countEl}`);
         return this.$store
-          .dispatch("FETCH_USERS", { sheet_id: this.sheet_id })
+          .dispatch("FETCH_ELEMENTS", { sheet_id: this.sheet_id })
           .then(count => {
             this.countEl--;
             if (count) {
               $state.loaded();
+              console.log(
+                `2** infiniteHandler fetched from srv: ${count} elements CNT: ${
+                  this.countEl
+                }`
+              );
             } else {
               $state.complete();
+              console.log(
+                `3** infiniteHandler loaded off CNT: ${this.countEl}`
+              );
             }
           })
           .catch(err => {

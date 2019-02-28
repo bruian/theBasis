@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import { recursiveFind, findGroup, typeForSheet, conditionsForSheet } from '../util/helpers';
+import { recursiveFind, typeForSheet, conditionsForSheet } from '../util/helpers';
 
 const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
 
@@ -259,117 +259,6 @@ export default {
 
 	/* ---------------------------------------GROUPS mutations-------------------------------------- */
 
-	SET_GROUPS: (state, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
-			activeSheet.sheet = [];
-		}
-		const groupsSheet = activeSheet.sheet;
-		const groups = options.data;
-
-		let existElement = -1;
-		let tempParent;
-		let tempParent_id;
-
-		for (let i = 0; i < groups.length; i++) {
-			const newGroup = Object.assign(
-				{
-					isShowed: !(groups[i].level > 1),
-					isSubElementsExpanded: 0,
-					isExpanded: false,
-					isActive: false,
-					consistency: 0,
-				},
-				groups[i],
-			);
-
-			if (newGroup.parent === null) {
-				newGroup.level = 1;
-
-				existElement = groupsSheet.findIndex(el => el.id === newGroup.id);
-				if (existElement === -1) {
-					activeSheet.offset++;
-					if (
-						Object.prototype.hasOwnProperty.call(options, 'isStart') &&
-						options.isStart &&
-						groupsSheet.length > 1
-					) {
-						groupsSheet.splice(1, 0, newGroup);
-					} else {
-						groupsSheet.push(newGroup);
-					}
-				} else {
-					Vue.set(groupsSheet, existElement, newGroup);
-				}
-			} else {
-				if (!tempParent || tempParent_id !== newGroup.parent) {
-					tempParent = recursiveFind(groupsSheet, el => el.id === newGroup.parent).element;
-					tempParent_id = tempParent.id;
-				}
-
-				newGroup.parent = tempParent;
-				newGroup.level = tempParent.level + 1;
-
-				if (options.action === 'createGroup') {
-					tempParent.havechild = tempParent.havechild + 1;
-				}
-
-				if (!Object.prototype.hasOwnProperty.call(tempParent, 'children')) {
-					Vue.set(tempParent, 'children', []);
-					Vue.set(tempParent.children, 0, newGroup);
-				} else {
-					existElement = tempParent.children.findIndex(el => el.id === newGroup.id);
-					if (existElement === -1) {
-						if (
-							Object.prototype.hasOwnProperty.call(options, 'isStart') &&
-							options.isStart &&
-							tempParent.children.length > 1
-						) {
-							tempParent.children.splice(1, 0, newGroup);
-						} else {
-							tempParent.children.push(newGroup);
-						}
-					} else {
-						Vue.set(tempParent.children, existElement, newGroup);
-					}
-				}
-			}
-		}
-
-		setApiStatus(state, 'SET_GROUPS', null);
-	},
-
-	DELETE_GROUP: (state, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		const groupsSheet = activeSheet.sheet;
-		const { index, element } = recursiveFind(groupsSheet, el => el.id === options.id);
-
-		if (element.parent === null) {
-			groupsSheet.splice(index, 1);
-		} else if (element.parent.children && element.parent.children.length > 0) {
-			element.parent.havechild = element.parent.havechild - 1;
-			element.parent.children.splice(index, 1);
-		}
-
-		setApiStatus(state, 'DELETE_GROUP', null);
-	},
-
-	UPDATE_GROUP_VALUES: (state, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		let groupsSheet = activeSheet.sheet;
-		const element = recursiveFind(groupsSheet, el => el.id === options.id).element;
-
-		Object.keys(options).forEach(key => {
-			if (key !== 'id' && key !== 'sheet_id') {
-				if (Object.prototype.hasOwnProperty.call(options, key)) {
-					element[key] = options[key];
-				}
-			}
-		});
-
-		setApiStatus(state, 'UPDATE_GROUP_VALUES', null);
-	},
-
 	SET_PARAMS_GROUPS_SHEET: (state, params) => {
 		const gl = state[state.activeGroupsSheet.sheet];
 
@@ -428,21 +317,35 @@ export default {
 	/* ---------------------------------------TASKS mutations--------------------------------------- */
 
 	/*
-	 * @func SET_SHEET_DATA
+	 * @func SET_ELEMENTS
 	 * @param {Object} state - VUEX store
 	 * @param {Object} options - mutation options
 	 * @description Sheet data mutation
 	 * options - { sheet_id: String, data: Array, action: String, refresh: Bool(optional) }
 	 */
-	SET_SHEET_DATA: (state, options) => {
+	SET_ELEMENTS: (state, options) => {
+		// Функция сортировки
+		function sortSheet(a, b) {
+			return a.p / a.q - b.p / b.q;
+		}
+
 		/* При загрузке данных с сервера получается два набор данных
 			theDatas - хранит загруженные элементы для всех sheet,
-			theSheet - хранит ссылки на загруженные элементы, а так же их сортировка в разрезе каждого sheet
+			theSheet - хранит ссылки на загруженные элементы, а так же их сортировку в разрезе каждого sheet
 		 */
-		let theDatas;
-		const theSheets = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		const datas = options.data;
+		if (!Array.isArray(datas) || datas.length === 0) {
+			return;
+		}
 
-		switch (theSheets.type_el) {
+		let theDatas;
+		const sortElements = [];
+		let rootResort = false;
+
+		/* По id определяется тип sheet, позже по этому типу будет обработан массив sheets */
+		const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+
+		switch (theSheet.type_el) {
 			case 'tasks-sheet':
 				theDatas = state.Tasks;
 				break;
@@ -459,268 +362,301 @@ export default {
 				break;
 		}
 
-		const theSheet = theSheets.sheet;
+		if (!Object.prototype.hasOwnProperty.call(theSheet, 'sh')) {
+			// Если нет такого свойства, то оно создается
+			theSheet.sh = [];
+		}
+
 		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
-			// clear data
-			theSheets.sheet = [];
+			// Если в опциях получено свойство refresh и оно true, то необходимо обновить полностью данные
+			theSheet.sh = [];
 			theDatas = [];
 		}
 
-		const datas = options.data;
-
-		let prevGroupId;
 		let tempParent;
 		let tempParent_id;
 		let existElement = -1;
+		let newLevel;
 
 		for (let i = 0; i < datas.length; i++) {
-			// Вставка разделителя групп для tasks-sheet. Разделитель применяется только для верхнего
-			// уровня и делит tasks-sheet на различные группы
-			if (
-				theSheets.type_el === 'tasks-sheet' &&
-				prevGroupId !== datas[i].group_id &&
-				datas[i].parent === null
-			) {
-				let grp = recursiveFind(state.Groups, el => el.id === datas[i].group_id).element;
-				let divId = `div ${grp.id}`;
+			let newData = false;
+			let { index, element: data } = recursiveFind(theDatas, el => el.id === datas[i].id);
 
-				existElement = theSheet.findIndex(el => el.id === divId);
-				if (existElement === -1) {
-					theSheet.push({
-						isDivider: true,
-						id: divId,
-						group_id: grp.id,
-						name: grp.name,
-						isActive: false,
-					});
+			if (data) {
+				// По хорошему к данным бы добавить хэш сумму, которая бы говорила изменились данные или нет
+				// Когда данные уже есть в основном массиве, то они просто обновляются вновь поступившими,
+				// без изменения структуры массива
+
+				// Проверка необходимости пересчета уровня у вложенных уже существующих элементов
+				if (data.level !== datas[i].level) {
+					newLevel = datas[i].level;
 				}
 
-				prevGroupId = datas[i].group_id;
-			}
+				// Если уже есть данные, но при этом родители у существующих на клиенте отличаются от
+				// родителей пришедших с сервера, то необходимо на клиенте обновить структуру данных
+				const curParId = data.parent ? data.parent.id : null;
+				if (curParId !== datas[i].parent) {
+					if (curParId === null) {
+						data = theDatas.splice(index, 1)[0];
+					} else {
+						const { element } = recursiveFind(theDatas, el => el.id === curParId);
+						data = element.children.splice(index, 1)[0];
+					}
 
-			// Загрузка элемента данных
-			const newData = Object.assign({}, datas[i]);
-			const index = theDatas.findIndex(el => el.id === newData.id);
-			if (index === -1) {
-				theDatas.push(newData);
+					if (newLevel) {
+						if (data.children) {
+							for (let x = 0; x < data.children.length; x++) {
+								data.children[x].level = newLevel + 1;
+								if (data.children[x].children) {
+									for (let y = 0; y < data.children[x].children.length; y++) {
+										data.children[x].children[y].level = newLevel + 2;
+									}
+								}
+							}
+						}
+					}
+					newData = true;
+				}
+
+				if (
+					Object.prototype.hasOwnProperty.call(datas[i], 'p') &&
+					Object.prototype.hasOwnProperty.call(datas[i], 'q')
+				) {
+					if (data.p !== datas[i].p || data.q !== datas[i].q) {
+						if (data.parent) {
+							if (sortElements.findIndex(el => el === data.parent.children) === -1)
+								sortElements.push(data.parent.children);
+						} else {
+							rootResort = true;
+						}
+					}
+				}
+
+				Object.keys(datas[i]).forEach(key => {
+					data[key] = datas[i][key];
+				});
 			} else {
-				Vue.set(theDatas, existElement, newData);
+				newData = true;
+				data = Object.assign({}, datas[i]);
 			}
 
-			const newSheetData = {
-				isDivider: false,
-				isShowed: Object.prototype.hasOwnProperty.call(newData, 'level')
-					? !(newData.level > 1)
-					: true,
-				isSubElementsExpanded: 0,
-				isExpanded: false,
-				isActive: false,
-				/* shows the consistency of information
-					0 - consistently
-					1 - refresh
-					2 - not consistently */
-				consistency: 0,
-				el: newData,
-				children: [],
-			};
+			state.sheets.forEach(xSheet => {
+				if (xSheet.type_el === theSheet.type_el) {
+					let shData = xSheet.sh.find(x => x.el.id === data.id);
+
+					let isShowed = true;
+					if (Object.prototype.hasOwnProperty.call(data, 'parent') && data.parent !== null) {
+						const shParentData = xSheet.sh.find(x => x.el.id === data.parent);
+						isShowed = shParentData.isSubElementsExpanded === 2;
+					}
+
+					if (shData) {
+						shData.isShowed = isShowed;
+					} else {
+						shData = {
+							isDivider: false,
+							isShowed,
+							isSubElementsExpanded: 0,
+							isExpanded: false,
+							isActive: false,
+							/* shows the consistency of information
+								0 - consistently
+								1 - refresh
+								2 - not consistently */
+							consistency: 0,
+							el: data,
+						};
+
+						xSheet.sh.push(shData);
+						if (Object.prototype.hasOwnProperty.call(data, 'parent')) {
+							if (data.parent === null) xSheet.offset++;
+						} else {
+							xSheet.offset++;
+						}
+					}
+				}
+			});
 
 			// Установка, специфичных для tasks-sheet, значений
-			if (theSheets.type_el === 'tasks-sheet') {
-				newData.context = state.Contexts.filter(el => el.task_id === newData.id).map(cont => {
+			if (theSheet.type_el === 'tasks-sheet') {
+				data.context = state.Contexts.filter(el => el.task_id === data.id).map(cont => {
 					return cont.value;
 				});
-				if (!newData.context) newData.context = [];
+				if (!data.context) data.context = [];
 
-				if (!newData.activity) newData.activity = [];
+				if (!data.activity) data.activity = [];
 
-				if (newData.status === 1 || newData.status === 5) {
-					newData.duration = newData.duration + (new Date() - new Date(newData.start));
+				if (data.status === 1 || data.status === 5) {
+					data.duration = data.duration + (new Date() - new Date(data.start));
 				}
 			}
 
-			// ids to object link
-			if (newData.parent === null) {
-				newData.level = 1;
-
-				existElement = theSheet.findIndex(el => el.id === newData.id);
-				if (existElement === -1) {
-					theSheet.offset++;
-					if ('isStart' in options && options.isStart && theSheet.length > 1) {
-						theSheet.splice(1, 0, datas[i]);
-					} else {
-						theSheet.push(datas[i]);
-					}
+			if (newData) {
+				if (!Object.prototype.hasOwnProperty.call(data, 'parent') || data.parent === null) {
+					theDatas.push(data);
+					rootResort = true;
 				} else {
-					Vue.set(theSheet, existElement, datas[i]);
-				}
-			} else {
-				if (!tempParent || tempParent_id !== datas[i].parent) {
-					tempParent = recursiveFind(theSheet, el => el.id === datas[i].parent).element;
-					tempParent_id = tempParent.id;
-				}
+					if (!tempParent || tempParent_id !== data.parent) {
+						tempParent = recursiveFind(theDatas, el => el.id === data.parent).element;
+						tempParent_id = tempParent.id;
+						if (!Object.prototype.hasOwnProperty.call(tempParent, 'children')) {
+							Vue.set(tempParent, 'children', []);
+						}
 
-				if (tempParent) {
-					datas[i].parent = tempParent;
-					datas[i].level = tempParent.level + 1;
+						sortElements.push(tempParent.children);
+					}
 
-					if (!tempParent.children) {
-						tempParent.havechild++;
+					if (tempParent) {
+						data.parent = tempParent;
 
-						Vue.set(tempParent, 'children', []);
-						Vue.set(tempParent.children, 0, datas[i]);
-					} else {
-						existElement = tempParent.children.findIndex(el => el.id === datas[i].id);
+						existElement = tempParent.children.findIndex(el => el.id === data.id);
 						if (existElement === -1) {
-							if ('isStart' in options && options.isStart && tempParent.children.length > 1) {
-								tempParent.children.splice(1, 0, datas[i]);
-							} else {
-								tempParent.children.push(datas[i]);
-							}
+							tempParent.children.push(data);
 						} else {
-							Vue.set(tempParent.children, existElement, datas[i]);
+							Vue.set(tempParent.children, existElement, newData);
 						}
 					}
 				}
-			}
-		}
-
-		setApiStatus(state, 'SET_TASKS', null);
-	},
-
-	SET_TASKS: (state, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
-			activeSheet.sheet = [];
-		}
-		const taskSheet = activeSheet.sheet;
-		const tasks = options.data;
-
-		let prevGroupId;
-		let tempParent;
-		let tempParent_id;
-		let existElement = -1;
-
-		for (let i = 0; i < tasks.length; i++) {
-			if (prevGroupId !== tasks[i].group_id && tasks[i].parent === null) {
-				let grp = findGroup(state.mainGroups, tasks[i].group_id);
-				let divId = `div ${grp.id}`;
-
-				existElement = taskSheet.findIndex(el => el.id === divId);
-				if (existElement === -1) {
-					taskSheet.push({
-						isDivider: true,
-						id: divId,
-						group_id: tasks[i].group_id,
-						name: grp.name,
-						isActive: false,
-					});
-				}
-
-				prevGroupId = tasks[i].group_id;
-			}
-
-			if (tasks[i].id) {
-				tasks[i].context = state.Contexts.filter(el => el.id === tasks[i].id).map(cont => {
-					return cont.value;
-				});
-				if (!tasks[i].context) tasks[i].context = [];
-
-				if (!tasks[i].activity) tasks[i].activity = [];
-
-				if (tasks[i].status === 1 || tasks[i].status === 5) {
-					tasks[i].duration = tasks[i].duration + (new Date() - new Date(tasks[i].start));
-				}
-			}
-
-			// displays the task item
-			tasks[i].isShowed = !(tasks[i].level > 1);
-			// shows that next subtasks are revealed
-			tasks[i].isSubElementsExpanded = 0;
-			// shows more information on the task
-			tasks[i].isExpanded = false;
-			// shows that the task is selected
-			tasks[i].isActive = false;
-			/* shows the consistency of information
-				0 - consistently
-				1 - refresh
-				2 - not consistently */
-			tasks[i].consistency = 0;
-
-			// ids to object link
-			if (tasks[i].parent === null) {
-				tasks[i].level = 1;
-
-				existElement = taskSheet.findIndex(el => el.id === tasks[i].id);
-				if (existElement === -1) {
-					activeSheet.offset++;
-					if ('isStart' in options && options.isStart && taskSheet.length > 1) {
-						taskSheet.splice(1, 0, tasks[i]);
-					} else {
-						taskSheet.push(tasks[i]);
-					}
-				} else {
-					Vue.set(taskSheet, existElement, tasks[i]);
-				}
 			} else {
-				if (!tempParent || tempParent_id !== tasks[i].parent) {
-					tempParent = recursiveFind(taskSheet, el => el.id === tasks[i].parent).element;
-					tempParent_id = tempParent.id;
+				if (Object.prototype.hasOwnProperty.call(data, 'parent') && data.parent) {
+					tempParent = recursiveFind(theDatas, el => el.id === data.parent).element;
+					data.parent = tempParent;
 				}
+			}
 
-				if (tempParent) {
-					tasks[i].parent = tempParent;
-					tasks[i].level = tempParent.level + 1;
-
-					if (!tempParent.children) {
-						tempParent.havechild++;
-
-						Vue.set(tempParent, 'children', []);
-						Vue.set(tempParent.children, 0, tasks[i]);
-					} else {
-						existElement = tempParent.children.findIndex(el => el.id === tasks[i].id);
-						if (existElement === -1) {
-							if ('isStart' in options && options.isStart && tempParent.children.length > 1) {
-								tempParent.children.splice(1, 0, tasks[i]);
-							} else {
-								tempParent.children.push(tasks[i]);
-							}
-						} else {
-							Vue.set(tempParent.children, existElement, tasks[i]);
-						}
+			if (Object.prototype.hasOwnProperty.call(data, 'parent')) {
+				let tmpDepth = 2;
+				let tmpParent = data.parent;
+				while (tmpParent !== null) {
+					if (tmpParent.depth < tmpDepth) {
+						tmpParent.depth = tmpDepth;
 					}
+
+					tmpParent = tmpParent.parent;
+					tmpDepth++;
 				}
 			}
 		}
 
-		setApiStatus(state, 'SET_TASKS', null);
+		if (rootResort) {
+			theDatas.sort(sortSheet);
+		}
+
+		sortElements.forEach(arr => {
+			arr.sort(sortSheet);
+		});
+
+		setApiStatus(state, 'SET_ELEMENTS', null);
 	},
 
-	DELETE_TASK: (state, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		const taskSheet = activeSheet.sheet;
-		const { index, element } = recursiveFind(taskSheet, el => el.id === options.id);
+	DELETE_ELEMENT: (state, options) => {
+		const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+
+		state.sheets.forEach(xSheet => {
+			if (theSheet.type_el === xSheet.type_el) {
+				xSheet.offset--;
+				const index = xSheet.sh.findIndex(x => x.el.id === options.id);
+				xSheet.sh.splice(index, 1);
+			}
+		});
+
+		let theDatas;
+		switch (theSheet.type_el) {
+			case 'tasks-sheet':
+				theDatas = state.Tasks;
+				break;
+			case 'groups-sheet':
+				theDatas = state.Groups;
+				break;
+			case 'users-sheet':
+				theDatas = state.Users;
+				break;
+			case 'activity-sheet':
+				theDatas = state.Activity;
+				break;
+			default:
+				break;
+		}
+
+		const { index, element } = recursiveFind(theDatas, x => x.id === options.id);
 
 		if (element.parent === null) {
-			taskSheet.splice(index, 1);
+			theDatas.splice(index, 1);
 		} else if (element.parent.children && element.parent.children.length > 0) {
-			element.parent.havechild--;
 			element.parent.children.splice(index, 1);
 		}
+
+		let tempDepth = 2;
+		let tempParent = element.parent;
+		while (tempParent !== null) {
+			if (tempParent.children.length === 0) {
+				tempDepth = 1;
+				tempParent.depth = tempDepth;
+				tempDepth++;
+			} else {
+				tempParent.depth = tempDepth;
+			}
+
+			tempParent = tempParent.parent;
+		}
+
+		setApiStatus(state, 'DELETE_ELEMENT', null);
 	},
 
 	// values must contain id
-	UPDATE_TASK_VALUES: (state, options) => {
+	UPDATE_ELEMENT: (state, options) => {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		let taskSheet = activeSheet.sheet;
-		const element = recursiveFind(taskSheet, el => el.id === options.id).element;
+		const shData = recursiveFind(activeSheet.sh, x => x.el.id === options.id).element;
 
 		Object.keys(options).forEach(key => {
 			if (key !== 'id' && key !== 'sheet_id') {
-				if (Object.prototype.hasOwnProperty.call(options, key)) {
-					element[key] = options[key];
+				if (Object.prototype.hasOwnProperty.call(shData, key)) {
+					shData[key] = options[key];
+
+					if (key === 'isSubElementsExpanded') {
+						activeSheet.sh.forEach(x => {
+							if (x.el.parent === shData.el) {
+								x.isShowed = options[key] === 2;
+							}
+						});
+					}
+				}
+
+				if (Object.prototype.hasOwnProperty.call(shData.el, key)) {
+					shData.el[key] = options[key];
 				}
 			}
 		});
+
+		setApiStatus(state, 'UPDATE_ELEMENT', null);
+	},
+
+	SELECT_ELEMENT: (state, options) => {
+		// Сброс всех выделений
+		state.selectedSheet = null;
+		state.selectedSheetsManager = false;
+
+		Array.prototype.forEach.call(state.sheets, sheet => {
+			if (sheet.selectedItem) {
+				sheet.selectedItem.isActive = false;
+			}
+
+			sheet.selectedItem = null;
+		});
+
+		// options === null is select sheets manager
+		if (options === null) {
+			state.selectedSheetsManager = true;
+		} else if (Object.prototype.hasOwnProperty.call(options, 'sheet_id')) {
+			const thisSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+
+			if (Object.prototype.hasOwnProperty.call(options, 'id')) {
+				thisSheet.selectedItem = recursiveFind(thisSheet.sh, x => x.el.id === options.id).element;
+				thisSheet.selectedItem.isActive = true;
+			} else {
+				state.selectedSheet = thisSheet;
+			}
+		}
 	},
 
 	/* --------------------------------------Contexts mutations------------------------------------- */
@@ -749,9 +685,9 @@ export default {
 
 	/* --------------------------------------ACTIVITY mutations------------------------------------- */
 
-	SET_ACTIVITY: (state, { sheet_id, data }) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === sheet_id);
-		const taskSheet = activeSheet.sheet;
+	SET_ACTIVITY: (state, { data }) => {
+		// const theSheet = state.sheets.find(el => el.sheet_id === sheet_id);
+		// const taskSheet = theSheet.sh;
 		let element;
 		let taskDuration;
 		let taskStatus;
@@ -769,7 +705,7 @@ export default {
 
 				// Получается элемент задачи из списка задач на клиенте, инициализируется заново список
 				// активностей, инициализируются переменные duration и status
-				element = recursiveFind(taskSheet, el => el.id === activity.task_id).element;
+				element = recursiveFind(state.Tasks, el => el.id === activity.task_id).element;
 				element.activity = [];
 
 				taskDuration = 0;
@@ -818,6 +754,7 @@ export default {
 				sheet_id: data[i].id,
 				selectedItem: null,
 				sheet: [],
+				sh: [],
 				limit: 10,
 				offset: 0,
 				like: '',
@@ -948,34 +885,6 @@ export default {
 	},
 
 	/* ----------------------------------------Other mutations-------------------------------------- */
-
-	SET_SELECTED: (state, options) => {
-		// Сброс всех выделений
-		state.selectedSheet = null;
-		state.selectedSheetsManager = false;
-
-		Array.prototype.forEach.call(state.sheets, sheet => {
-			if (sheet.selectedItem) {
-				sheet.selectedItem.isActive = false;
-			}
-
-			sheet.selectedItem = null;
-		});
-
-		// options === null is select sheets manager
-		if (options === null) {
-			state.selectedSheetsManager = true;
-		} else if (Object.prototype.hasOwnProperty.call(options, 'sheet_id')) {
-			const thisSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-
-			if (Object.prototype.hasOwnProperty.call(options, 'id')) {
-				thisSheet.selectedItem = recursiveFind(thisSheet.sheet, el => el.id === options.id).element;
-				thisSheet.selectedItem.isActive = true;
-			} else {
-				state.selectedSheet = thisSheet;
-			}
-		}
-	},
 
 	SET_LAYOUT: (state, value) => {
 		state.layout = parseInt(value, 10);

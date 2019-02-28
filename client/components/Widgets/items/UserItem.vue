@@ -48,7 +48,7 @@
 </template>
 
 <script>
-import ItmTextArea from "../ItmTextArea.vue";
+import itmTextArea from "../itmTextArea.vue";
 import VCircle from "../../VCircle/VCircle.js";
 import { isNumeric, activityStatus } from "../../../util/helpers.js";
 
@@ -67,7 +67,7 @@ export default {
   name: "user-item",
   components: {
     VCircle,
-    ItmTextArea
+    itmTextArea
   },
   props: ["item", "sheet_id"],
   data: () => ({
@@ -99,7 +99,7 @@ export default {
       return status[itm];
     },
     onBodyClick: function() {
-      this.$store.commit("SET_SELECTED", {
+      this.$store.commit("SELECT_ELEMENT", {
         sheet_id: this.sheet_id,
         id: this.item.id
       });
@@ -109,7 +109,7 @@ export default {
         this.currentTab = 0;
       }
 
-      this.$store.commit("UPDATE_USER_VALUES", {
+      this.$store.commit("UPDATE_ELEMENT", {
         sheet_id: this.sheet_id,
         id: this.item.id,
         isExpanded: !this.item.isExpanded

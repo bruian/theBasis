@@ -271,7 +271,7 @@ export default {
   },
   methods: {
     onSelectSheet: function() {
-      this.$store.commit("SET_SELECTED", null);
+      this.$store.commit("SELECT_ELEMENT", null);
     }
   },
   props: {

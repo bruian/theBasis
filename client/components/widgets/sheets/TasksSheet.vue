@@ -31,6 +31,9 @@
         <v-icon color="primary">arrow_back</v-icon>
       </v-btn>
 
+      <!-- <v-btn small icon @click="onRenew">
+        <v-icon color="primary">autorenew</v-icon>
+      </v-btn>-->
       <div style="margin: auto;">
         <p style="margin: auto;">{{thisSheet.name}}</p>
       </div>
@@ -45,15 +48,15 @@
           :options="getDraggableOptions()"
           @start="onDragStart"
           @end="onDrop"
-          v-bind:data-parent_id="null"
+          v-bind:data-parent_id="0"
         >
           <div
             v-for="(item, index) in items"
             :key="item.id"
             v-bind:data-id="item.id"
-            v-bind:data-parent_id="(item.parent) ? item.parent.id : null"
+            v-bind:data-parent_id="(item.parent) ? item.parent.id : '0'"
           >
-            <TaskItem :sheet_id="thisSheet.sheet_id" :item="item"></TaskItem>
+            <TaskItem :sheet_id="thisSheet.sheet_id" :item="item" @drop="onDrop"></TaskItem>
           </div>
         </draggable>
 
@@ -69,7 +72,7 @@
 import TaskItem from "../items/TaskItem.vue";
 import VuePerfectScrollbar from "../../Perfect-scrollbar.vue";
 import InfiniteLoading from "../../InfiniteLoading";
-import { recursiveFind } from "../../../util/helpers";
+import { recursiveFind, findGroup, getElements } from "../../../util/helpers";
 
 import draggable from "vuedraggable";
 
@@ -105,7 +108,35 @@ export default {
   computed: {
     items: {
       get() {
-        return this.thisSheet.sheet;
+        const st = this.$store.state;
+        /* Получение итогового списка элементов происходит в несколько этапов
+					1) Объединение элемента с настройками его отображения
+					2) Фильтрация элементов посредством вызова cb функции
+					3) Сортировка элементов согласно порядка их следования определённого пользователем
+					4) Вставка визуальных разделителей групп
+				*/
+        return getElements(st.Tasks, this.thisSheet, (el, sheets) => {
+          return true;
+        }).reduce((prev, curr, index, arr) => {
+          if (
+            index === 0 ||
+            (!arr[index - 1].isDivider &&
+              arr[index - 1].group_id !== curr.group_id)
+          ) {
+            let grp = findGroup(st.mainGroups, curr.group_id);
+            const div = {
+              isDivider: true,
+              id: `div ${curr.group_id}`,
+              group_id: curr.group_id,
+              name: grp.name,
+              isActive: false
+            };
+
+            return [...prev, div, curr];
+          }
+
+          return [...prev, curr];
+        }, []);
       },
       set(value) {}
     },
@@ -144,7 +175,7 @@ export default {
                   !sheet[i + 1].isDivider
                 )
                   res += 8;
-              } else if (sheet[i].level > 1 && sheet[i].level < 3) {
+              } else if (sheet[i].level > 1 && sheet[i].level <= 3) {
                 res += 1;
 
                 if (i > 0) res += 4;
@@ -165,8 +196,7 @@ export default {
           return res;
         }
 
-        result =
-          result + recurr(this.thisSheet.sheet, this.thisSheet.selectedItem.id);
+        result = result + recurr(this.items, this.thisSheet.selectedItem.el.id);
       }
 
       return result;
@@ -174,99 +204,159 @@ export default {
   },
   methods: {
     getDraggableOptions: function() {
-      return { group: this.sheet_id, handle: ".task-handle" };
+      return { group: this.sheet_id, handle: ".itm-handle" };
     },
     onSelectSheet: function() {
-      this.$store.commit("SET_SELECTED", { sheet_id: this.sheet_id });
-    },
-    onChange: function(value) {
-      console.log("changed searchText: " + value);
-      this.like = value;
-      let that = this;
-
-      function que(params) {
-        if (that.countEl == 0) {
-          that.$refs.infLoadingTasksSheet.$emit("$InfiniteLoading:reset");
-          that.blocked = false;
-          console.log("ask");
-
-          return;
-        } else {
-          that.blocked = true;
-          console.log("wait");
-          setTimeout(que, 400);
-        }
-      }
-
-      if (!this.blocked) que();
+      this.$store.commit("SELECT_ELEMENT", { sheet_id: this.sheet_id });
     },
     onDragStart: function(dragResult) {
       const { item } = dragResult;
 
-      this.$store.commit("SET_SELECTED", {
+      this.$store.commit("SELECT_ELEMENT", {
         sheet_id: this.sheet_id,
         id: item.dataset.id
       });
     },
     onDrop: function(dropResult) {
-      const { newIndex, oldIndex, from, to } = dropResult;
+      let { newIndex, oldIndex, from, to } = dropResult;
 
-      if (from.dataset.parent_id === to.dataset.parent_id) {
+      let fromElement;
+      if (from.dataset.parent_id === "0") {
+        fromElement = this.items[oldIndex];
+      } else {
+        fromElement = recursiveFind(
+          this.items,
+          el => el.id === from.dataset.parent_id
+        ).element.children[oldIndex];
+      }
+
+      let toElement;
+      let group_id = fromElement.group_id;
+      let parent_id = "0";
+      let isBefore = false;
+      // toParent_id: to.dataset.parent_id ? to.dataset.parent_id : null,
+
+      /* Проверка на перемещение внутри первого уровня */
+      if (
+        !fromElement.parent &&
+        from.dataset.parent_id === to.dataset.parent_id
+      ) {
+        /* Если позиция не меняется, то нет необходимости в дальнейших действиях */
         if (oldIndex === newIndex) {
           return;
         }
+
+        /* Необходимо понять, что за элементы меняются при перемещении, если получатель divider,
+					то перемещаемый элемент должен встать после divider и получить его группу */
+        if (this.items[newIndex].isDivider && newIndex === 0) {
+          /* Для самого первого разделителя нет допустимых действий */
+          return;
+        } else if (this.items[newIndex].isDivider) {
+          /* Для последующих разделителей необходимо понять в каком направлении происходит
+            перемещение элемента */
+          if (newIndex > oldIndex) {
+            /* Перемещение сверху вниз - элемент размещается в группе разделителя */
+            group_id = this.items[newIndex].group_id;
+          } else {
+            /* Перемещение снизу вверх - элемент размещается в группе предшествущей разделителю */
+            group_id = this.items[newIndex - 1].group_id;
+            isBefore = true;
+          }
+        } else {
+          /* Перемещение элемента на элемент */
+          toElement = this.items[newIndex];
+          group_id = toElement.group_id;
+          isBefore = !(newIndex > oldIndex);
+        }
+      } else {
+        /* Обработка перемещения с уровня на уровень */
+
+        /* Необходимо вычислить направление перемещения, т.к. на разных уровнях используется
+					различная индексация элементов, то необходимо привести перемещение к одному уровню */
+        let { index: parentIndex, element: toParent } = recursiveFind(
+          this.items,
+          el => el.id === to.dataset.parent_id
+        );
+
+        if (toParent) {
+          toElement = toParent.children[newIndex];
+          parent_id = toParent.id;
+        } else {
+          toElement = this.items[newIndex];
+          parent_id = "0";
+        }
+
+        if (!toElement) {
+          isBefore = true;
+        } else {
+          if (fromElement.level === toElement.level) {
+            /* Перемещение внутри уровня */
+            isBefore = !(newIndex > oldIndex);
+            group_id = toElement.group_id;
+          } else if (fromElement.level < toElement.level) {
+            /* Перемещение снаружи внутрь */
+
+            /* Ограничение по уровню перемещения - всего вложенность не больше 3-х уровней */
+            if (toParent.level + fromElement.depth > 3) return;
+
+            isBefore = true;
+            group_id = toElement.group_id;
+          } else {
+            /* Перемещение изнутри наружу */
+            isBefore = true;
+            group_id = toElement.group_id;
+          }
+        }
       }
 
-      this.$store
-        .dispatch("REORDER_TASKS", {
-          oldIndex: oldIndex,
-          newIndex: newIndex,
-          fromParent_id: from.dataset.parent_id ? from.dataset.parent_id : null,
-          toParent_id: to.dataset.parent_id ? to.dataset.parent_id : null,
-          sheet_id: this.sheet_id
-        })
-        .then(res => {
-          console.log("reordering sheet");
-        })
-        .catch(err => {
-          console.warn(err);
-        });
+      let dispatchObject = {
+        fromId: fromElement.id,
+        toId: toElement ? toElement.id : "0",
+        group_id,
+        parent_id,
+        isBefore,
+        sheet_id: this.sheet_id
+      };
+
+      // return;
+      this.$store.dispatch("REORDER_ELEMENTS", dispatchObject).catch(err => {
+        console.warn(err);
+      });
     },
     onMoveIn: function() {
-      // const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
       if (this.thisSheet.selectedItem) {
-        let toParent_id;
+        let parent_id;
         const { index, element } = recursiveFind(
-          this.thisSheet.sheet,
-          el => el.isActive
+          this.items,
+          el => el.id === this.thisSheet.selectedItem.el.id
         );
 
         if (element.parent === null) {
-          toParent_id = this.thisSheet.sheet[index - 1].id;
+          parent_id = this.items[index - 1].id;
         } else {
           if (element.parent.children && element.parent.children.length > 1) {
-            toParent_id = element.parent.children[index - 1].id;
+            parent_id = element.parent.children[index - 1].id;
           }
         }
 
         const options = {
-          oldIndex: index,
-          newIndex: 0,
-          fromParent_id: element.parent ? element.parent.id : null,
-          toParent_id: toParent_id,
+          fromId: element.id,
+          toId: null,
+          parent_id,
+          isBefore: true,
           sheet_id: this.sheet_id
         };
 
         if (Array.isArray(element.children) && element.children.length > 0) {
-          this.$store.dispatch("REORDER_TASKS", options);
+          this.$store.dispatch("REORDER_ELEMENTS", options);
         } else {
           this.$store
-            .dispatch("FETCH_TASKS", {
+            .dispatch("FETCH_ELEMENTS", {
               sheet_id: this.sheet_id,
-              parent_id: toParent_id
+              parent_id
             })
             .then(count => {
-              this.$store.dispatch("REORDER_TASKS", options);
+              this.$store.dispatch("REORDER_ELEMENTS", options);
             })
             .catch(err => {
               console.warn(err);
@@ -275,46 +365,34 @@ export default {
       }
     },
     onMoveOut: function() {
-      //debugger
-      // const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
       if (this.thisSheet.selectedItem) {
-        let toParent, lastParentIndex;
+        let parent_id;
         const { index, element } = recursiveFind(
-          this.thisSheet.sheet,
-          el => el.isActive
+          this.items,
+          el => el.id === this.thisSheet.selectedItem.el.id
         );
-        if (element.parent !== null) {
-          toParent = element.parent.parent;
 
-          if (toParent === null) {
-            lastParentIndex = recursiveFind(
-              this.thisSheet.sheet,
-              el => el.id === element.parent.id
-            ).index;
-            if (lastParentIndex < this.thisSheet.sheet.length)
-              lastParentIndex++;
-          } else {
-            lastParentIndex = recursiveFind(
-              toParent.children,
-              el => el.id === element.parent.id
-            ).index;
-            if (lastParentIndex < toParent.children.length) lastParentIndex++;
-          }
+        /* Перемещение из элемента родителя на уровень вверх. Для этого необходимо определить
+					ниже какого элемента будет впоследствии стоять перемещаемый элемент. Это по-умолчанию
+					считается родительский элемент. Поэтому достаточно передать его id и флаг isBefore,
+					который укажет, что элемент необходимо разместить после него. */
+
+        /* Определим нового родителя, логично полагать, что это будет родитель предыдущего
+					родителя. Если же у элемента родитель null, то этом может означать только то что
+					элемент на самом верху и перемещать нет смысла - выход */
+        if (element.parent !== null) {
+          parent_id = element.parent.parent;
         } else {
           return;
         }
 
         this.$store
-          .dispatch("REORDER_TASKS", {
-            oldIndex: index,
-            newIndex: lastParentIndex,
-            fromParent_id: element.parent ? element.parent.id : null,
-            toParent_id: toParent ? toParent.id : null,
-            move_out: true,
+          .dispatch("REORDER_ELEMENTS", {
+            fromId: element.id,
+            toId: element.parent.id,
+            parent_id: parent_id ? parent_id.id : null,
+            isBefore: false,
             sheet_id: this.sheet_id
-          })
-          .then(res => {
-            console.log("move out");
           })
           .catch(err => {
             console.warn(err);
@@ -322,48 +400,45 @@ export default {
       }
     },
     onMove: function(UP = true) {
-      // const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
       if (this.thisSheet.selectedItem) {
-        let newIndex;
         const { index, element } = recursiveFind(
-          this.thisSheet.sheet,
-          el => el.isActive
+          this.items,
+          el => el.id === this.thisSheet.selectedItem.el.id
         );
 
         /* Выбор новой позиции для перемещаемого элемента, перемещаем вверх/вниз, из-за наличия
 					divider на первом уровне, логика для первого и вложенного уровней различна */
-        newIndex = index;
+        let newIndex = index;
         if (element.parent === null) {
           /* divider в списке является разделителем групп, если наткнулись на разделитель выше,
 						значит достигнуто начало списка и элемент по кругу необходимо переместить в конец
 						списка, для этого прокрутим список назад до конца или следующего разделителя */
-          if (UP && index > 0 && this.thisSheet.sheet[index - 1].isDivider) {
+          if (UP && index > 0 && this.items[index - 1].isDivider) {
             /* бежим вниз до границы */
-            for (let i = index; i < this.thisSheet.sheet.length; i++) {
-              if (this.thisSheet.sheet[i].isDivider) break;
+            for (let i = index; i < this.items.length; i++) {
+              if (this.items[i].isDivider) break;
 
               newIndex = i;
             }
           } else if (
             !UP &&
-            (index === this.thisSheet.sheet.length ||
-              (index < this.thisSheet.sheet.length &&
-                this.thisSheet.sheet[index + 1].isDivider))
+            (index === this.items.length ||
+              (index < this.items.length && this.items[index + 1].isDivider))
           ) {
             /* перемещаемся на позицию ниже, если достигли конца списка или достигли divider
 							необходимо переместить элемент по кругу в начало divider этой группы
 							бежим вверх по списку, пока не обнаружим начало */
             for (let i = index; i >= 0; i--) {
-              if (this.thisSheet.sheet[i].isDivider) break;
+              if (this.items[i].isDivider) break;
 
               newIndex = i;
             }
           } else {
-            /* свободно двигаемся на позицию выше / ниже*/
+            /* свободно двигаемся на позицию выше/ниже */
             newIndex = UP ? index - 1 : index + 1;
           }
         } else {
-          /* вложенные уровни не содержат divider поэтому элементы сортируются в порядке группы
+          /* Вложенные уровни не содержат divider поэтому элементы сортируются в порядке группы
 						иная группа у следующего элемента свидетельствует об окончании пределов перемещения
 						текущего элемента */
           if (
@@ -395,7 +470,7 @@ export default {
               newIndex = i;
             }
           } else {
-            /* свободно двигаемся на позицию выше / ниже */
+            /* свободно двигаемся на позицию выше/ниже */
             newIndex = UP ? index - 1 : index + 1;
           }
         }
@@ -403,18 +478,25 @@ export default {
         /* нет смысла перемещать элемент у которого не изменилась позиция */
         if (newIndex === index) return;
 
+        let toId;
+        if (element.parent) {
+          toId = element.parent.children[newIndex].id;
+        } else {
+          toId = this.items[newIndex].id;
+        }
+
         /* передаем хранилищу смещение элемента */
-        this.$store.dispatch("REORDER_TASKS", {
-          oldIndex: index,
-          newIndex: newIndex,
-          fromParent_id: element.parent ? element.parent.id : null,
-          toParent_id: element.parent ? element.parent.id : null,
-          sheet_id: this.sheet_id
+        this.$store.dispatch("REORDER_ELEMENTS", {
+          fromId: element.id,
+          toId,
+          parent_id: element.parent ? element.parent.id : null,
+          sheet_id: this.sheet_id,
+          isBefore: newIndex < index
         });
       }
     },
     onAddItem(isSubelement = false) {
-      this.$store.dispatch("CREATE_TASK", {
+      this.$store.dispatch("CREATE_ELEMENT", {
         sheet_id: this.sheet_id,
         isSubelement,
         isStart: true
@@ -422,9 +504,9 @@ export default {
     },
     onDeleteItem() {
       this.$store
-        .dispatch("DELETE_TASK", { sheet_id: this.sheet_id })
+        .dispatch("DELETE_ELEMENT", { sheet_id: this.sheet_id })
         .catch(err => {
-          console.log(err);
+          console.warn(err);
         });
     },
     infiniteHandler($state) {
@@ -432,7 +514,7 @@ export default {
         this.countEl++;
         console.log(`1** infiniteHandler fetch tasks CNT: ${this.countEl}`);
         return this.$store
-          .dispatch("FETCH_TASKS", { sheet_id: this.sheet_id })
+          .dispatch("FETCH_ELEMENTS", { sheet_id: this.sheet_id })
           .then(count => {
             this.countEl--;
             if (count) {
@@ -451,22 +533,10 @@ export default {
           })
           .catch(err => {
             this.countEl = 0;
-            console.log(err);
+            console.warn(err);
           });
       }
     }
-    // activeClick: function(activeID) {
-    // 	this.countEl = 0
-    // 	this.$store.commit('SET_ACTIVE_TASKS_SHEET', activeID)
-    // 	this.$nextTick(() => {
-    //     this.$refs.infLoadingTasksSheet.$emit('$InfiniteLoading:reset')
-    //   })
-
-    // 	this.showActiveTasksSheet = !this.showActiveTasksSheet
-    //   setTimeout(() => {
-    //     this.showActiveTasksSheet = !this.showActiveTasksSheet
-    //   }, 500)
-    // }
   }
 };
 </script>

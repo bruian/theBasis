@@ -25,7 +25,7 @@ export default {
     onNameChange: function() {
       if (this.prevName !== this.item.name) {
         this.$store
-          .dispatch("UPDATE_GROUP_VALUES", {
+          .dispatch("UPDATE_ELEMENT", {
             sheet_id: this.sheet_id,
             id: this.item.id,
             name: this.item.name

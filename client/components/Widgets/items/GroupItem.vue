@@ -20,8 +20,8 @@
         <div class="vert-filler"></div>
 
         <v-icon
-          @click="onExpandSubgroups()"
-          v-show="item.havechild"
+          @click="onExpandSubElements()"
+          v-show="item.depth > 1"
           class="expand-ico"
           slot="activator"
           color="primary"
@@ -74,16 +74,16 @@
         v-for="(children, index) in items"
         :key="children.id"
         v-bind:data-id="children.id"
-        v-bind:data-parent_id="(children.parent) ? children.parent.id : null"
+        v-bind:data-parent_id="(children.parent) ? children.parent.id : '0'"
       >
-        <GroupItem :sheet_id="sheet_id" :item="children"></GroupItem>
+        <GroupItem :sheet_id="sheet_id" :item="children" @drop="onDrop"></GroupItem>
       </div>
     </draggable>
   </div>
 </template>
 
 <script>
-import ItmTextArea from "../ItmTextArea.vue";
+import itmTextArea from "../itmTextArea.vue";
 import VCircle from "../../VCircle/VCircle.js";
 import { isNumeric, activityStatus } from "../../../util/helpers.js";
 
@@ -109,7 +109,7 @@ export default {
   components: {
     GroupItem: () => import("./GroupItem.vue"),
     VCircle,
-    ItmTextArea,
+    itmTextArea,
     draggable
   },
   props: ["item", "sheet_id"],
@@ -166,7 +166,7 @@ export default {
   methods: {
     onNameChange: function(text) {
       this.$store
-        .dispatch("UPDATE_GROUP_VALUES", {
+        .dispatch("UPDATE_ELEMENT", {
           sheet_id: this.sheet_id,
           id: this.item.id,
           name: text
@@ -185,31 +185,13 @@ export default {
     onDragStart: function(dragResult) {
       const { item } = dragResult;
 
-      this.$store.commit("SET_SELECTED", {
+      this.$store.commit("SELECT_ELEMENT", {
         sheet_id: this.sheet_id,
         id: item.dataset.id
       });
     },
     onDrop: function(dropResult) {
-      const { newIndex, oldIndex, from, to } = dropResult;
-
-      if (from.dataset.parent_id === to.dataset.parent_id) {
-        if (oldIndex === newIndex) {
-          return;
-        }
-      }
-
-      this.$store
-        .dispatch("REORDER_GROUPS", {
-          oldIndex: oldIndex,
-          newIndex: newIndex,
-          fromParent_id: from.dataset.parent_id ? from.dataset.parent_id : null,
-          toParent_id: to.dataset.parent_id ? to.dataset.parent_id : null,
-          sheet_id: this.sheet_id
-        })
-        .catch(err => {
-          console.warn(err);
-        });
+      this.$emit("drop", dropResult);
     },
     dragHandleDown: function() {
       if (this.item.isSubElementsExpanded > 1) {
@@ -222,7 +204,7 @@ export default {
       }
     },
     onBodyClick: function() {
-      this.$store.commit("SET_SELECTED", {
+      this.$store.commit("SELECT_ELEMENT", {
         sheet_id: this.sheet_id,
         id: this.item.id
       });
@@ -232,30 +214,27 @@ export default {
         this.currentTab = 0;
       }
 
-      this.$store.commit("UPDATE_GROUP_VALUES", {
+      this.$store.commit("UPDATE_ELEMENT", {
         sheet_id: this.sheet_id,
         id: this.item.id,
         isExpanded: !this.item.isExpanded
       });
     },
-    onExpandSubgroups() {
-      if (
-        Array.isArray(this.item.children) &&
-        this.item.children.length === this.item.havechild
-      ) {
-        this.$store.commit("UPDATE_GROUP_VALUES", {
+    onExpandSubElements() {
+      if (Array.isArray(this.item.children) && this.item.children.length > 0) {
+        this.$store.commit("UPDATE_ELEMENT", {
           sheet_id: this.sheet_id,
           id: this.item.id,
           isSubElementsExpanded: this.item.isSubElementsExpanded > 1 ? 0 : 2
         });
       } else {
         return this.$store
-          .dispatch("FETCH_GROUPS", {
+          .dispatch("FETCH_ELEMENTS", {
             sheet_id: this.sheet_id,
             parent_id: this.item.id
           })
           .then(count => {
-            this.$store.commit("UPDATE_GROUP_VALUES", {
+            this.$store.commit("UPDATE_ELEMENT", {
               sheet_id: this.sheet_id,
               id: this.item.id,
               isSubElementsExpanded: this.item.isSubElementsExpanded > 1 ? 0 : 2

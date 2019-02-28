@@ -47,7 +47,7 @@
 
         <v-icon
           @click="onExpandSubElements()"
-          v-show="item.havechild"
+          v-show="item.depth > 1"
           class="expand-ico"
           slot="activator"
           color="primary"
@@ -56,13 +56,13 @@
       </div>
 
       <div class="task-clmn3">
-        <ItmTextArea
+        <itmTextArea
           placeholder="Task name"
           v-model="item.name"
           :min-height="21"
           :max-height="84"
           @change="onNameChange"
-        ></ItmTextArea>
+        ></itmTextArea>
 
         <TagsInput
           :element-id="'#'+item.tid"
@@ -127,9 +127,9 @@
         v-for="(children, index) in items"
         :key="children.id"
         v-bind:data-id="children.id"
-        v-bind:data-parent_id="(children.parent) ? children.parent.id : null"
+        v-bind:data-parent_id="(children.parent) ? children.parent.id : '0'"
       >
-        <TaskItem :sheet_id="sheet_id" :item="children"></TaskItem>
+        <TaskItem :sheet_id="sheet_id" :item="children" @drop="onDrop"></TaskItem>
       </div>
     </draggable>
   </div>
@@ -137,7 +137,7 @@
 
 <script>
 import Treeselect from "@riophae/vue-treeselect";
-import ItmTextArea from "../ItmTextArea.vue";
+import itmTextArea from "../itmTextArea.vue";
 import TagsInput from "../../VoerroTagsInput/VoerroTagsInput.vue";
 import VCircle from "../../VCircle/VCircle.js";
 import { isNumeric, activityStatus } from "../../../util/helpers.js";
@@ -188,7 +188,7 @@ export default {
     VCircle,
     Treeselect,
     TagsInput,
-    ItmTextArea,
+    itmTextArea,
     draggable
   },
   props: ["item", "sheet_id"],
@@ -243,18 +243,12 @@ export default {
     }
   },
   watch: {
-    // value() {
-    // 	this.item = this.value
-    // }
     currentTab() {
       if (this.tabs[this.currentTab].name === "Activity") {
         this.$store
           .dispatch("FETCH_ACTIVITY", {
             task_id: this.item.id,
             sheet_id: this.sheet_id
-          })
-          .then(res => {
-            console.log("Loaded activity");
           })
           .catch(err => {
             console.warn(err);
@@ -282,7 +276,6 @@ export default {
           task_id: this.item.id,
           status: newStatus
         })
-        .then(res => {})
         .catch(err => {
           console.warn(err);
         });
@@ -336,7 +329,6 @@ export default {
     },
     onTagAdded(slug) {
       if (!this.isTagsInitialized) return;
-      //debugger
 
       this.tagChange(slug, "ADD_TASK_CONTEXT");
     },
@@ -344,14 +336,12 @@ export default {
       this.tagChange(slug, "REMOVE_TASK_CONTEXT");
     },
     onNameChange: function(text) {
-      //debugger
       this.$store
-        .dispatch("UPDATE_TASK_VALUES", {
+        .dispatch("UPDATE_ELEMENT", {
           sheet_id: this.sheet_id,
           id: this.item.id,
           name: text
         })
-        .then(res => {})
         .catch(err => {
           console.warn(err);
         });
@@ -366,34 +356,13 @@ export default {
     onDragStart: function(dragResult) {
       const { item } = dragResult;
 
-      this.$store.commit("SET_SELECTED", {
+      this.$store.commit("SELECT_ELEMENT", {
         sheet_id: this.sheet_id,
         id: item.dataset.id
       });
     },
     onDrop: function(dropResult) {
-      const { newIndex, oldIndex, from, to } = dropResult;
-
-      if (from.dataset.parent_id === to.dataset.parent_id) {
-        if (oldIndex === newIndex) {
-          return;
-        }
-      }
-
-      this.$store
-        .dispatch("REORDER_TASKS", {
-          oldIndex: oldIndex,
-          newIndex: newIndex,
-          fromParent_id: from.dataset.parent_id ? from.dataset.parent_id : null,
-          toParent_id: to.dataset.parent_id ? to.dataset.parent_id : null,
-          sheet_id: this.sheet_id
-        })
-        .then(res => {
-          console.log("reordering item");
-        })
-        .catch(err => {
-          console.warn(err);
-        });
+      this.$emit("drop", dropResult);
     },
     dragHandleDown: function() {
       if (this.item.isSubElementsExpanded > 1) {
@@ -401,8 +370,6 @@ export default {
       }
     },
     dragHandleUp: function() {
-      console.log("dragHandleUp");
-
       if (this.item.isSubElementsExpanded === 1) {
         this.item.isSubElementsExpanded = 2;
       }
@@ -411,18 +378,15 @@ export default {
       this.groupChangeStart = true;
     },
     onGroupInput: function(value, instanceId) {
-      //on default this event fired twice
+      // on default this event fired twice
       if (this.groupChangeStart) {
-        //our need catch event only first time
+        // our need catch event only first time
         this.groupChangeStart = false;
         this.$store
           .dispatch("UPDATE_TASK_GROUP", {
             sheet_id: this.sheet_id,
             id: this.item.id,
             group_id: value
-          })
-          .then(res => {
-            console.log("regroupping item");
           })
           .catch(err => {
             console.warn(err);
@@ -431,7 +395,7 @@ export default {
       }
     },
     onBodyClick: function() {
-      this.$store.commit("SET_SELECTED", {
+      this.$store.commit("SELECT_ELEMENT", {
         sheet_id: this.sheet_id,
         id: this.item.id
       });
@@ -457,35 +421,32 @@ export default {
       if (!this.item.isExpanded) {
         this.currentTab = 0;
       }
-      this.$store.commit("UPDATE_TASK_VALUES", {
+
+      this.$store.commit("UPDATE_ELEMENT", {
         sheet_id: this.sheet_id,
         id: this.item.id,
         isExpanded: !this.item.isExpanded
       });
     },
     onExpandSubElements() {
-      console.log(`onExpandSubElements id !{ this.item.id }`);
-
       if (Array.isArray(this.item.children) && this.item.children.length > 0) {
-        this.$store.commit("UPDATE_TASK_VALUES", {
+        this.$store.commit("UPDATE_ELEMENT", {
           sheet_id: this.sheet_id,
           id: this.item.id,
           isSubElementsExpanded: this.item.isSubElementsExpanded > 1 ? 0 : 2
         });
       } else {
         return this.$store
-          .dispatch("FETCH_TASKS", {
+          .dispatch("FETCH_ELEMENTS", {
             sheet_id: this.sheet_id,
             parent_id: this.item.id
           })
           .then(count => {
-            //debugger
-            this.$store.commit("UPDATE_TASK_VALUES", {
+            this.$store.commit("UPDATE_ELEMENT", {
               sheet_id: this.sheet_id,
               id: this.item.id,
               isSubElementsExpanded: this.item.isSubElementsExpanded > 1 ? 0 : 2
             });
-            console.log("SubElements fetched");
           })
           .catch(err => {
             console.warn(err);

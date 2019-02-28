@@ -1,10 +1,9 @@
 import Vue from 'vue';
 import qs from 'qs';
-import querystring from 'querystring';
 import { decode } from 'jsonwebtoken';
 import config from '../config';
 
-import { recursiveFind, findGroup } from '../util/helpers';
+import { recursiveFind } from '../util/helpers';
 
 const dbg = !!config.DEBUG_API;
 const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
@@ -159,7 +158,7 @@ async function fetchSrv(query, commit, argTokens) {
 }
 
 export default {
-	/* -----------------------------------Authentication actions------------------------------------ */
+	/* ----------------------------------Authentication actions----------------------------------- */
 
 	AUTH_REQUEST: ({ commit, dispatch }, user) => {
 		return new Promise((resolve, reject) => {
@@ -337,7 +336,7 @@ export default {
 		});
 	},
 
-	/* ------------------------------------------MAIN USER------------------------------------------ */
+	/* -----------------------------------------MAIN USER----------------------------------------- */
 
 	MAINUSER_REQUEST: async ({ commit, state }) => {
 		let commonTokens;
@@ -355,39 +354,71 @@ export default {
 			return Promise.reject(err);
 		}
 
-		return Promise.all([
-			fetchSrv(mainPacket[0].fetchQuery, commit, commonTokens),
-			fetchSrv(mainPacket[1].fetchQuery, commit, commonTokens),
-			fetchSrv(mainPacket[2].fetchQuery, commit, commonTokens),
-			fetchSrv(mainPacket[3].fetchQuery, commit, commonTokens),
-		])
-			.then(datasFromSrv => {
-				Array.prototype.forEach.call(datasFromSrv, dataFromSrv => {
-					if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'data')) {
-						// if (!state.auth.token) {
-						// 	commit('AUTH_SUCCESS', getTokensFromSessionStorage().token);
-						// }
+		let p = Promise.resolve();
+		for (let i = 0; i < mainPacket.length; i++) {
+			p = p.then(
+				(packet => {
+					return () => {
+						return fetchSrv(packet.fetchQuery, commit, commonTokens)
+							.then(dataFromSrv => {
+								if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'data')) {
+									Array.prototype.forEach.call(
+										mainPacket[dataFromSrv.packet].mutations,
+										mutation => {
+											commit(mutation, dataFromSrv.data);
+										},
+									);
+								}
 
-						Array.prototype.forEach.call(mainPacket[dataFromSrv.packet].mutations, mutation => {
-							commit(mutation, dataFromSrv.data);
-						});
+								return Promise.resolve(1);
+							})
+							.catch(err => {
+								if (err.response.data) {
+									commit('API_ERROR', { message: err.message, data: err.response.data });
+									return Promise.reject(
+										new Error({ message: err.message, data: err.response.data }),
+									);
+								} else {
+									commit('API_ERROR', { message: err.message, data: null });
+									return Promise.reject(new Error({ message: err.message, data: null }));
+								}
+							});
+					};
+				})(mainPacket[i]),
+			);
+		}
 
-						Promise.resolve(1);
-					}
-				});
-			})
-			.catch(err => {
-				if (err.response.data) {
-					commit('API_ERROR', { message: err.message, data: err.response.data });
-					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
-				} else {
-					commit('API_ERROR', { message: err.message, data: null });
-					return Promise.reject(new Error({ message: err.message, data: null }));
-				}
-			});
+		return p;
+
+		// return Promise.all([
+		// 	fetchSrv(mainPacket[0].fetchQuery, commit, commonTokens),
+		// 	fetchSrv(mainPacket[1].fetchQuery, commit, commonTokens),
+		// 	fetchSrv(mainPacket[2].fetchQuery, commit, commonTokens),
+		// 	fetchSrv(mainPacket[3].fetchQuery, commit, commonTokens),
+		// ])
+		// 	.then(datasFromSrv => {
+		// 		Array.prototype.forEach.call(datasFromSrv, dataFromSrv => {
+		// 			if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'data')) {
+		// 				Array.prototype.forEach.call(mainPacket[dataFromSrv.packet].mutations, mutation => {
+		// 					commit(mutation, dataFromSrv.data);
+		// 				});
+
+		// 				Promise.resolve(1);
+		// 			}
+		// 		});
+		// 	})
+		// 	.catch(err => {
+		// 		if (err.response.data) {
+		// 			commit('API_ERROR', { message: err.message, data: err.response.data });
+		// 			return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+		// 		} else {
+		// 			commit('API_ERROR', { message: err.message, data: null });
+		// 			return Promise.reject(new Error({ message: err.message, data: null }));
+		// 		}
+		// 	});
 	},
 
-	/* -------------------------------------USERS SHEET action-------------------------------------- */
+	/* ------------------------------------USERS SHEET action------------------------------------- */
 
 	FETCH_USERS: ({ commit, state }, options) => {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
@@ -506,410 +537,7 @@ export default {
 			});
 	},
 
-	/* -------------------------------------GROUPS SHEET action------------------------------------- */
-
-	FETCH_GROUPS: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-
-		let isRefresh = false;
-		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
-			activeSheet.limit = 20;
-			activeSheet.offset = 0;
-			isRefresh = true;
-		}
-
-		const fetchQuery = {
-			url: `${apiURL}groups`,
-			method: 'GET',
-			params: { limit: activeSheet.limit, offset: activeSheet.offset },
-		};
-
-		// apply global condition
-		Object.keys(activeSheet.condition).forEach(key => {
-			if (activeSheet.condition[key] !== undefined) {
-				fetchQuery.params[key] = activeSheet.condition[key];
-			}
-		});
-
-		// apply local condition
-		Object.keys(options).forEach(key => {
-			if (key !== 'sheet_id' && key !== 'refresh') {
-				fetchQuery.params[key] = options[key];
-			}
-		});
-
-		return fetchSrv(fetchQuery, commit)
-			.then(dataFromSrv => {
-				commit('SET_GROUPS', {
-					sheet_id: options.sheet_id,
-					refresh: isRefresh,
-					action: dataFromSrv.action,
-					data: dataFromSrv.data,
-				});
-
-				return Promise.resolve(dataFromSrv.data.length);
-			})
-			.catch(err => {
-				if (err.response.data) {
-					commit('API_ERROR', { message: err.message, data: err.response.data });
-					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
-				} else {
-					commit('API_ERROR', { message: err.message, data: null });
-					return Promise.reject(new Error({ message: err.message, data: null }));
-				}
-			});
-	},
-
-	/** Перемещение элементов в списке sheet принадлежащему множеству списков sheets по sheet_id
-	 * обязательные входящие опции: options = {	oldIndex,	newIndex,	fromParent,	toParent,	sheet_id }
-	 * Эта action - функция меняет позицию на клиенте и на сервере по различным правилам:
-	 * - на клиенте список древовидной структуры, а на сервере плоский - поэтому индексация разная
-	 * - порядок следования на сервере задается следованием групп в порядке возрастания id-группы
-	 * (т.е. порядка создания) и соотношением чисел p/q которое задает порядок внутри этой группы
-	 * - клиент ориентирует положение элемента относительно idx, сервер относительно id элементов
-	 * */
-	REORDER_GROUPS: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		const groupsSheet = activeSheet.sheet;
-
-		let fromGroup;
-		let toGroup;
-		let fromParent;
-		let toParent;
-		let isBefore = options.oldIndex > options.newIndex;
-
-		if (options.fromParent_id === null) {
-			fromGroup = groupsSheet[options.oldIndex];
-		} else {
-			fromParent = recursiveFind(groupsSheet, el => el.id === options.fromParent_id).element;
-			fromGroup = fromParent.children[options.oldIndex];
-		}
-		fromGroup.consistency = 1;
-
-		if (options.toParent_id === null) {
-			if (groupsSheet.length === options.newIndex) {
-				toGroup = null;
-				isBefore = true;
-			} else {
-				toGroup = groupsSheet[options.newIndex];
-			}
-		} else {
-			toParent = recursiveFind(groupsSheet, el => el.id === options.toParent_id).element;
-
-			if (!toParent.children || toParent.children.length === 0) {
-				toGroup = null;
-			} else {
-				if (toParent.children.length === options.newIndex) {
-					toGroup = toParent.children[options.newIndex - 1];
-				} else {
-					toGroup = toParent.children[options.newIndex];
-				}
-			}
-		}
-
-		// Определим куда переместить group (до или после) при перемещении между разными родителями
-		if (toGroup !== null && options.toParent_id !== options.fromParent_id) {
-			if (fromGroup.parent !== null && fromGroup.parent === toGroup) {
-				isBefore = true;
-			} else {
-				if (toGroup.parent === null) {
-					isBefore = true;
-				} else {
-					isBefore = !(options.newIndex === toParent.children.length);
-				}
-			}
-		}
-
-		/* Особое поведение при перемещение из родителя при помощи кнопки на панели инструментов
-			это обусловлено тем, что при нажатии кнопки не задается новая позиция элемента, как при
-			перетаскивании с помощью drag&drop, она всегда по-умолчанию сразу следует после родительского
-			элемента. В этом случае группы, у новой позиции и родителя старой позиции, должны совпадать.
-			А значит при несовпадении групп, у перемещаемого элемента меняется группа на группу рядом
-			стоящего предыдущего элемента, что бы не нарушался порядок следования. Если же сохранять группу,
-			то положение нового элемента должно будет соответствовать положению dividers в списке, а это
-			может быть положение вне поля видимости списка и элемент потеряется из виду.
-		*/
-		if (Object.prototype.hasOwnProperty.call(options, 'move_out') && options.move_out === true) {
-			if (fromGroup.parent) {
-				toGroup = fromGroup.parent;
-				isBefore = false;
-			}
-		}
-
-		/* api сервера размещает элементы в списке по следующим правилам:
-			Все атрибуты обязательны
-			а) Необходимо указать <id>, id перемещаемого элемента
-			б) Необходимо указать <position>, id элемента на который помещается перемещаемый элемент,
-				значения: null - предполагает начало списка при isBefore = false
-									null - предполагает конец списка при isBefore = true
-									id - предполагает id элемента относительно которого будет позиционироваться
-									новый элемент
-			в) Необходимо указать <isBefore>, позиционирование относительно <position>
-				значения: true - до элемента (before)
-									false - после элемента (after)
-			г) Необходимо указать <parent_id>, id родителя новой позиции перемещаемого элемента,
-				если верхний уровень то значение 0
-		*/
-		const fetchQuery = {
-			url: `${apiURL}groups/order`,
-			method: 'PUT',
-			data: qs.stringify({
-				group_id: fromGroup.id,
-				position: toGroup === null ? null : toGroup.id,
-				isBefore,
-				start: new Date().toISOString(),
-				parent_id: toParent === undefined ? 0 : toParent.id,
-			}),
-		};
-
-		function recalculationDepth(el, level) {
-			let res = 0;
-			el.level = level;
-
-			if (el.children && el.children.length > 0) {
-				for (let i = 0; i < el.children.length; i++) {
-					let locRes = recalculationDepth(el.children[i], level + 1);
-					if (locRes > res) {
-						res = locRes;
-					}
-				}
-			} else {
-				res = level;
-			}
-
-			if (res) el.depth = res - level + 1;
-
-			return res;
-		}
-
-		return fetchSrv(fetchQuery, commit)
-			.then(dataFromSrv => {
-				let movedItem;
-
-				if (!dataFromSrv) return Promise.reject(new Error('No data from server'));
-
-				// TODO: неправильно тут делаю, надо бы всё это вынести в mutations
-				if (options.fromParent_id === null) {
-					movedItem = groupsSheet.splice(options.oldIndex, 1)[0];
-				} else {
-					movedItem = fromParent.children.splice(options.oldIndex, 1)[0];
-					fromParent.havechild = fromParent.havechild - 1;
-				}
-
-				if (movedItem) movedItem.isShowed = true;
-
-				if (options.toParent_id === null) {
-					groupsSheet.splice(options.newIndex, 0, movedItem);
-				} else {
-					if (!toParent.children) {
-						Vue.set(toParent, 'children', []);
-						Vue.set(toParent.children, 0, movedItem);
-					} else if (toParent.children.length === options.newIndex) {
-						if (toParent.children.length > 0) {
-							toParent.children.splice(options.newIndex, 0, movedItem);
-						} else {
-							toParent.children.splice(0, 0, movedItem);
-						}
-					} else {
-						toParent.children.splice(0, 0, movedItem);
-					}
-
-					toParent.havechild++;
-					toParent.isSubElementsExpanded = 2;
-				}
-
-				// eslint-disable-next-line
-				movedItem.parent = toParent ? toParent : null;
-
-				let tempParent;
-				let tempParentTwo;
-
-				if (fromParent) {
-					tempParent = fromParent;
-					while (tempParent.parent) {
-						tempParent = tempParent.parent;
-					}
-
-					if (tempParent) {
-						recalculationDepth(tempParent, 1, 0);
-					}
-				}
-
-				// eslint-disable-next-line
-				tempParentTwo = toParent ? toParent : movedItem;
-				while (tempParentTwo.parent) {
-					tempParentTwo = tempParentTwo.parent;
-				}
-
-				if (tempParentTwo) {
-					recalculationDepth(tempParentTwo, 1, 0);
-				} else {
-					recalculationDepth(movedItem, 1, 0);
-				}
-
-				movedItem.consistency = 0;
-
-				return Promise.resolve(true);
-			})
-			.catch(err => {
-				fromGroup.consistency = 2;
-
-				if (err.response.data) {
-					commit('API_ERROR', { message: err.message, data: err.response.data });
-					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
-				} else {
-					commit('API_ERROR', { message: err.message, data: null });
-					return Promise.reject(new Error({ message: err.message, data: null }));
-				}
-			});
-	},
-
-	CREATE_GROUP: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		const thisSheet = activeSheet.sheet;
-
-		let parent_id = 0;
-
-		/* Определим, что добавляется элемент или субэлемент */
-		if (options.isSubelement) {
-			const activeElement = recursiveFind(thisSheet, el => el.isActive).element;
-			if (activeElement) {
-				if (activeElement.level < 3) {
-					parent_id = activeElement.id;
-				} else {
-					return Promise.reject(new Error({ message: 'Maximum is 3 levels' }));
-				}
-			} else {
-				return Promise.reject(new Error({ message: 'To add an unselected item' }));
-			}
-		}
-
-		const fetchQuery = {
-			url: `${apiURL}groups`,
-			method: 'POST',
-			data: qs.stringify({
-				parent_id,
-				start: new Date().toISOString(),
-				isStart: options.isStart,
-			}),
-		};
-
-		return fetchSrv(fetchQuery, commit)
-			.then(dataFromSrv => {
-				commit('SET_GROUPS', {
-					sheet_id: options.sheet_id,
-					data: dataFromSrv.data,
-					action: dataFromSrv.action,
-					isStart: options.isStart,
-				});
-
-				return Promise.resolve(dataFromSrv.data.length);
-			})
-			.catch(err => {
-				if (err.response.data) {
-					commit('API_ERROR', { message: err.message, data: err.response.data });
-					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
-				} else {
-					commit('API_ERROR', { message: err.message, data: null });
-					return Promise.reject(new Error({ message: err.message, data: null }));
-				}
-			});
-	},
-
-	DELETE_GROUP: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		const thisSheet = activeSheet.sheet;
-
-		let id = null;
-
-		const activeElement = recursiveFind(thisSheet, el => el.isActive).element;
-		if (activeElement) {
-			if (activeElement.havechild) {
-				return Promise.reject(
-					new Error({ message: 'I can not delete an element containing other elements' }),
-				);
-			}
-
-			if (activeElement.group_type === 1) {
-				return Promise.reject(new Error({ message: 'I can not delete default group' }));
-			}
-
-			id = activeElement.id;
-		} else {
-			return Promise.resolve('No item selected for deletion');
-		}
-
-		const fetchQuery = {
-			url: `${apiURL}groups`,
-			method: 'DELETE',
-			data: qs.stringify({
-				group_id: id,
-			}),
-		};
-
-		return fetchSrv(fetchQuery, commit)
-			.then(dataFromSrv => {
-				if (!dataFromSrv) return Promise.reject(new Error('No data from server'));
-
-				commit('DELETE_GROUP', { sheet_id: options.sheet_id, id });
-				return Promise.resolve(true);
-			})
-			.catch(err => {
-				if (err.response.data) {
-					commit('API_ERROR', { message: err.message, data: err.response.data });
-					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
-				} else {
-					commit('API_ERROR', { message: err.message, data: null });
-					return Promise.reject(new Error({ message: err.message, data: null }));
-				}
-			});
-	},
-
-	/** options = { sheet_id, id, ...values } */
-	UPDATE_GROUP_VALUES: ({ commit, state }, options) => {
-		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		let groupsSheet = activeSheet.sheet;
-		let element = recursiveFind(groupsSheet, el => el.id === options.id).element;
-		let values = {
-			group_id: options.id,
-		};
-
-		element.consistency = 1;
-
-		Object.keys(options).forEach(key => {
-			if (key !== 'id' && key !== 'sheet_id') {
-				if (Object.prototype.hasOwnProperty.call(element, key)) {
-					values[key] = options[key];
-					element[key] = options[key];
-				}
-			}
-		});
-
-		const fetchQuery = {
-			url: `${apiURL}groups`,
-			method: 'PUT',
-			data: querystring.stringify(values),
-		};
-
-		return fetchSrv(fetchQuery, commit)
-			.then(dataFromSrv => {
-				if (!dataFromSrv) return Promise.reject(new Error('No data from server'));
-
-				commit('UPDATE_GROUP_VALUES', options);
-				element.consistency = 0;
-				return Promise.resolve(true);
-			})
-			.catch(err => {
-				element.consistency = 2;
-				if (err.response.data) {
-					commit('API_ERROR', { message: err.message, data: err.response.data });
-					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
-				} else {
-					commit('API_ERROR', { message: err.message, data: null });
-					return Promise.reject(new Error({ message: err.message, data: null }));
-				}
-			});
-	},
+	/* ------------------------------------GROUPS SHEET action------------------------------------ */
 
 	LINK_GROUPS_SHEET: ({ commit }, id) => {
 		const fetchQuery = {
@@ -977,9 +605,9 @@ export default {
 			});
 	},
 
-	/* -------------------------------------TASKS SHEET action-------------------------------------- */
+	/* --------------------------------------ELEMENTS action-------------------------------------- */
 
-	FETCH_TASKS: ({ commit, state }, options) => {
+	FETCH_ELEMENTS: ({ commit, state }, options) => {
 		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 
 		let isRefresh = false;
@@ -989,8 +617,25 @@ export default {
 			isRefresh = true;
 		}
 
+		let apiSection;
+		switch (activeSheet.type_el) {
+			case 'tasks-sheet':
+				apiSection = 'tasks';
+				break;
+			case 'groups-sheet':
+				apiSection = 'groups';
+				break;
+			case 'users-sheet':
+				apiSection = 'users';
+				break;
+			default:
+				break;
+		}
+
+		if (!apiSection) return Promise.reject(new Error({ message: 'Inappropriate sheet' }));
+
 		const fetchQuery = {
-			url: `${apiURL}tasks`,
+			url: `${apiURL}${apiSection}`,
 			method: 'GET',
 			params: { limit: activeSheet.limit, offset: activeSheet.offset },
 		};
@@ -1011,7 +656,7 @@ export default {
 
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
-				commit('SET_TASKS', {
+				commit('SET_ELEMENTS', {
 					sheet_id: options.sheet_id,
 					refresh: isRefresh,
 					data: dataFromSrv.data,
@@ -1030,23 +675,40 @@ export default {
 			});
 	},
 
-	/** Создание нового элемента в списке sheet принадлежащему множеству списков sheets по sheet_id
+	/**
+	 * Создание нового элемента в списке sheet принадлежащему множеству списков sheets по sheet_id
 	 * обязательные входящие опции: options = { sheet_id:string, isSubelement:bool, isStart:bool }
 	 */
-	CREATE_TASK: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		const thisSheet = activeSheet.sheet;
+	CREATE_ELEMENT: ({ commit, state }, options) => {
+		const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 
 		let group_id;
 		let parent_id = 0;
 
+		let apiSection;
+		switch (theSheet.type_el) {
+			case 'tasks-sheet':
+				apiSection = 'tasks';
+				break;
+			case 'groups-sheet':
+				apiSection = 'groups';
+				break;
+			case 'users-sheet':
+				apiSection = 'users';
+				break;
+			default:
+				break;
+		}
+
+		if (!apiSection) return Promise.reject(new Error({ message: 'Inappropriate sheet' }));
+
 		/* Определим, что добавляется элемент или субэлемент */
 		if (options.isSubelement) {
-			const activeElement = recursiveFind(thisSheet, el => el.isActive).element;
+			const activeElement = recursiveFind(theSheet.sh, el => el.isActive).element;
 			if (activeElement) {
-				if (activeElement.level < 3) {
-					parent_id = activeElement.id;
-					group_id = activeElement.group_id;
+				if (activeElement.el.level < 3) {
+					parent_id = activeElement.el.id;
+					if (theSheet.type_el === 'tasks-sheet') group_id = activeElement.el.group_id;
 				} else {
 					return Promise.reject(new Error({ message: 'Maximum is 3 levels' }));
 				}
@@ -1054,16 +716,17 @@ export default {
 				return Promise.reject(new Error({ message: 'To add an unselected item' }));
 			}
 		} else {
-			if (thisSheet.length > 0) {
-				group_id = thisSheet[0].group_id;
+			if (theSheet.sh.length > 0) {
+				if (theSheet.type_el === 'tasks-sheet') group_id = theSheet.sh[0].el.group_id;
 			} else {
 				/* Если список элементов пуст, найдем primary group в которую по-умолчанию добавим элемент */
-				group_id = state.mainGroups.find(el => el.group_type === 1).id;
+				if (theSheet.type_el === 'tasks-sheet')
+					group_id = state.mainGroups.find(el => el.group_type === 1).id;
 			}
 		}
 
 		const fetchQuery = {
-			url: `${apiURL}tasks`,
+			url: `${apiURL}${apiSection}`,
 			method: 'POST',
 			data: qs.stringify({
 				group_id,
@@ -1075,18 +738,13 @@ export default {
 
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(0);
-				} else {
-					console.log(`Actions add item recieve datas:`);
+				commit('SET_ELEMENTS', {
+					sheet_id: options.sheet_id,
+					data: dataFromSrv.data,
+					isStart: options.isStart,
+				});
 
-					commit('SET_TASKS', {
-						sheet_id: options.sheet_id,
-						data: dataFromSrv.data,
-						isStart: options.isStart,
-					});
-					return Promise.resolve(dataFromSrv.data.length);
-				}
+				return Promise.resolve(dataFromSrv.data.length);
 			})
 			.catch(err => {
 				if (err.response.data) {
@@ -1099,32 +757,110 @@ export default {
 			});
 	},
 
-	/** Удаление текущего элемента в списке sheet принадлежащему множеству списков sheets по sheet_id
+	/** options = { sheet_id, id, ...values } */
+	UPDATE_ELEMENT: ({ commit, state }, options) => {
+		let theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		let element = theSheet.sh.find(x => x.el.id === options.id);
+		let values = {
+			id: options.id,
+		};
+
+		let apiSection;
+		switch (theSheet.type_el) {
+			case 'tasks-sheet':
+				apiSection = 'tasks';
+				break;
+			case 'groups-sheet':
+				apiSection = 'groups';
+				break;
+			case 'user-sheet':
+				apiSection = 'users';
+				break;
+			default:
+				break;
+		}
+
+		if (!apiSection) return Promise.reject(new Error({ message: 'Inappropriate sheet' }));
+
+		element.consistency = 1;
+
+		Object.keys(options).forEach(key => {
+			if (key !== 'id' && key !== 'sheet_id') {
+				if (Object.prototype.hasOwnProperty.call(element.el, key)) {
+					values[key] = options[key];
+					// element.el[key] = options[key];
+				}
+			}
+		});
+
+		const fetchQuery = {
+			url: `${apiURL}${apiSection}`,
+			method: 'PUT',
+			data: qs.stringify(values),
+		};
+
+		return fetchSrv(fetchQuery, commit)
+			.then(() => {
+				// изменение значения группы на новую группу
+				commit('UPDATE_ELEMENT', options);
+
+				element.consistency = 0;
+				return Promise.resolve(true);
+			})
+			.catch(err => {
+				element.consistency = 2;
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
+	},
+
+	/**
+	 * Удаление текущего элемента в списке sheet принадлежащему множеству списков sheets по sheet_id
 	 * обязательные входящие опции: options = { sheet_id:string }
 	 */
-	DELETE_TASK: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		const thisSheet = activeSheet.sheet;
+	DELETE_ELEMENT: ({ commit, state }, options) => {
+		const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 
 		let id = null;
 		let group_id = null;
 
-		const activeElement = recursiveFind(thisSheet, el => el.isActive).element;
-		if (activeElement) {
-			if (activeElement.havechild) {
+		let apiSection;
+		switch (theSheet.type_el) {
+			case 'tasks-sheet':
+				apiSection = 'tasks';
+				break;
+			case 'groups-sheet':
+				apiSection = 'groups';
+				break;
+			case 'users-sheet':
+				apiSection = 'users';
+				break;
+			default:
+				break;
+		}
+
+		if (!apiSection) return Promise.reject(new Error({ message: 'Inappropriate sheet' }));
+
+		if (theSheet.selectedItem) {
+			if (theSheet.selectedItem.el.depth > 1) {
 				return Promise.reject(
 					new Error({ message: 'I can not delete an element containing other elements' }),
 				);
 			}
 
-			id = activeElement.id;
-			group_id = activeElement.group_id;
+			id = theSheet.selectedItem.el.id;
+			if (theSheet.type_el === 'tasks-sheet') group_id = theSheet.selectedItem.el.group_id;
 		} else {
 			return Promise.resolve('No item selected for deletion');
 		}
 
 		const fetchQuery = {
-			url: `${apiURL}tasks`,
+			url: `${apiURL}${apiSection}`,
 			method: 'DELETE',
 			data: qs.stringify({
 				id,
@@ -1133,13 +869,9 @@ export default {
 		};
 
 		return fetchSrv(fetchQuery, commit)
-			.then(dataFromSrv => {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(false);
-				} else {
-					commit('DELETE_TASK', { sheet_id: options.sheet_id, id });
-					return Promise.resolve(true);
-				}
+			.then(() => {
+				commit('DELETE_ELEMENT', { sheet_id: options.sheet_id, id });
+				return Promise.resolve(true);
 			})
 			.catch(err => {
 				if (err.response.data) {
@@ -1153,7 +885,7 @@ export default {
 	},
 
 	/** Перемещение элементов в списке sheet принадлежащему множеству списков sheets по sheet_id
-	 * обязательные входящие опции: options = {	oldIndex,	newIndex,	fromParent,	toParent,	sheet_id }
+	 * обязательные входящие опции: options = { fromId, toId, parentId }
 	 * Эта action - функция меняет позицию на клиенте и на сервере по различным правилам:
 	 * - на клиенте список древовидной структуры, а на сервере плоский - поэтому индексация разная
 	 * - на клиенте в списке присутствуют dividers, которые делят список на группы, на сервере нет
@@ -1161,133 +893,52 @@ export default {
 	 * - порядок следования на сервере задается следованием групп в порядке возрастания id-группы
 	 * (т.е. порядка создания) и соотношением чисел p/q которое задает порядок внутри этой группы
 	 * - клиент ориентирует положение элемента относительно idx, сервер относительно id элементов
-	 * */
-	REORDER_TASKS: ({ commit, state }, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		const taskSheet = activeSheet.sheet;
-		// if (options.fromParent_id === 0) options.fromParent_id = null;
-		// if (options.toParent_id === 0) options.toParent_id = null;
+	 */
+	REORDER_ELEMENTS: ({ commit, state }, options) => {
+		const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		const fromElement = theSheet.sh.find(x => x.el.id === options.fromId);
+		const toElement = theSheet.sh.find(x => x.el.id === options.toId);
 
-		let fromTask;
-		let toTask;
-		let fromParent;
-		let toParent;
-		let newGroupId;
-		let isBefore = options.oldIndex > options.newIndex;
+		let toGroupId;
+		let toParentId;
+		let isBefore = true;
 
-		if (options.fromParent_id === null) {
-			fromTask = taskSheet[options.oldIndex];
+		fromElement.consistency = 1;
+		if (toElement) toElement.consistency = 1;
+
+		let apiSection;
+		switch (theSheet.type_el) {
+			case 'tasks-sheet':
+				/* Серверу всегда необходимо передавать в запрос id группы новой позиции элемента */
+				if (Object.prototype.hasOwnProperty.call(options, 'group_id')) {
+					toGroupId = options.group_id;
+				} else {
+					toGroupId = fromElement.el.group_id;
+				}
+
+				apiSection = 'tasks';
+				break;
+			case 'groups-sheet':
+				apiSection = 'groups';
+				break;
+			default:
+				break;
+		}
+
+		if (!apiSection) return Promise.reject(new Error({ message: 'Inappropriate sheet' }));
+
+		if (Object.prototype.hasOwnProperty.call(options, 'isBefore')) {
+			isBefore = options.isBefore;
+		}
+
+		if (Object.prototype.hasOwnProperty.call(options, 'parent_id')) {
+			toParentId = options.parent_id;
 		} else {
-			fromParent = recursiveFind(taskSheet, el => el.id === options.fromParent_id).element;
-			fromTask = fromParent.children[options.oldIndex];
-		}
-		fromTask.consistency = 1;
-
-		if (options.toParent_id === null) {
-			if (taskSheet.length === options.newIndex) {
-				toTask = taskSheet[options.newIndex - 1];
-				newGroupId = toTask.group_id;
-				toTask = null;
-				isBefore = true;
-			} else {
-				toTask = taskSheet[options.newIndex];
-				if (toTask.isDivider) {
-					newGroupId = toTask.group_id;
-					if (options.newIndex === 0) {
-						toTask = null;
-						isBefore = false;
-					} else {
-						// Если элемент перемещается выше своей позиции, иначе ниже
-						if (options.oldIndex > options.newIndex) {
-							toTask = taskSheet[options.newIndex - 1];
-							newGroupId = toTask.group_id;
-							isBefore = false;
-						} else {
-							if (taskSheet.length > options.newIndex + 1) {
-								isBefore = true;
-								toTask = taskSheet[options.newIndex + 1];
-							} else {
-								// Достигнут конец списка
-								toTask = null;
-							}
-						}
-					}
-				}
-			}
-		} else {
-			toParent = recursiveFind(taskSheet, el => el.id === options.toParent_id).element;
-			if (!toParent.children || toParent.children.length === 0) {
-				toTask = null;
-				newGroupId = fromTask.group_id;
-			} else {
-				if (toParent.children.length === options.newIndex) {
-					toTask = toParent.children[options.newIndex - 1];
-				} else {
-					toTask = toParent.children[options.newIndex];
-				}
-
-				if (
-					(fromTask.parent === null && toTask.parent !== null) ||
-					(fromTask.parent !== null && toTask.parent === null)
-				) {
-					newGroupId = fromTask.group_id;
-				} else {
-					newGroupId = toTask.group_id;
-				}
-			}
+			if (toElement) toParentId = toElement.el.parent.id;
 		}
 
-		/* Проверка на перемещение элемента внутри родителя за пределы своей группы
-			т.к. вложенные элементы не содержат divider разделение по группам идёт только
-			в порядке сортировки элементов */
-		if (toTask !== null) {
-			if (fromTask.parent !== null && toTask.parent !== null && fromTask.parent === toTask.parent) {
-				if (fromTask.group_id !== toTask.group_id) {
-					fromTask.consistency = 0;
-					return Promise.resolve(false);
-				}
-			}
-		}
-
-		// Определим куда переместить задачау (до или после) при перемещении между разными родителями
-		if (toTask !== null && options.toParent_id !== options.fromParent_id) {
-			if (fromTask.parent !== null && fromTask.parent === toTask) {
-				isBefore = true;
-			} else {
-				if (toTask.parent === null) {
-					// Если до новой позиции сразу стоит разделитель группы, то ставим на позицию выше
-					isBefore = true;
-				} else {
-					isBefore = !(options.newIndex === toParent.children.length);
-				}
-			}
-		}
-
-		/* Особое поведение при перемещение из родителя при помощи кнопки на панели инструментов
-			это обусловлено тем, что при нажатии кнопки не задается новая позиция элемента, как при
-			перетаскивании с помощью drag&drop, она всегда по-умолчанию сразу следует после родительского
-			элемента. В этом случае группы, у новой позиции и родителя старой позиции, должны совпадать.
-			А значит при несовпадении групп, у перемещаемого элемента меняется группа на группу рядом
-			стоящего предыдущего элемента, что бы не нарушался порядок следования. Если же сохранять группу,
-			то положение нового элемента должно будет соответствовать положению dividers в списке, а это
-			может быть положение вне поля видимости списка и элемент потеряется из виду.
-		*/
-		if ('move_out' in options && options.move_out === true) {
-			// if (fromTask.parent && fromTask.parent.group_id !== fromTask.group_id) {
-			// }
-			if (fromTask.parent) {
-				toTask = fromTask.parent;
-				isBefore = false;
-				newGroupId = fromTask.parent.group_id;
-			}
-		}
-
-		/* Серверу всегда необходимо передавать в запрос id группы новой позиции элемента */
-		if (newGroupId === undefined) {
-			newGroupId = toTask.group_id;
-		}
-
-		/* api сервера размещает элементы в списке по следующим правилам:
+		/*
+			api сервера размещает элементы в списке по следующим правилам:
 			Все атрибуты обязательны
 			а) Необходимо указать <group_id>, id группы относительно которой позиционируется элемент
 			б) Необходимо указать <id>, id перемещаемого элемента
@@ -1301,135 +952,48 @@ export default {
 									false - после элемента (after)
 			д) Необходимо указать <parent_id>, id родителя новой позиции перемещаемого элемента,
 				если верхний уровень то значение 0
+			е) Необходимо указать <start> дата и время изменения в формате ISO, необходимо для создания
+				action по текущему изменению
 		*/
 		const fetchQuery = {
-			url: `${apiURL}tasks/order`,
+			url: `${apiURL}${apiSection}/order`,
 			method: 'PUT',
 			data: qs.stringify({
-				group_id: newGroupId,
-				id: fromTask.id,
-				position: toTask === null ? null : toTask.id,
+				group_id: toGroupId,
+				id: fromElement.el.id,
+				position: toElement === undefined ? null : toElement.el.id,
 				isBefore,
 				start: new Date().toISOString(),
-				parent_id: toParent === undefined ? 0 : toParent.id,
+				parent_id: toParentId === null ? 0 : toParentId,
 			}),
 		};
 
-		function recalculationDepth(el, level) {
-			let res = 0;
-			el.level = level;
-
-			if (el.children && el.children.length > 0) {
-				for (let i = 0; i < el.children.length; i++) {
-					let locRes = recalculationDepth(el.children[i], level + 1);
-					if (locRes > res) {
-						res = locRes;
-					}
-				}
-			} else {
-				res = level;
-			}
-
-			if (res) el.depth = res - level + 1;
-
-			return res;
-		}
-
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(false);
-				} else {
-					let movedItem;
+				// изменение значения группы на новую группу
+				commit('SET_ELEMENTS', {
+					sheet_id: options.sheet_id,
+					data: dataFromSrv.data,
+				});
 
-					if (options.fromParent_id === null) {
-						movedItem = taskSheet.splice(options.oldIndex, 1)[0];
-					} else {
-						movedItem = fromParent.children.splice(options.oldIndex, 1)[0];
-						fromParent.havechild--;
-					}
-
-					if (movedItem) movedItem.isShowed = true;
-
-					if (options.toParent_id === null) {
-						taskSheet.splice(options.newIndex === 0 ? 1 : options.newIndex, 0, movedItem);
-					} else {
-						if (!toParent.children) {
-							Vue.set(toParent, 'children', []);
-							Vue.set(toParent.children, 0, movedItem);
-						} else if (toParent.children.length === options.newIndex) {
-							if (toParent.children.length > 0) {
-								toParent.children.splice(options.newIndex, 0, movedItem);
-							} else {
-								toParent.children.splice(0, 0, movedItem);
-							}
-						} else {
-							if (
-								toParent.children[options.newIndex > 0 ? options.newIndex - 1 : options.newIndex]
-									.group_id === movedItem.group_id
-							) {
-								toParent.children.splice(options.newIndex, 0, movedItem);
-							} else {
-								toParent.children.splice(0, 0, movedItem);
-							}
-						}
-
-						toParent.havechild++;
-						toParent.isSubElementsExpanded = 2;
-					}
-
-					// eslint-disable-next-line
-					movedItem.parent = toParent ? toParent : null;
-
-					let tempParent;
-					let tempParentTwo;
-
-					if (fromParent) {
-						tempParent = fromParent;
-						while (tempParent.parent) {
-							tempParent = tempParent.parent;
-						}
-
-						if (tempParent) {
-							recalculationDepth(tempParent, 1, 0);
-						}
-					}
-
-					// eslint-disable-next-line
-					tempParentTwo = toParent ? toParent : movedItem;
-					while (tempParentTwo.parent) {
-						tempParentTwo = tempParentTwo.parent;
-					}
-
-					if (tempParentTwo) {
-						recalculationDepth(tempParentTwo, 1, 0);
-					} else {
-						recalculationDepth(movedItem, 1, 0);
-					}
-
-					// изменение значения группы на новую группу, если она задана
-					if (newGroupId !== undefined) {
-						commit('UPDATE_TASK_VALUES', {
-							sheet_id: options.sheet_id,
-							id: movedItem.id,
-							group_id: newGroupId,
-						});
-					}
-
-					if (dataFromSrv.activity_data) {
-						commit('SET_ACTIVITY', {
-							sheet_id: options.sheet_id,
-							id: movedItem.id,
-							data: dataFromSrv.activity_data,
-						});
-					}
-
-					movedItem.consistency = 0;
-					return Promise.resolve(true);
+				if (
+					Object.prototype.hasOwnProperty.call(dataFromSrv, 'activity_data') &&
+					dataFromSrv.activity_data
+				) {
+					commit('SET_ACTIVITY', {
+						sheet_id: options.sheet_id,
+						data: dataFromSrv.activity_data,
+					});
 				}
+
+				fromElement.consistency = 0;
+				if (toElement) toElement.consistency = 0;
+
+				return Promise.resolve(true);
 			})
 			.catch(err => {
-				fromTask.consistency = 2;
+				fromElement.consistency = 2;
+				if (toElement) toElement.consistency = 2;
 
 				if (err.response.data) {
 					commit('API_ERROR', { message: err.message, data: err.response.data });
@@ -1443,136 +1007,42 @@ export default {
 
 	/** options = { sheet_id, id, group_id } */
 	UPDATE_TASK_GROUP: ({ commit, state }, options) => {
-		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		let taskSheet = activeSheet.sheet;
-		let element = recursiveFind(taskSheet, el => el.id === options.id).element;
+		let theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		let dataSh = recursiveFind(theSheet.sh, x => x.el.id === options.id).element;
 
-		element.consistency = 1;
+		dataSh.consistency = 1;
 
 		const fetchQuery = {
 			url: `${apiURL}tasks/order`,
 			method: 'PUT',
 			data: qs.stringify({
 				group_id: options.group_id,
-				id: element.id,
+				id: dataSh.el.id,
 				position: null,
 				isBefore: false,
 				start: new Date().toISOString(),
-				parent_id: element.parent ? element.parent.id : null,
+				parent_id: dataSh.el.parent ? dataSh.el.parent.id : '0',
 			}),
 		};
 
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(false);
-				} else {
-					let idxGroup = -1;
-					let idxTask = -1;
-					let movedItem;
+				// изменение значения группы на новую группу
+				commit('SET_ELEMENTS', {
+					sheet_id: options.sheet_id,
+					data: dataFromSrv.data,
+				});
 
-					/* Для элементов первого уровня существуют разделы групп с задачами,
-					 перемещение происходит по этим разделам
-					 Для уровней ниже применяется распределение по группам без разделов */
-					if (element.level === 1) {
-						/* Необходимо найти divider он будет являться началом размещения задачи в новой группе */
-						idxTask = taskSheet.findIndex(el => el.id === options.id);
-						movedItem = taskSheet.splice(idxTask, 1)[0];
+				commit('SET_ACTIVITY', {
+					sheet_id: options.sheet_id,
+					data: dataFromSrv.activity_data,
+				});
 
-						idxGroup = taskSheet.findIndex(el => el.group_id === options.group_id && el.isDivider);
-						if (idxGroup === -1) {
-							const group = findGroup(state.mainGroups, options.group_id);
-							// Такой разделитель не найден, значит необходимо создать новый
-							idxGroup = taskSheet.push({
-								isDivider: true,
-								group_id: options.group_id,
-								name: group.name,
-								isActive: false,
-							});
-						}
-						idxGroup++;
-
-						taskSheet.splice(idxGroup, 0, movedItem);
-					} else {
-						/* Для элементов последующих уровней необходимо найти самый первый элемент
-						 принадлежащий искомой группе и поместить нашу задачу выше этого элемента */
-						idxTask = element.parent.children.findIndex(el => el.id === options.id);
-						movedItem = element.parent.children.splice(idxTask, 1)[0];
-
-						idxGroup = element.parent.children.findIndex(el => el.group_id === options.group_id);
-						idxGroup = idxGroup === -1 || idxGroup === 0 ? 0 : idxGroup--;
-
-						element.parent.children.splice(idxGroup, 0, movedItem);
-					}
-
-					// изменение значения группы на новую группу
-					commit('UPDATE_TASK_VALUES', {
-						sheet_id: options.sheet_id,
-						id: movedItem.id,
-						group_id: options.group_id,
-					});
-					commit('SET_ACTIVITY', {
-						sheet_id: options.sheet_id,
-						task_id: movedItem.id,
-						data: dataFromSrv.activity_data,
-					});
-
-					movedItem.consistency = 0;
-					return Promise.resolve(true);
-				}
+				dataSh.consistency = 0;
+				return Promise.resolve(true);
 			})
 			.catch(err => {
-				element.consistency = 2;
-				if (err.response.data) {
-					commit('API_ERROR', { message: err.message, data: err.response.data });
-					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
-				} else {
-					commit('API_ERROR', { message: err.message, data: null });
-					return Promise.reject(new Error({ message: err.message, data: null }));
-				}
-			});
-	},
-
-	/** options = { sheet_id, id, ...values } */
-	UPDATE_TASK_VALUES: ({ commit, state }, options) => {
-		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		let taskSheet = activeSheet.sheet;
-		let element = recursiveFind(taskSheet, el => el.id === options.id).element;
-		let values = {
-			id: options.id,
-		};
-
-		element.consistency = 1;
-
-		Object.keys(options).forEach(key => {
-			if (key !== 'id' && key !== 'sheet_id') {
-				if (Object.prototype.hasOwnProperty.call(element, key)) {
-					values[key] = options[key];
-					element[key] = options[key];
-				}
-			}
-		});
-
-		const fetchQuery = {
-			url: `${apiURL}tasks`,
-			method: 'PUT',
-			data: querystring.stringify(values),
-		};
-
-		return fetchSrv(fetchQuery, commit)
-			.then(dataFromSrv => {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(false);
-				} else {
-					// изменение значения группы на новую группу
-					// commit('UPDATE_TASK_VALUES', options)
-
-					element.consistency = 0;
-					return Promise.resolve(true);
-				}
-			})
-			.catch(err => {
-				element.consistency = 2;
+				dataSh.consistency = 2;
 				if (err.response.data) {
 					commit('API_ERROR', { message: err.message, data: err.response.data });
 					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
@@ -1604,7 +1074,7 @@ export default {
 		const fetchQuery = {
 			url: `${apiURL}contexts`,
 			method: 'POST',
-			data: querystring.stringify(values),
+			data: qs.stringify(values),
 		};
 
 		return fetchSrv(fetchQuery, commit)
@@ -1651,7 +1121,7 @@ export default {
 		const fetchQuery = {
 			url: `${apiURL}contexts`,
 			method: 'DELETE',
-			data: querystring.stringify(values),
+			data: qs.stringify(values),
 		};
 
 		return fetchSrv(fetchQuery, commit)
@@ -1691,9 +1161,8 @@ export default {
 	 * @description Функция для получения списка активностей с сервера
 	 */
 	FETCH_ACTIVITY: ({ commit, state }, options) => {
-		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		let taskSheet = activeSheet.sheet;
-		let element = recursiveFind(taskSheet, el => el.id === options.task_id).element;
+		let theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		let element = theSheet.sh.find(x => x.el.id === options.task_id);
 
 		if (!element) return Promise.reject(new Error({ message: 'task element not found' }));
 		element.consistency = 1;
@@ -1701,18 +1170,14 @@ export default {
 		const fetchQuery = {
 			url: `${apiURL}activity`,
 			method: 'GET',
-			params: { task_id: element.task_id, type_el: 2, limit: 100, offset: 0 },
+			params: { task_id: element.el.id, type_el: 2, limit: 100, offset: 0 },
 		};
 
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(null);
-				} else {
-					element.consistency = 0;
-					commit('SET_ACTIVITY', { sheet_id: options.sheet_id, data: dataFromSrv.data });
-					return Promise.resolve(dataFromSrv.data.length);
-				}
+				element.consistency = 0;
+				commit('SET_ACTIVITY', { sheet_id: options.sheet_id, data: dataFromSrv.data });
+				return Promise.resolve(dataFromSrv.data.length);
 			})
 			.catch(err => {
 				element.consistency = 2;
@@ -1890,7 +1355,7 @@ export default {
 		const fetchQuery = {
 			url: `${apiURL}sheets`,
 			method: 'POST',
-			data: querystring.stringify(values),
+			data: qs.stringify(values),
 		};
 
 		return fetchSrv(fetchQuery, commit)
@@ -1995,7 +1460,7 @@ export default {
 						if (thisSheet.type_el === 'tasks-sheet') {
 							promiseResult = true;
 
-							dispatch('FETCH_TASKS', { sheet_id: thisSheet.sheet_id, refresh: true })
+							dispatch('FETCH_ELEMENTS', { sheet_id: thisSheet.sheet_id, refresh: true })
 								.then(() => {
 									// Метод успешно выполнился, элемент удаляется из очереди
 									commit('DELETE_QUEUE', queue.id);

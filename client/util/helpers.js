@@ -1,3 +1,26 @@
+/* Функция объединяет массив прикладных элементов с массивом настроек
+	к каждому прикладному элементу добавляются значения его настроек отображения
+*/
+export function getElements(arr, sheets, cb) {
+	let result = [];
+
+	for (let i = 0; i < arr.length; i++) {
+		const sheet = sheets.sh.find(x => x.el.id === arr[i].id);
+
+		if (sheet) {
+			if (cb(arr[i], sheet, sheets)) {
+				result.push(Object.assign({}, arr[i], sheet));
+			}
+
+			if (Object.prototype.hasOwnProperty.call(arr[i], 'children') && arr[i].children.length > 0) {
+				result[result.length - 1].children = getElements(arr[i].children, sheets, cb);
+			}
+		}
+	}
+
+	return result;
+}
+
 export function recursiveFind(arr, cb) {
 	let result = {
 		index: null,
