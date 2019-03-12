@@ -18,6 +18,24 @@
             <v-breadcrumbs :items="crumbs">
               <v-icon slot="divider">link</v-icon>
             </v-breadcrumbs>
+
+            <v-spacer></v-spacer>
+
+            <div class="workDate">
+              <v-menu
+                v-model="workDateMenu"
+                :close-on-content-click="false"
+                :nudge-right="40"
+                lazy
+                transition="scale-transition"
+                offset-y
+                full-width
+                min-width="290px"
+              >
+                <a slot="activator" href="#">Work date: {{workDate}}</a>
+                <v-date-picker v-model="workDate" @input="workDateMenu = false"></v-date-picker>
+              </v-menu>
+            </div>
           </div>
 
           <transition name="fade" mode="out-in">
@@ -140,6 +158,7 @@ import SheetsManager from "./components/SheetsManager.vue";
 import SheetManager from "./components/SheetManager.vue";
 import Login from "./views/Login.vue";
 import MessageDialog from "./views/MessageDialog.vue";
+import moment from "moment";
 //#2195f3
 
 function getUserByToken(store, done) {
@@ -174,6 +193,7 @@ export default {
     settingsDrawer: false,
     authDialog: false,
     messageDialog: false,
+    workDateMenu: false,
     crumbs: [
       { text: "Home", disabled: false, to: "/" },
       { text: "User", disabled: false, to: "user" },
@@ -267,6 +287,23 @@ export default {
       }
 
       return false;
+    },
+    workDate: {
+      get() {
+        // return this.$store.getters.workDateIsoStr;
+        if (this.$store.state.mainUser.workDate) {
+          return moment(this.$store.state.mainUser.workDate).format(
+            "YYYY-MM-DD"
+          );
+        }
+
+        return moment().format("YYYY-MM-DD");
+      },
+      set(value) {
+        this.$store.commit("UPDATE_MAIN_USER", {
+          workDate: moment(value).toDate()
+        });
+      }
     }
   },
   methods: {
@@ -337,6 +374,13 @@ export default {
 </style>
 
 <style lang="css">
+.workDate {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  padding: 18px 12px;
+}
+
 .atom-spinner,
 .atom-spinner * {
   box-sizing: border-box;

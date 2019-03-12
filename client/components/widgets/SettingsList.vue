@@ -137,7 +137,7 @@ export default {
 		enumTypeEl: {
 			type: Array,
 			default: function () {
-				return ['Tasks', 'Groups', 'Users']
+				return ['Tasks', 'Activity', 'Groups', 'Users']
 			}
 		}
 	},
@@ -182,15 +182,18 @@ export default {
 		onCreateItem() {
 			let type_el
 			switch (this.createdTypeEl) {
+				case 'Activity':
+					type_el = 2;
+					break;
 				case 'Tasks':
-					type_el = 4
-					break
+					type_el = 4;
+					break;
 				case 'Groups':
-					type_el = 8
-					break
+					type_el = 8;
+					break;
 				case 'Users':
-					type_el = 16
-					break
+					type_el = 16;
+					break;
 			}
 
 			const createdLayout = this.enumLayouts.findIndex(el => el === this.createdLayout) + 1

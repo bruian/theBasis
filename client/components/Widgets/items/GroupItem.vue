@@ -45,7 +45,7 @@
           color="primary"
           dark
         >{{ (item.isExpanded) ? "unfold_less" : "unfold_more" }}</v-icon>
-        <v-icon @click class="expand-ico" color="primary" dark>more_horiz</v-icon>
+        <v-icon class="expand-ico" color="primary">more_horiz</v-icon>
       </div>
     </div>
 

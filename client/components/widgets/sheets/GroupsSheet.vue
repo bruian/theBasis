@@ -484,7 +484,7 @@ export default {
     },
     onDeleteItem() {
       this.$store
-        .dispatch("DELETE_ELEMENT", { sheet_id: this.sheet_id })
+        .dispatch("DELETE_ELEMENTS", { sheet_id: this.sheet_id })
         .catch(err => {
           console.warn(err);
         });

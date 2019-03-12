@@ -1,9 +1,10 @@
+const moment = require('moment');
+
 export default {
 	/* Authentication getters */
 	isAuth: state => !!state.auth.token,
 	apiStatus: state => state.apiStatus,
 	token: state => state.auth.token,
-	user: state => state.theUser,
 
 	/**
 	 * @func generalSheets
@@ -11,11 +12,11 @@ export default {
 	 * @param {vuetify breakpoint: Object } - breakpoint
 	 * @returns { Array } - array components for render
 	 * @description Get the filtered array of components for a render in the general sheet.
-	 * 	state.layout: 1 - "one-column", 2 - "two-column"
+	 * 	state.mainUser.layout: 1 - "one-column", 2 - "two-column"
 	 */
 	generalSheets: state => breakpoint => {
 		return state.sheets.filter(el => {
-			if (state.layout === 2 && !breakpoint.smAndDown) {
+			if (state.mainUser.layout === 2 && !breakpoint.smAndDown) {
 				return el.visible && el.layout === 1;
 			} else {
 				return el.visible;
@@ -28,7 +29,7 @@ export default {
 	 * @param {vuex state: Object} - state
 	 * @returns { Array } - array components for render
 	 * @description Get the filtered array of components for a render in the additional sheet.
-	 * 	state.layout: 1 - "one-column", 2 - "two-column"
+	 * 	state.mainUser.layout: 1 - "one-column", 2 - "two-column"
 	 */
 	additionalSheets: state => {
 		return state.sheets.filter(el => el.visible && el.layout === 2);
@@ -40,13 +41,13 @@ export default {
 	 * @param {vuetify breakpoint: Object } - breakpoint
 	 * @returns { Boolean } - can render or can't
 	 * @description Get information about the possibility of rendering an additional sheet.
-	 * 	state.layout: 1 - "one-column", 2 - "two-column"
+	 * 	state.mainUser.layout: 1 - "one-column", 2 - "two-column"
 	 */
 	isShowAdditional: state => breakpoint => {
 		const index = state.sheets.findIndex(el => el.visible && el.layout === 2);
 		if (index === -1) return false;
 
-		return state.layout === 2 ? !breakpoint.smAndDown : false;
+		return state.mainUser.layout === 2 ? !breakpoint.smAndDown : false;
 	},
 
 	// usersSheet(state) {
@@ -96,30 +97,11 @@ export default {
 		return findGroup(state.mainGroups);
 	},
 
-	// ids of the items that should be currently displayed based on
-	// current list type and current pagination
-	activeIds(state) {
-		const { activeType, itemsPerPage, lists } = state;
-
-		if (!activeType) {
-			return [];
+	workDateIsoStr: state => {
+		if (state.mainUser.workDate) {
+			return moment(state.mainUser.workDate).format('YYYY-MM-DD');
 		}
 
-		const page = Number(state.route.params.page) || 1;
-		const start = (page - 1) * itemsPerPage;
-		const end = page * itemsPerPage;
-
-		return lists[activeType].slice(start, end);
-	},
-
-	// items that should be currently displayed.
-	// this Array may not be fully fetched.
-	activeItems(state, getters) {
-		return getters.activeIds.map(id => state.items[id]).filter(_ => _);
-	},
-
-	activeTgmUserItems(state, getters) {
-		// return getters.activeIds.map(id => state.theItems[id])
-		return getters.activeIds.map(id => state.theItems.find(el => el.id === id)).filter(_ => _);
-	},
+		return moment().format('YYYY-MM-DD');
+	}
 };

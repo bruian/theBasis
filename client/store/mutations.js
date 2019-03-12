@@ -1,4 +1,5 @@
 import Vue from 'vue';
+import moment from 'moment';
 import { recursiveFind, typeForSheet, conditionsForSheet } from '../util/helpers';
 
 const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
@@ -63,13 +64,25 @@ export default {
 		setApiStatus(state, 'MAINUSER_REQUEST', null);
 	},
 
-	MAIN_USER_SUCCESS: (state, data) => {
+	SET_MAIN_USER: (state, data) => {
 		if (Array.isArray(data) && data.length === 1) {
 			state.mainUser = Object.assign({}, data[0]);
-			setApiStatus(state, 'MAIN_USER_SUCCESS', null);
+			// user conditions
+			Vue.set(state.mainUser, 'workDate', moment().toDate());
+			Vue.set(state.mainUser, 'layout', 2);
+
+			setApiStatus(state, 'SET_MAIN_USER', null);
 		} else {
-			setApiStatus(state, 'MAIN_USER_FAIL', data);
+			setApiStatus(state, 'SET_MAIN_USER', data);
 		}
+	},
+
+	UPDATE_MAIN_USER: (state, data) => {
+		Object.keys(data).forEach(key => {
+			if (Object.prototype.hasOwnProperty.call(state.mainUser, key)) {
+				state.mainUser[key] = data[key];
+			}
+		});
 	},
 
 	MAIN_GROUPS_SUCCESS: (state, groups) => {
@@ -90,7 +103,7 @@ export default {
 					level: rows[i].level,
 					group_type: rows[i].group_type,
 					user_type: rows[i].user_type,
-					children: rows[i].children,
+					children: rows[i].children
 				};
 
 				if ((parentId === null && record.parent === null) || record.parent === parentId) {
@@ -119,202 +132,7 @@ export default {
 		state.appReady = ready;
 	},
 
-	/* TheUser mutations */
-	THEUSER_REQUEST: state => {
-		setApiStatus(state, 'THEUSER_REQUEST', null);
-	},
-
-	THEUSER_SUCCESS: (state, data) => {
-		if (Array.isArray(data) && data.length === 1) {
-			if (state.mainUser.id === data[0].id) {
-				state.theUser = state.mainUser;
-			} else {
-				state.theUser = Object.assign({}, data[0]);
-			}
-
-			setApiStatus(state, 'THEUSER_SUCCESS', null);
-		} else {
-			setApiStatus(state, 'THEUSER_FAIL', data);
-		}
-	},
-
-	/* -----------------------------------USERS SHEET mutations----------------------------------- */
-
-	SET_USERS: (state, options) => {
-		const activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-
-		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
-			activeSheet.sheet = [];
-		}
-		const usersSheet = activeSheet.sheet;
-		const users = options.data;
-
-		let existElement = -1;
-
-		for (let i = 0; i < users.length; i++) {
-			const newUser = Object.assign(
-				{
-					isShowed: true,
-					isSubElementsExpanded: 0,
-					isExpanded: false,
-					isActive: false,
-					consistency: 0,
-				},
-				users[i],
-			);
-
-			existElement = usersSheet.findIndex(el => el.id === newUser.id);
-			if (existElement === -1) {
-				activeSheet.offset++;
-				if (
-					Object.prototype.hasOwnProperty.call(options, 'isStart') &&
-					options.isStart &&
-					usersSheet.length > 1
-				) {
-					usersSheet.splice(1, 0, newUser);
-				} else {
-					usersSheet.push(newUser);
-				}
-			} else {
-				Vue.set(usersSheet, existElement, newUser);
-			}
-		}
-
-		setApiStatus(state, 'SET_USERS', null);
-	},
-
-	SET_ACTIVE_USERS_SHEET: (state, activeID) => {
-		let temp = state.activeUsersSheet;
-
-		state.activeUsersSheet = state.availableUsersSheet.splice(
-			state.availableUsersSheet.findIndex(el => el.id === activeID),
-			1,
-		)[0];
-		if (temp.id > -1) {
-			if (temp.id === 0) {
-				state.availableUsersSheet.unshift(temp);
-			} else {
-				let fIndex = state.availableUsersSheet.findIndex(el => el.id > temp.id);
-				if (fIndex > -1) {
-					state.availableUsersSheet.splice(fIndex, 0, temp);
-				} else {
-					state.availableUsersSheet.push(temp);
-				}
-			}
-		}
-	},
-
-	SET_PARAMS_USERS_SHEET: (state, params) => {
-		const ul = state[state.activeUsersSheet.sheet];
-
-		Object.keys(params).forEach(key => {
-			if (Object.prototype.hasOwnProperty.call(ul, key)) {
-				ul[key] = params[key];
-			}
-		});
-	},
-
-	RESET_USERS_SHEET: state => {
-		const ul = state[state.activeUsersSheet.sheet];
-		ul.sheet = [];
-		ul.offset = 0;
-		ul.limit = 10;
-		ul.like = '';
-	},
-
-	RESET_INACTIVE_USERS_SHEET: state => {
-		let ul;
-		for (let i = 0; i < state.availableUsersSheet.length; i++) {
-			ul = state[state.availableUsersSheet[i].sheet];
-			ul.sheet = [];
-			ul.offset = 0;
-			ul.limit = 10;
-			ul.like = '';
-		}
-	},
-
-	UPDATE_VALUES_USERS_SHEET: (state, values) => {
-		setApiStatus(state, 'UPDATE_VALUES_USERS_SHEET', null);
-
-		const ul = state[state.activeUsersSheet.sheet];
-		const idx = ul.sheet.findIndex(el => el.id === values.id);
-		const element = ul.sheet[idx];
-
-		Object.keys(values).forEach(key => {
-			if (key !== 'id') {
-				if (Object.prototype.hasOwnProperty.call(element, key)) {
-					element[key] = values[key];
-				}
-			}
-		});
-	},
-
-	REMOVE_VALUES_USERS_SHEET: (state, values) => {
-		setApiStatus(state, 'REMOVE_VALUES_USERS_SHEET', null);
-
-		const ul = state[state.activeUsersSheet.sheet];
-		const idx = ul.sheet.findIndex(el => el.id === values.id);
-		ul.sheet.splice(idx, 1);
-	},
-
-	/* ---------------------------------------GROUPS mutations-------------------------------------- */
-
-	SET_PARAMS_GROUPS_SHEET: (state, params) => {
-		const gl = state[state.activeGroupsSheet.sheet];
-
-		Object.keys(params).forEach(key => {
-			if (Object.prototype.hasOwnProperty.call(gl, key)) {
-				gl[key] = params[key];
-			}
-		});
-	},
-
-	RESET_GROUPS_SHEET: state => {
-		const gl = state[state.activeGroupsSheet.sheet];
-		gl.sheet = [];
-		gl.offset = 0;
-		gl.limit = 10;
-		gl.like = '';
-	},
-
-	RESET_INACTIVE_GROUPS_SHEET: state => {
-		setApiStatus(state, 'RESET_INACTIVE_GROUPS_SHEET', null);
-
-		let gl;
-		for (let i = 0; i < state.availableGroupsSheet.length; i++) {
-			gl = state[state.availableGroupsSheet[i].sheet];
-			gl.sheet = [];
-			gl.offset = 0;
-			gl.limit = 10;
-			gl.like = '';
-		}
-	},
-
-	UPDATE_VALUES_GROUPS_SHEET: (state, values) => {
-		setApiStatus(state, 'UPDATE_VALUES_GROUPS_SHEET', null);
-
-		const gl = state[state.activeGroupsSheet.sheet];
-		const idx = gl.sheet.findIndex(el => el.id === values.id);
-		const element = gl.sheet[idx];
-
-		Object.keys(values).forEach(key => {
-			if (key !== 'id') {
-				if (Object.prototype.hasOwnProperty.call(element, key)) {
-					element[key] = values[key];
-				}
-			}
-		});
-	},
-
-	REMOVE_VALUES_GROUPS_SHEET: (state, values) => {
-		setApiStatus(state, 'REMOVE_VALUES_GROUPS_SHEET', null);
-
-		const gl = state[state.activeGroupsSheet.sheet];
-		const idx = gl.sheet.findIndex(el => el.id === values.id);
-		gl.sheet.splice(idx, 1);
-	},
-
-	/* ---------------------------------------TASKS mutations--------------------------------------- */
+	/* -------------------------------------ELEMENT mutations------------------------------------- */
 
 	/*
 	 * @func SET_ELEMENTS
@@ -325,8 +143,16 @@ export default {
 	 */
 	SET_ELEMENTS: (state, options) => {
 		// Функция сортировки
-		function sortSheet(a, b) {
+		function sortSheetSternBrocot(a, b) {
 			return a.p / a.q - b.p / b.q;
+		}
+
+		function sortSheetDateTime(a, b) {
+			if (a.start > b.start) return -1;
+			if (a.start < b.start) return 1;
+			return 0;
+
+			// return new Date(b.start) - new Date(a.start);
 		}
 
 		/* При загрузке данных с сервера получается два набор данных
@@ -343,9 +169,10 @@ export default {
 		let rootResort = false;
 
 		/* По id определяется тип sheet, позже по этому типу будет обработан массив sheets */
-		const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		// const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id); 12.03.19 21:18
 
-		switch (theSheet.type_el) {
+		// switch (theSheet.type_el) { 12.03.19 21:18
+		switch (options.type_el) {
 			case 'tasks-sheet':
 				theDatas = state.Tasks;
 				break;
@@ -362,16 +189,16 @@ export default {
 				break;
 		}
 
-		if (!Object.prototype.hasOwnProperty.call(theSheet, 'sh')) {
-			// Если нет такого свойства, то оно создается
-			theSheet.sh = [];
-		}
+		// if (!Object.prototype.hasOwnProperty.call(theSheet, 'sh')) {
+		// 	// Если нет такого свойства, то оно создается
+		// 	theSheet.sh = [];
+		// } 12.03.19 21:18
 
-		if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
-			// Если в опциях получено свойство refresh и оно true, то необходимо обновить полностью данные
-			theSheet.sh = [];
-			theDatas = [];
-		}
+		// if (Object.prototype.hasOwnProperty.call(options, 'refresh') && options.refresh) {
+		// 	// Если в опциях получено свойство refresh и оно true, то необходимо обновить полностью данные
+		// 	theSheet.sh = [];
+		// 	theDatas = [];
+		// } 12.03.19 21:18
 
 		let tempParent;
 		let tempParent_id;
@@ -388,34 +215,39 @@ export default {
 				// без изменения структуры массива
 
 				// Проверка необходимости пересчета уровня у вложенных уже существующих элементов
-				if (data.level !== datas[i].level) {
+				if (
+					Object.prototype.hasOwnProperty.call(datas[i], 'level') &&
+					data.level !== datas[i].level
+				) {
 					newLevel = datas[i].level;
 				}
 
-				// Если уже есть данные, но при этом родители у существующих на клиенте отличаются от
-				// родителей пришедших с сервера, то необходимо на клиенте обновить структуру данных
-				const curParId = data.parent ? data.parent.id : null;
-				if (curParId !== datas[i].parent) {
-					if (curParId === null) {
-						data = theDatas.splice(index, 1)[0];
-					} else {
-						const { element } = recursiveFind(theDatas, el => el.id === curParId);
-						data = element.children.splice(index, 1)[0];
-					}
+				if (Object.prototype.hasOwnProperty.call(datas[i], 'parent')) {
+					// Если уже есть данные, но при этом родители у существующих на клиенте отличаются от
+					// родителей пришедших с сервера, то необходимо на клиенте обновить структуру данных
+					const curParId = data.parent ? data.parent.id : null;
+					if (curParId !== datas[i].parent) {
+						if (curParId === null) {
+							data = theDatas.splice(index, 1)[0];
+						} else {
+							const { element } = recursiveFind(theDatas, el => el.id === curParId);
+							data = element.children.splice(index, 1)[0];
+						}
 
-					if (newLevel) {
-						if (data.children) {
-							for (let x = 0; x < data.children.length; x++) {
-								data.children[x].level = newLevel + 1;
-								if (data.children[x].children) {
-									for (let y = 0; y < data.children[x].children.length; y++) {
-										data.children[x].children[y].level = newLevel + 2;
+						if (newLevel) {
+							if (data.children) {
+								for (let x = 0; x < data.children.length; x++) {
+									data.children[x].level = newLevel + 1;
+									if (data.children[x].children) {
+										for (let y = 0; y < data.children[x].children.length; y++) {
+											data.children[x].children[y].level = newLevel + 2;
+										}
 									}
 								}
 							}
 						}
+						newData = true;
 					}
-					newData = true;
 				}
 
 				if (
@@ -430,6 +262,10 @@ export default {
 							rootResort = true;
 						}
 					}
+				} else if (Object.prototype.hasOwnProperty.call(datas[i], 'start')) {
+					if (data.start !== datas[i].start) {
+						rootResort = true;
+					}
 				}
 
 				Object.keys(datas[i]).forEach(key => {
@@ -441,7 +277,8 @@ export default {
 			}
 
 			state.sheets.forEach(xSheet => {
-				if (xSheet.type_el === theSheet.type_el) {
+				// if (xSheet.type_el === theSheet.type_el) { 12.03.19 21:18
+				if (xSheet.type_el === options.type_el) {
 					let shData = xSheet.sh.find(x => x.el.id === data.id);
 
 					let isShowed = true;
@@ -464,8 +301,13 @@ export default {
 								1 - refresh
 								2 - not consistently */
 							consistency: 0,
-							el: data,
+							el: data
 						};
+
+						if (!Object.prototype.hasOwnProperty.call(xSheet, 'sh')) {
+							// Если нет такого свойства, то оно создается
+							xSheet.sh = [];
+						}
 
 						xSheet.sh.push(shData);
 						if (Object.prototype.hasOwnProperty.call(data, 'parent')) {
@@ -478,7 +320,8 @@ export default {
 			});
 
 			// Установка, специфичных для tasks-sheet, значений
-			if (theSheet.type_el === 'tasks-sheet') {
+			// if (theSheet.type_el === 'tasks-sheet') { 12.03.19 21:18
+			if (options.type_el === 'tasks-sheet') {
 				data.context = state.Contexts.filter(el => el.task_id === data.id).map(cont => {
 					return cont.value;
 				});
@@ -539,29 +382,33 @@ export default {
 		}
 
 		if (rootResort) {
-			theDatas.sort(sortSheet);
+			// if (theSheet.type_el === 'activity-sheet') { 12.03.19 21:18
+			if (options.type_el === 'activity-sheet') {
+				theDatas.sort(sortSheetDateTime);
+			} else {
+				theDatas.sort(sortSheetSternBrocot);
+			}
 		}
 
 		sortElements.forEach(arr => {
-			arr.sort(sortSheet);
+			arr.sort(sortSheetSternBrocot);
 		});
 
 		setApiStatus(state, 'SET_ELEMENTS', null);
 	},
 
-	DELETE_ELEMENT: (state, options) => {
-		const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-
-		state.sheets.forEach(xSheet => {
-			if (theSheet.type_el === xSheet.type_el) {
-				xSheet.offset--;
-				const index = xSheet.sh.findIndex(x => x.el.id === options.id);
-				xSheet.sh.splice(index, 1);
-			}
-		});
+	/*
+	 * @func DELETE_ELEMENTS
+	 * @param {Object} state - VUEX store
+	 * @param {Object} options - mutation options
+	 * @description Sheet data mutation
+	 * options - { sheet_id: String, data: Array, action: String, refresh: Bool(optional) }
+	 */
+	DELETE_ELEMENTS: (state, options) => {
+		// const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 
 		let theDatas;
-		switch (theSheet.type_el) {
+		switch (options.type_el) {
 			case 'tasks-sheet':
 				theDatas = state.Tasks;
 				break;
@@ -578,29 +425,43 @@ export default {
 				break;
 		}
 
-		const { index, element } = recursiveFind(theDatas, x => x.id === options.id);
+		Array.prototype.forEach.call(options.data, data => {
+			const { index, element } = recursiveFind(theDatas, x => x.id === data.id);
 
-		if (element.parent === null) {
-			theDatas.splice(index, 1);
-		} else if (element.parent.children && element.parent.children.length > 0) {
-			element.parent.children.splice(index, 1);
-		}
+			if (Object.prototype.hasOwnProperty.call(element, 'parent')) {
+				if (element.parent === null) {
+					theDatas.splice(index, 1);
+				} else if (element.parent.children && element.parent.children.length > 0) {
+					element.parent.children.splice(index, 1);
+				}
 
-		let tempDepth = 2;
-		let tempParent = element.parent;
-		while (tempParent !== null) {
-			if (tempParent.children.length === 0) {
-				tempDepth = 1;
-				tempParent.depth = tempDepth;
-				tempDepth++;
+				let tempDepth = 2;
+				let tempParent = element.parent;
+				while (tempParent !== null) {
+					if (tempParent.children.length === 0) {
+						tempDepth = 1;
+						tempParent.depth = tempDepth;
+						tempDepth++;
+					} else {
+						tempParent.depth = tempDepth;
+					}
+
+					tempParent = tempParent.parent;
+				}
 			} else {
-				tempParent.depth = tempDepth;
+				theDatas.splice(index, 1);
 			}
 
-			tempParent = tempParent.parent;
-		}
+			state.sheets.forEach(xSheet => {
+				if (options.type_el === xSheet.type_el) {
+					xSheet.offset--;
+					const shIndex = xSheet.sh.findIndex(x => x.el.id === options.id);
+					xSheet.sh.splice(shIndex, 1);
+				}
+			});
+		});
 
-		setApiStatus(state, 'DELETE_ELEMENT', null);
+		setApiStatus(state, 'DELETE_ELEMENTS', null);
 	},
 
 	// values must contain id
@@ -738,6 +599,19 @@ export default {
 		}
 	},
 
+	SET_RESTRICTIONS: (state, options) => {
+		state.sheets.forEach(xSheet => {
+			if (xSheet.type_el === 'activity-sheet') {
+				// const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+				if (Array.isArray(options.data) && options.data.length > 0) {
+					xSheet.restrictions = Object.assign({}, options.data[0]);
+				} else {
+					xSheet.restrictions = null;
+				}
+			}
+		});
+	},
+
 	/* --------------------------------------Sheets mutations--------------------------------------- */
 
 	SHEETS_SUCCESS: (state, data) => {
@@ -766,7 +640,7 @@ export default {
 				owner_id: data[i].owner_id,
 				name: data[i].name,
 				visible: data[i].visible,
-				layout: data[i].layout,
+				layout: data[i].layout
 			};
 
 			state.sheets.push(sheet);
@@ -865,7 +739,7 @@ export default {
 			element_id: null,
 			data: null,
 			method: null,
-			processed: false,
+			processed: false
 		};
 
 		Object.keys(data).forEach(key => {
@@ -882,44 +756,5 @@ export default {
 		if (index !== -1) {
 			state.updateQueue.splice(index, 1);
 		}
-	},
-
-	/* ----------------------------------------Other mutations-------------------------------------- */
-
-	SET_LAYOUT: (state, value) => {
-		state.layout = parseInt(value, 10);
-	},
-
-	SET_ITEMS: (state, { items }) => {
-		items.forEach(item => {
-			if (item) {
-				Vue.set(state.items, item.id, item);
-			}
-		});
-	},
-
-	SET_TGMUSER_ITEMS: (state, { items }) => {
-		items.forEach(item => {
-			if (item) {
-				const idx = state.theItems.findIndex(element => item.id === element.id);
-
-				Vue.set(state.theItems, idx === -1 ? state.theItems.length : idx, item);
-			}
-		});
-	},
-
-	SET_TGMUSER_ITEM: (state, item) => {
-		const idx = state.theItems.findIndex(element => item.id === element.id);
-
-		Vue.set(state.theItems, idx === -1 ? state.theItems.length : idx, item);
-	},
-
-	DELETE_ITEM: (state, item) => {
-		let items = state.theItems;
-		items.splice(items.indexOf(item), 1);
-	},
-
-	SET_USER: (state, { id, user }) => {
-		Vue.set(state.users, id, user || false); /* false means user not found */
-	},
+	}
 };

@@ -8,6 +8,10 @@
           v-if="sheetItem.type_el === 'tasks-sheet'"
           v-bind:sheet_id="sheetItem.sheet_id"
         ></tasks-sheet>
+        <activity-sheet
+          v-if="sheetItem.type_el === 'activity-sheet'"
+          v-bind:sheet_id="sheetItem.sheet_id"
+        ></activity-sheet>
         <groups-sheet
           v-if="sheetItem.type_el === 'groups-sheet'"
           v-bind:sheet_id="sheetItem.sheet_id"
@@ -25,6 +29,10 @@
           v-if="sheetItem.type_el === 'tasks-sheet'"
           v-bind:sheet_id="sheetItem.sheet_id"
         ></tasks-sheet>
+        <activity-sheet
+          v-if="sheetItem.type_el === 'activity-sheet'"
+          v-bind:sheet_id="sheetItem.sheet_id"
+        ></activity-sheet>
         <groups-sheet
           v-if="sheetItem.type_el === 'groups-sheet'"
           v-bind:sheet_id="sheetItem.sheet_id"
@@ -49,6 +57,8 @@ export default {
     Profile,
     UsersSheet: () => import("../components/widgets/sheets/UsersSheet.vue"),
     TasksSheet: () => import("../components/widgets/sheets/TasksSheet.vue"),
+    ActivitySheet: () =>
+      import("../components/widgets/sheets/ActivitySheet.vue"),
     GroupsSheet: () => import("../components/widgets/sheets/GroupsSheet.vue")
   },
   data: () => ({}),

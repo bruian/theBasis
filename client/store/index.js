@@ -6,40 +6,6 @@ import getters from './getters';
 
 Vue.use(Vuex);
 
-const def = {
-	mainUser: {
-		id: 0,
-		username: '',
-		name: '',
-		email: '',
-		verified: true,
-		loged: false,
-		city: '',
-		country: '',
-		gender: '',
-		phone: '',
-		avatar: '',
-		friend: 0,
-		layout: 2, // 1 - "one-column", 2 - "two-column"
-	},
-	mainGroup: {
-		group_id: 0,
-		user_type: 1,
-		name: 'personal',
-		parent: null,
-		creating: 1,
-		reading: 1,
-		updating: 1,
-		deleting: 1,
-		el_creating: 1,
-		el_reading: 1,
-		el_updating: 1,
-		el_deleting: 1,
-		group_type: 2,
-		haveChild: 0,
-	},
-};
-
 /* Data structure
 	sheets: [
 		{
@@ -80,34 +46,47 @@ const def = {
 			parent: String,
 			...
 		}
-	]
+	],
+	mainUser: {
+		id: 0,
+		username: '',
+		name: '',
+		email: '',
+		verified: true,
+		loged: false,
+		city: '',
+		country: '',
+		gender: '',
+		phone: '',
+		avatar: '',
+		friend: 0,
+		layout: 2, // 1 - "one-column", 2 - "two-column"
+		workDate: isoDate,
+	},
 */
 
 function createStore() {
 	let store = new Vuex.Store({
 		state: {
-			default: { mainUser: def.mainUser }, // ?
 			/* --------------------------------------Application state-------------------------------------- */
 			appReady: false, // if true - application loaded and ready to render
 			logStatus: true, // ON/OFF api status logging
 			apiStatus: [], // log api status
 			selectedSheetsManager: false,
 
-			layout: 2, // TEMPORARY. Need move to main user
-
 			/* -AUTHENTICATED STATUS -*/
 			auth: { token: '', refreshToken: '' } /* api request: /auth-user */,
 
-			/* -LOGGED USERS DATAS- */ mainUser: Object.assign({}, def.mainUser),
-			mainUsers: [],
+			/* -LOGGED USERS DATAS- */
+
+			// mainUser: Object.assign({}, def.mainUser),
+			mainUser: {},
 			mainUsersMini: [],
 			mainGroups: [],
 			mainGroupsMini: [],
 			mainExistingContexts: {},
 
 			/* -SELECTED DATAS- */
-			theUser: {},
-
 			updateQueue: [],
 
 			Tasks: [],
@@ -118,11 +97,11 @@ function createStore() {
 
 			/* ----------------------------------------Sheets state----------------------------------------- */
 			selectedSheet: null,
-			sheets: [],
+			sheets: []
 		},
 		actions,
 		mutations,
-		getters,
+		getters
 	});
 
 	// Интервальное обновление токенов

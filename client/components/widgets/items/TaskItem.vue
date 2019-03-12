@@ -152,6 +152,10 @@ const tabs = [
     component: () => import("../itemElements/NoteElement.vue")
   },
   {
+    name: "Property",
+    component: () => import("../itemElements/TaskPropertyTab.vue")
+  },
+  {
     name: "Activity",
     component: () => import("../itemElements/ActivityLogElement.vue")
   },

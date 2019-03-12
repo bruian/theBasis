@@ -6,6 +6,7 @@
         @keyup.ctrl="handleCmdEnter($event)"
         @focus="resize"
         v-model="val"
+        :disabled="disabled"
         :style="computedStyle"
         class="itmTextArea effect-3"
         rows="1"
@@ -18,6 +19,7 @@
       color="primary"
       style="align-self: flex-start;"
     >done</v-icon>
+    <slot></slot>
   </div>
 </template>
 
@@ -43,6 +45,10 @@ export default {
     },
     important: {
       type: [Boolean, Array],
+      default: false
+    },
+    disabled: {
+      type: Boolean,
       default: false
     }
   },

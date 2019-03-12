@@ -42,10 +42,10 @@ export default {
   computed: {
     layout: {
       get() {
-        return this.$store.state.layout.toString();
+        return this.$store.state.mainUser.layout.toString();
       },
       set(value) {
-        this.$store.commit("SET_LAYOUT", value);
+        this.$store.commit("UPDATE_MAIN_USER", { layout: parseInt(value, 10) });
       }
     },
     sheets: {
