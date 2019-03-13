@@ -28,9 +28,9 @@ const mainPacket = [
 		fetchQuery: {
 			url: 'groups',
 			method: 'GET',
-			params: { packet: 1 }
+			params: { packet: 1, userId: 'main' }
 		},
-		mutations: ['MAIN_GROUPS_SUCCESS']
+		mutations: ['SET_ELEMENTS']
 	},
 	{
 		fetchQuery: {
@@ -375,6 +375,13 @@ export default {
 									);
 								}
 
+								if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'groups_data')) {
+									commit('SET_ELEMENTS', {
+										type_el: 'groups-sheet',
+										data: dataFromSrv.groups_data
+									});
+								}
+
 								return Promise.resolve(1);
 							})
 							.catch(err => {
@@ -495,7 +502,6 @@ export default {
 
 				if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'restrictions_data')) {
 					commit('SET_RESTRICTIONS', {
-						sheet_id: options.sheet_id,
 						data: dataFromSrv.restrictions_data
 					});
 				}
@@ -546,7 +552,7 @@ export default {
 				} else {
 					/* Если список элементов пуст, найдем primary group в которую по-умолчанию добавим элемент */
 					if (theSheet.type_el === 'tasks-sheet')
-						group_id = state.mainGroups.find(el => el.group_type === 1).id;
+						group_id = recursiveFind(state.Groups, el => el.group_type === 1).element.id;
 				}
 			}
 		}
@@ -585,6 +591,12 @@ export default {
 						type_el: 'activity-sheet',
 						isStart: options.isStart,
 						data: dataFromSrv.activity_data
+					});
+				}
+
+				if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'restrictions_data')) {
+					commit('SET_RESTRICTIONS', {
+						data: dataFromSrv.restrictions_data
 					});
 				}
 
@@ -720,6 +732,13 @@ export default {
 					});
 				}
 
+				if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'deleted_groups')) {
+					commit('DELETE_ELEMENTS', {
+						type_el: 'groups-sheet',
+						data: dataFromSrv.deleted_groups
+					});
+				}
+
 				if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'activity_data')) {
 					commit('SET_ELEMENTS', {
 						type_el: 'activity-sheet',
@@ -743,7 +762,6 @@ export default {
 
 				if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'restrictions_data')) {
 					commit('SET_RESTRICTIONS', {
-						sheet_id: options.sheet_id,
 						data: dataFromSrv.restrictions_data
 					});
 				}
@@ -870,6 +888,13 @@ export default {
 					});
 				}
 
+				if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'groups_data')) {
+					commit('SET_ELEMENTS', {
+						type_el: 'groups-sheet',
+						data: dataFromSrv.groups_data
+					});
+				}
+
 				fromElement.consistency = 0;
 				if (toElement) toElement.consistency = 0;
 
@@ -904,7 +929,7 @@ export default {
 				id: dataSh.el.id,
 				position: null,
 				isBefore: false,
-				start: state.mainUser.workDate.toISOString(),
+				start: workDateCurrTime(state.mainUser.workDate).toISOString(),
 				parent_id: dataSh.el.parent ? dataSh.el.parent.id : '0'
 			})
 		};
@@ -912,17 +937,23 @@ export default {
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
 				// изменение значения группы на новую группу
-				if (Object.prototype.hasOwnProperty.call(dataFromSrv.data, 'tasks_data')) {
+				if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'tasks_data')) {
 					commit('SET_ELEMENTS', {
 						type_el: 'tasks-sheet',
 						data: dataFromSrv.tasks_data
 					});
 				}
 
-				if (Object.prototype.hasOwnProperty.call(dataFromSrv.data, 'activity_data')) {
+				if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'activity_data')) {
 					commit('SET_ELEMENTS', {
 						type_el: 'activity-sheet',
 						data: dataFromSrv.activity_data
+					});
+				}
+
+				if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'restrictions_data')) {
+					commit('SET_RESTRICTIONS', {
+						data: dataFromSrv.restrictions_data
 					});
 				}
 
@@ -942,14 +973,14 @@ export default {
 	},
 
 	ADD_TASK_CONTEXT: ({ commit, state }, options) => {
-		let activeSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
-		let taskSheet = activeSheet.sheet;
-		let element = recursiveFind(taskSheet, el => el.id === options.task_id).element;
+		let theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
+		let dataSh = recursiveFind(theSheet.sh, x => x.el.id === options.task_id).element;
+
+		dataSh.consistency = 1;
+
 		let values = {
 			task_id: options.task_id
 		};
-
-		element.consistency = 1;
 
 		if ('context_id' in options) {
 			values.context_id = options.context_id;
@@ -967,20 +998,16 @@ export default {
 
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
-				element.consistency = 0;
+				dataSh.consistency = 0;
 
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(false);
-				} else {
-					const data = Object.assign({}, dataFromSrv.data);
-					data.sheet_id = options.sheet_id;
+				const data = Object.assign({}, dataFromSrv.data);
+				data.sheet_id = options.sheet_id;
 
-					commit('ADD_TASK_CONTEXT', data);
-					return Promise.resolve(true);
-				}
+				commit('ADD_TASK_CONTEXT', data);
+				return Promise.resolve(true);
 			})
 			.catch(err => {
-				element.consistency = 2;
+				dataSh.consistency = 2;
 
 				if (err.response.data) {
 					commit('API_ERROR', { message: err.message, data: err.response.data });
@@ -1136,7 +1163,8 @@ export default {
 				type_el: 2,
 				task_id: theElement.el.id,
 				start,
-				status
+				status,
+				next_tail: moment(state.mainUser.workDate).isBefore(moment(), 'day')
 			})
 		};
 
@@ -1167,7 +1195,6 @@ export default {
 
 				if (Object.prototype.hasOwnProperty.call(dataFromSrv, 'restrictions_data')) {
 					commit('SET_RESTRICTIONS', {
-						sheet_id: options.sheet_id,
 						data: dataFromSrv.restrictions_data
 					});
 				}

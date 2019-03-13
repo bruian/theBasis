@@ -93,7 +93,6 @@ export default {
             (!arr[index - 1].isDivider &&
               !moment(curr.start).isSame(arr[index - 1].start, "day"))
           ) {
-            // let grp = findGroup(st.mainGroups, curr.group_id);
             const div = {
               isDivider: true,
               id: `div ${moment(curr.start).valueOf()}`,

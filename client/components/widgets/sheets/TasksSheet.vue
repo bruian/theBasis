@@ -123,7 +123,7 @@ export default {
             (!arr[index - 1].isDivider &&
               arr[index - 1].group_id !== curr.group_id)
           ) {
-            let grp = findGroup(st.mainGroups, curr.group_id);
+            let grp = findGroup(st.Groups, curr.group_id);
             const div = {
               isDivider: true,
               id: `div ${curr.group_id}`,

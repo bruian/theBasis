@@ -61,7 +61,7 @@ export default {
       set(value) {}
     },
     mainGroupsMini() {
-      return this.$store.state.mainGroupsMini;
+      return this.$store.getters.mainGroupsMini;
     },
     mainUsersMini() {
       return this.$store.state.mainUsersMini;

@@ -227,7 +227,7 @@ export default {
       return this.$store.state.mainExistingContexts;
     },
     mainGroupsMini() {
-      return this.$store.state.mainGroupsMini;
+      return this.$store.getters.mainGroupsMini;
     },
     classObject() {
       const classObj = {

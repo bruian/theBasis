@@ -78,14 +78,14 @@ export default {
 	},
 
 	groupById: state => id => {
-		function findGroup(mainGroups) {
+		function findGroup(grp) {
 			let result;
 
-			for (let i = 0; i < mainGroups.length; i++) {
-				if (mainGroups[i].id === id) {
-					result = mainGroups[i];
-				} else if (mainGroups[i].children && mainGroups[i].children.length > 0) {
-					result = findGroup(mainGroups[i].children);
+			for (let i = 0; i < grp.length; i++) {
+				if (grp[i].id === id) {
+					result = grp[i];
+				} else if (grp[i].children && grp[i].children.length > 0) {
+					result = findGroup(grp[i].children);
 				}
 
 				if (result) break;
@@ -94,7 +94,57 @@ export default {
 			return result;
 		}
 
-		return findGroup(state.mainGroups);
+		return findGroup(state.Groups);
+	},
+
+	mainGroups: state => {
+		function getElements(arr, cb) {
+			let result = [];
+
+			for (let i = 0; i < arr.length; i++) {
+				if (cb(arr[i])) {
+					result.push(Object.assign({}, arr[i]));
+				}
+
+				if (
+					Object.prototype.hasOwnProperty.call(arr[i], 'children') &&
+					arr[i].children.length > 0
+				) {
+					result[result.length - 1].children = getElements(arr[i].children, cb);
+				}
+			}
+
+			return result;
+		}
+
+		return getElements(state.Groups, el => el.user_id === state.mainUser.id);
+	},
+
+	mainGroupsMini: state => {
+		function getElements(arr, cb) {
+			let result = [];
+
+			for (let i = 0; i < arr.length; i++) {
+				if (cb(arr[i])) {
+					arr[i].label = arr[i].name;
+					result.push({
+						id: arr[i].id,
+						label: arr[i].name
+					});
+				}
+
+				if (
+					Object.prototype.hasOwnProperty.call(arr[i], 'children') &&
+					arr[i].children.length > 0
+				) {
+					result[result.length - 1].children = getElements(arr[i].children, cb);
+				}
+			}
+
+			return result;
+		}
+
+		return getElements(state.Groups, el => el.user_id === state.mainUser.id);
 	},
 
 	workDateIsoStr: state => {

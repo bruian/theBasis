@@ -85,49 +85,6 @@ export default {
 		});
 	},
 
-	MAIN_GROUPS_SUCCESS: (state, groups) => {
-		state.mainGroups = groups;
-		if (!Array.isArray(state.mainGroups)) state.mainGroups = [];
-
-		let hierarchicalRows = [];
-		function constructHierarchy(rows, parentId) {
-			let hRows = [];
-			let record;
-
-			for (let i = 0; i < rows.length; i++) {
-				record = {
-					id: rows[i].id,
-					name: rows[i].name,
-					label: rows[i].name,
-					parent: rows[i].parent,
-					level: rows[i].level,
-					group_type: rows[i].group_type,
-					user_type: rows[i].user_type,
-					children: rows[i].children
-				};
-
-				if ((parentId === null && record.parent === null) || record.parent === parentId) {
-					if (record.children) {
-						const innerRows = constructHierarchy(record.children, record.id);
-						if (innerRows.length > 0) {
-							record.children = innerRows;
-						}
-					}
-
-					hRows.push(record);
-				}
-			}
-
-			return hRows;
-		}
-		hierarchicalRows = constructHierarchy(groups, null);
-
-		state.mainGroupsMini = hierarchicalRows;
-		if (!Array.isArray(state.mainGroupsMini)) state.mainGroupsMini = [];
-
-		setApiStatus(state, 'MAIN_GROUPS_SUCCESS', null);
-	},
-
 	CHANGE_APP_READY: (state, ready) => {
 		state.appReady = ready;
 	},
@@ -283,7 +240,8 @@ export default {
 
 					let isShowed = true;
 					if (Object.prototype.hasOwnProperty.call(data, 'parent') && data.parent !== null) {
-						const shParentData = xSheet.sh.find(x => x.el.id === data.parent);
+						const pid = typeof data.parent === 'string' ? data.parent : data.parent.id;
+						const shParentData = xSheet.sh.find(x => x.el.id === pid);
 						isShowed = shParentData.isSubElementsExpanded === 2;
 					}
 
@@ -340,7 +298,8 @@ export default {
 					rootResort = true;
 				} else {
 					if (!tempParent || tempParent_id !== data.parent) {
-						tempParent = recursiveFind(theDatas, el => el.id === data.parent).element;
+						const pid = typeof data.parent === 'string' ? data.parent : data.parent.id;
+						tempParent = recursiveFind(theDatas, el => el.id === pid).element;
 						tempParent_id = tempParent.id;
 						if (!Object.prototype.hasOwnProperty.call(tempParent, 'children')) {
 							Vue.set(tempParent, 'children', []);
@@ -362,7 +321,8 @@ export default {
 				}
 			} else {
 				if (Object.prototype.hasOwnProperty.call(data, 'parent') && data.parent) {
-					tempParent = recursiveFind(theDatas, el => el.id === data.parent).element;
+					const pid = typeof data.parent === 'string' ? data.parent : data.parent.id;
+					tempParent = recursiveFind(theDatas, el => el.id === pid).element;
 					data.parent = tempParent;
 				}
 			}
@@ -455,7 +415,7 @@ export default {
 			state.sheets.forEach(xSheet => {
 				if (options.type_el === xSheet.type_el) {
 					xSheet.offset--;
-					const shIndex = xSheet.sh.findIndex(x => x.el.id === options.id);
+					const shIndex = xSheet.sh.findIndex(x => x.el.id === data.id);
 					xSheet.sh.splice(shIndex, 1);
 				}
 			});

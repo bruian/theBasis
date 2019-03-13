@@ -82,8 +82,6 @@ function createStore() {
 			// mainUser: Object.assign({}, def.mainUser),
 			mainUser: {},
 			mainUsersMini: [],
-			mainGroups: [],
-			mainGroupsMini: [],
 			mainExistingContexts: {},
 
 			/* -SELECTED DATAS- */

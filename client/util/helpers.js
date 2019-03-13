@@ -24,7 +24,7 @@ export function getElements(arr, sheets, cb) {
 export function recursiveFind(arr, cb) {
 	let result = {
 		index: null,
-		element: null,
+		element: null
 	};
 
 	for (let i = 0; i < arr.length; i++) {
@@ -58,19 +58,19 @@ export function recursiveSet(sheet, key, value) {
 	}
 }
 
-export function findGroup(mainGroups, id) {
+export function findGroup(grp, id) {
 	let result;
 
-	for (let i = 0; i < mainGroups.length; i++) {
-		if (mainGroups[i].children && mainGroups[i].children.length > 0) {
-			if (mainGroups[i].id === id) {
-				result = mainGroups[i];
+	for (let i = 0; i < grp.length; i++) {
+		if (grp[i].children && grp[i].children.length > 0) {
+			if (grp[i].id === id) {
+				result = grp[i];
 			} else {
-				result = findGroup(mainGroups[i].children, id);
+				result = findGroup(grp[i].children, id);
 			}
 		} else {
-			if (mainGroups[i].id === id) {
-				result = mainGroups[i];
+			if (grp[i].id === id) {
+				result = grp[i];
 			}
 		}
 
@@ -157,7 +157,7 @@ export function conditionsForSheet(conditions, values) {
 		group_id: null,
 		userId: null,
 		parent_id: null,
-		task_id: null,
+		task_id: null
 	};
 
 	for (let i = 0; i < conditions.length; i++) {
@@ -193,42 +193,42 @@ export const activityStatus = [
 		name: 'Assigned', // Назначено - 0
 		action: 'Assign', // Назначить
 		icon: 'queue',
-		allowedActions: [1, 4],
+		allowedActions: [1, 4]
 	},
 	{
 		name: 'Started', // Начато - 1
 		action: 'Start', // Начать
 		icon: 'play_circle_filled',
-		allowedActions: [3, 2, 4],
+		allowedActions: [3, 2, 4]
 	},
 	{
 		name: 'Completed', // Завершено - 2
 		action: 'Complete', // Завершить
 		icon: 'done',
-		allowedActions: [0],
+		allowedActions: [0]
 	},
 	{
 		name: 'Suspended', // Приостановлено - 3
 		action: 'Suspend', // Приостановить
 		icon: 'pause',
-		allowedActions: [5, 2, 4],
+		allowedActions: [5, 2, 4]
 	},
 	{
 		name: 'Canceled', // Отменено - 4
 		action: 'Cancel', // Отклонить
 		icon: 'cancel',
-		allowedActions: [0],
+		allowedActions: [0]
 	},
 	{
 		name: 'Continued', // Продолжено - 5
 		action: 'Continue', // Продолжить
 		icon: 'play_arrow',
-		allowedActions: [3, 2, 4],
+		allowedActions: [3, 2, 4]
 	},
 	{
 		name: 'Removed', // Удалено - 6
 		action: 'Remove', // Удалить
 		icon: 'delete',
-		allowedActions: [],
-	},
+		allowedActions: []
+	}
 ];
