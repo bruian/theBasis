@@ -3,6 +3,7 @@
     <div class="task-divider-body" v-if="item.isDivider">
       <div class="task-divider-clmn1">
         <p>id: {{ item.group_id }} | Группа: {{ item.name }}</p>
+        <a style="margin-left: auto;" href="#" @click="onAddItemInGroup(item.group_id)">Create</a>
       </div>
     </div>
 
@@ -234,7 +235,8 @@ export default {
         "task-body": true,
         "task-level-2": false,
         "task-level-3": false,
-        active: this.item.isActive
+        active: this.item.isActive,
+        passive: !this.item.isActive
       };
 
       if (this.item.level === 2) {
@@ -283,6 +285,14 @@ export default {
         .catch(err => {
           console.warn(err);
         });
+    },
+    onAddItemInGroup(groupId) {
+      this.$store.dispatch("CREATE_ELEMENT", {
+        sheet_id: this.sheet_id,
+        group_id: groupId,
+        isSubelement: false,
+        isStart: true
+      });
     },
     statusIcon: function(status) {
       return activityStatus[status].icon;
@@ -478,7 +488,7 @@ export default {
   display: flex;
   flex-flow: row nowrap;
   background-color: #f8f9fa;
-  box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2);
+  /* box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2); */
 }
 
 .task-body:hover,
@@ -627,8 +637,14 @@ export default {
 }
 
 .task-divider-clmn1 {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  align-items: center;
   align-self: center;
   min-height: 20px;
+  padding-left: 0.2em;
+  padding-right: 0.3em;
 }
 /* .tsk-area-el {
 	flex: 1;

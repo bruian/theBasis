@@ -7,32 +7,34 @@ export default {
 	token: state => state.auth.token,
 
 	/**
-	 * @func generalSheets
+	 * @func generalSheet
 	 * @param {vuex state: Object} - state
 	 * @param {vuetify breakpoint: Object } - breakpoint
-	 * @returns { Array } - array components for render
-	 * @description Get the filtered array of components for a render in the general sheet.
+	 * @returns { Object } - sheet components for render
+	 * @description Get the filtered components for a render in the general sheet.
 	 * 	state.mainUser.layout: 1 - "one-column", 2 - "two-column"
 	 */
-	generalSheets: state => breakpoint => {
-		return state.sheets.filter(el => {
-			if (state.mainUser.layout === 2 && !breakpoint.smAndDown) {
-				return el.visible && el.layout === 1;
-			} else {
-				return el.visible;
-			}
-		});
+	generalSheet: state => {
+		const activeSheet = state.generalSheet.length
+			? state.generalSheet[state.generalSheet.length - 1]
+			: undefined;
+
+		return activeSheet;
 	},
 
 	/**
-	 * @func additionalSheets
+	 * @func additionalSheet
 	 * @param {vuex state: Object} - state
-	 * @returns { Array } - array components for render
-	 * @description Get the filtered array of components for a render in the additional sheet.
+	 * @returns { Object } - sheet components for render
+	 * @description Get the filtered components for a render in the additional sheet.
 	 * 	state.mainUser.layout: 1 - "one-column", 2 - "two-column"
 	 */
-	additionalSheets: state => {
-		return state.sheets.filter(el => el.visible && el.layout === 2);
+	additionalSheet: state => {
+		const activeSheet = state.additionalSheet.length
+			? state.additionalSheet[state.additionalSheet.length - 1]
+			: undefined;
+
+		return activeSheet;
 	},
 
 	/**
@@ -44,10 +46,11 @@ export default {
 	 * 	state.mainUser.layout: 1 - "one-column", 2 - "two-column"
 	 */
 	isShowAdditional: state => breakpoint => {
-		const index = state.sheets.findIndex(el => el.visible && el.layout === 2);
-		if (index === -1) return false;
-
-		return state.mainUser.layout === 2 ? !breakpoint.smAndDown : false;
+		if (state.mainUser.layout === 1) {
+			return false;
+		} else {
+			return !breakpoint.smAndDown;
+		}
 	},
 
 	// usersSheet(state) {
@@ -59,8 +62,6 @@ export default {
 	// },
 
 	tasksSheet: state => sheet_id => {
-		// const currentSheet = state.sheets.find(el => el.sheet_id === sheet_id).sheet
-		// return (currentSheet) ? currentSheet.sheet : []
 		return state.sheets.find(el => el.sheet_id === sheet_id).sheet;
 	},
 

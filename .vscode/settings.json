@@ -1,22 +1,20 @@
 {
 	"debug.node.autoAttach": "on",
 	"debug.allowBreakpointsEverywhere": true,
-	"LineCount.includes": [
-		"**/*"
-	],
+	"LineCount.includes": ["**/*"],
 	"LineCount.excludes": [
 		"**/.vscode/**",
 		"**/node_modules/**",
-		"**/.github/**",
-		"**/dist/**",
-		"**/example/**",
-		"**/logs/**",
-		"**/mochawesome-report/**",
-		"**/old&remove/**",
-		"**/public/**",
-		"**/server/keys/**",
-		"**/package-lock.json",
-		"**/yarn.lock",
-		"**/out/**"
-	],
+		"**/theBasis/.github/**",
+		"**/theBasis/dist/**",
+		"**/theBasis/example/**",
+		"**/theBasis/logs/**",
+		"**/theBasis/mochawesome-report/**",
+		"**/theBasis/old&remove/**",
+		"**/theBasis/public/**",
+		"**/theBasis/client/components/vue2-datepicker/**",
+		"**/theBasis/server/keys/**",
+		"**/theBasis/package-lock.json",
+		"**/theBasis/out/**"
+	]
 }

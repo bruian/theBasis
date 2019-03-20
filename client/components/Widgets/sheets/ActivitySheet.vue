@@ -22,6 +22,10 @@
       <div style="margin: auto;">
         <p style="margin: auto;">{{thisSheet.name}}</p>
       </div>
+
+      <v-btn small icon @click="onCloseSheet">
+        <v-icon color="primary">clear</v-icon>
+      </v-btn>
     </div>
 
     <v-divider class="ma-0"></v-divider>
@@ -34,7 +38,11 @@
           </div>
         </draggable>
 
-        <infinite-loading @infinite="infiniteHandler" ref="infLoadingActivitySheet"></infinite-loading>
+        <infinite-loading
+          @infinite="infiniteHandler"
+          :identifier="infiniteId"
+          ref="infLoadingActivitySheet"
+        ></infinite-loading>
       </vue-perfect-scrollbar>
     </div>
   </div>
@@ -43,8 +51,13 @@
 <script>
 import ActivityItem from "../items/ActivityItem.vue";
 import VuePerfectScrollbar from "../../Perfect-scrollbar.vue";
-import InfiniteLoading from "../../InfiniteLoading";
-import { recursiveFind, findGroup, getElements } from "../../../util/helpers";
+import InfiniteLoading from "vue-infinite-loading";
+import {
+  recursiveFind,
+  findGroup,
+  getElements,
+  activityStatus
+} from "../../../util/helpers";
 import moment from "moment";
 
 import draggable from "vuedraggable";
@@ -60,6 +73,10 @@ export default {
   props: {
     sheet_id: {
       type: String,
+      required: true
+    },
+    layout: {
+      type: Number,
       required: true
     }
   },
@@ -78,6 +95,9 @@ export default {
     );
   },
   computed: {
+    infiniteId() {
+      return this.thisSheet.infiniteId;
+    },
     items: {
       get() {
         const st = this.$store.state;
@@ -87,25 +107,31 @@ export default {
 				*/
         return getElements(st.Activity, this.thisSheet, (el, sheets) => {
           return true;
-        }).reduce((prev, curr, index, arr) => {
-          if (
-            index === 0 ||
-            (!arr[index - 1].isDivider &&
-              !moment(curr.start).isSame(arr[index - 1].start, "day"))
-          ) {
-            const div = {
-              isDivider: true,
-              id: `div ${moment(curr.start).valueOf()}`,
-              start: curr.start,
-              name: moment(curr.start).format("DD.MM.YY"),
-              isActive: false
-            };
+        })
+          .filter(el => {
+            return this.thisSheet.vision.activityStatus[
+              activityStatus[el.status].name
+            ];
+          })
+          .reduce((prev, curr, index, arr) => {
+            if (
+              index === 0 ||
+              (!arr[index - 1].isDivider &&
+                !moment(curr.start).isSame(arr[index - 1].start, "day"))
+            ) {
+              const div = {
+                isDivider: true,
+                id: `div ${moment(curr.start).valueOf()}`,
+                start: curr.start,
+                name: moment(curr.start).format("DD.MM.YY"),
+                isActive: false
+              };
 
-            return [...prev, div, curr];
-          }
+              return [...prev, div, curr];
+            }
 
-          return [...prev, curr];
-        }, []);
+            return [...prev, curr];
+          }, []);
       },
       set(value) {}
     },
@@ -247,6 +273,17 @@ export default {
             console.warn(err);
           });
       }
+    },
+    onCloseSheet() {
+      let selectedSheet;
+
+      if (this.layout === 1) {
+        selectedSheet = this.$store.getters.generalSheet;
+      } else {
+        selectedSheet = this.$store.getters.additionalSheet;
+      }
+
+      this.$store.dispatch("REMOVE_LAYOUT", selectedSheet);
     }
   }
 };

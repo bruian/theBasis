@@ -3,7 +3,8 @@
     <div class="itm-sheet-header">
       <v-icon style="cursor: pointer;" v-bind:color="selectedSheet" @click="onSelectSheet">bookmark</v-icon>
 
-      <v-btn small icon @click="onAddItem(false)">
+      <!-- <v-btn small icon @click="onAddItem(false)"> -->
+      <v-btn small icon @click="createDialog = !createDialog">
         <v-icon color="primary">add_circle</v-icon>
       </v-btn>
 
@@ -37,6 +38,10 @@
       <div style="margin: auto;">
         <p style="margin: auto;">{{thisSheet.name}}</p>
       </div>
+
+      <v-btn small icon @click="onCloseSheet">
+        <v-icon color="primary">clear</v-icon>
+      </v-btn>
     </div>
 
     <v-divider class="ma-0"></v-divider>
@@ -60,19 +65,49 @@
           </div>
         </draggable>
 
-        <infinite-loading @infinite="infiniteHandler" ref="infLoadingTasksSheet"></infinite-loading>
+        <infinite-loading
+          @infinite="infiniteHandler"
+          :identifier="infiniteId"
+          ref="infLoadingTasksSheet"
+        ></infinite-loading>
       </vue-perfect-scrollbar>
     </div>
     <!-- tasks-sheet-body -->
+    <v-dialog v-model="createDialog" max-width="300px">
+      <v-card>
+        <v-card-text>
+          <treeselect
+            v-model="groupDialogSelected"
+            placeholder="Group"
+            :clearable="false"
+            :multiple="false"
+            :options="mainGroupsMini"
+            @open="onGroupOpen"
+            @input="onGroupInput"
+          />
+          <small class="grey--text">Select group for task</small>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn flat color="primary" @click="onGroupCreate">Create</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
   <!-- tasks-sheet -->
 </template>
 
 <script>
 import TaskItem from "../items/TaskItem.vue";
+import Treeselect from "@riophae/vue-treeselect";
 import VuePerfectScrollbar from "../../Perfect-scrollbar.vue";
-import InfiniteLoading from "../../InfiniteLoading";
-import { recursiveFind, findGroup, getElements } from "../../../util/helpers";
+import InfiniteLoading from "vue-infinite-loading";
+import {
+  recursiveFind,
+  findGroup,
+  getElements,
+  activityStatus
+} from "../../../util/helpers";
 
 import draggable from "vuedraggable";
 
@@ -82,11 +117,16 @@ export default {
     TaskItem,
     VuePerfectScrollbar,
     InfiniteLoading,
-    draggable
+    draggable,
+    Treeselect
   },
   props: {
     sheet_id: {
       type: String,
+      required: true
+    },
+    layout: {
+      type: Number,
       required: true
     }
   },
@@ -97,7 +137,10 @@ export default {
       maxScrollLength: 10
     },
     countEl: 0, //pass to load data
-    blocked: false
+    blocked: false,
+    createDialog: false,
+    groupDialogSelected: null,
+    groupChangeStart: false
     // showActiveTasksSheet: false //shows selected user sheet, my or all. Its for animation
   }),
   created() {
@@ -106,6 +149,9 @@ export default {
     );
   },
   computed: {
+    infiniteId() {
+      return this.thisSheet.infiniteId;
+    },
     items: {
       get() {
         const st = this.$store.state;
@@ -117,26 +163,32 @@ export default {
 				*/
         return getElements(st.Tasks, this.thisSheet, (el, sheets) => {
           return true;
-        }).reduce((prev, curr, index, arr) => {
-          if (
-            index === 0 ||
-            (!arr[index - 1].isDivider &&
-              arr[index - 1].group_id !== curr.group_id)
-          ) {
-            let grp = findGroup(st.Groups, curr.group_id);
-            const div = {
-              isDivider: true,
-              id: `div ${curr.group_id}`,
-              group_id: curr.group_id,
-              name: grp.name,
-              isActive: false
-            };
+        })
+          .filter(el => {
+            return this.thisSheet.vision.activityStatus[
+              activityStatus[el.status].name
+            ];
+          })
+          .reduce((prev, curr, index, arr) => {
+            if (
+              index === 0 ||
+              (!arr[index - 1].isDivider &&
+                arr[index - 1].group_id !== curr.group_id)
+            ) {
+              let grp = findGroup(st.Groups, curr.group_id);
+              const div = {
+                isDivider: true,
+                id: `div ${curr.group_id}`,
+                group_id: curr.group_id,
+                name: grp.name,
+                isActive: false
+              };
 
-            return [...prev, div, curr];
-          }
+              return [...prev, div, curr];
+            }
 
-          return [...prev, curr];
-        }, []);
+            return [...prev, curr];
+          }, []);
       },
       set(value) {}
     },
@@ -200,6 +252,9 @@ export default {
       }
 
       return result;
+    },
+    mainGroupsMini() {
+      return this.$store.getters.mainGroupsMini;
     }
   },
   methods: {
@@ -509,6 +564,26 @@ export default {
           console.warn(err);
         });
     },
+    onGroupOpen: function(instanceId) {
+      this.groupChangeStart = true;
+    },
+    onGroupInput: function(value, instanceId) {
+      // on default this event fired twice
+      if (this.groupChangeStart) {
+        // our need catch event only first time
+        this.groupChangeStart = false;
+        this.groupDialogSelected = value;
+      }
+    },
+    onGroupCreate: function() {
+      this.createDialog = false;
+      this.$store.dispatch("CREATE_ELEMENT", {
+        sheet_id: this.sheet_id,
+        group_id: this.groupDialogSelected,
+        isSubelement: false,
+        isStart: true
+      });
+    },
     infiniteHandler($state) {
       if (this.countEl == 0) {
         this.countEl++;
@@ -536,6 +611,17 @@ export default {
             console.warn(err);
           });
       }
+    },
+    onCloseSheet() {
+      let selectedSheet;
+
+      if (this.layout === 1) {
+        selectedSheet = this.$store.getters.generalSheet;
+      } else {
+        selectedSheet = this.$store.getters.additionalSheet;
+      }
+
+      this.$store.dispatch("REMOVE_LAYOUT", selectedSheet);
     }
   }
 };

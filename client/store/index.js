@@ -72,28 +72,30 @@ function createStore() {
 			appReady: false, // if true - application loaded and ready to render
 			logStatus: true, // ON/OFF api status logging
 			apiStatus: [], // log api status
-			selectedSheetsManager: false,
 
 			/* -AUTHENTICATED STATUS -*/
 			auth: { token: '', refreshToken: '' } /* api request: /auth-user */,
 
 			/* -LOGGED USERS DATAS- */
-
 			// mainUser: Object.assign({}, def.mainUser),
 			mainUser: {},
-			mainUsersMini: [],
+			mainUsersMini: [], // ? deprecated
 			mainExistingContexts: {},
 
 			/* -SELECTED DATAS- */
 			updateQueue: [],
 
 			Tasks: [],
-			Groups: [],
 			Users: [],
+			Groups: [],
 			Activity: [],
 			Contexts: [],
 
 			/* ----------------------------------------Sheets state----------------------------------------- */
+			generalSheet: [],
+			additionalSheet: [],
+			selectedSheetsManager: false, // ? deprecated
+			selectedSheetManager: '', // ? deprecated
 			selectedSheet: null,
 			sheets: []
 		},

@@ -1,6 +1,6 @@
 <template>
   <div class="user-container">
-    <div class="user-body" v-if="!item.isDivider && item.isShowed" @click="onBodyClick">
+    <div v-bind:class="classObject" v-if="!item.isDivider && item.isShowed" @click="onBodyClick">
       <div class="user-clmn2">
         <div v-bind:class="{ 'itm-handle': true, 'itm-handle-active': item.isActive }"></div>
         <VCircle dot small :color="userIndicator(item.consistency)"></VCircle>
@@ -80,6 +80,13 @@ export default {
     timeoutID: null
   }),
   computed: {
+    classObject() {
+      return {
+        "user-body": true,
+        active: this.item.isActive,
+        passive: !this.item.isActive
+      };
+    },
     currentTabComponent: function() {
       return this.tabs[this.currentTab].component;
     }
@@ -134,7 +141,7 @@ export default {
   display: flex;
   flex-flow: row nowrap;
   background-color: #f8f9fa;
-  box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2);
+  /* box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2); */
 }
 
 .user-body:hover,

@@ -158,7 +158,8 @@ export default {
     classObject() {
       const classObj = {
         "activity-body": true,
-        active: this.item.isActive
+        active: this.item.isActive,
+        passive: !this.item.isActive
       };
 
       return classObj;
@@ -315,7 +316,7 @@ export default {
   display: flex;
   flex-flow: row nowrap;
   background-color: #f8f9fa;
-  box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2);
+  /* box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2); */
 }
 
 .activity-body:hover,

@@ -2,47 +2,25 @@
   <section class="itm-container">
     <div class="itm-fill" v-bind:class="fillsClass" v-if="$vuetify.breakpoint.smAndUp"></div>
 
-    <ul class="itm-general">
-      <li style="all: unset;" v-for="sheetItem in generalSheets" :key="sheetItem.id">
-        <tasks-sheet
-          v-if="sheetItem.type_el === 'tasks-sheet'"
-          v-bind:sheet_id="sheetItem.sheet_id"
-        ></tasks-sheet>
-        <activity-sheet
-          v-if="sheetItem.type_el === 'activity-sheet'"
-          v-bind:sheet_id="sheetItem.sheet_id"
-        ></activity-sheet>
-        <groups-sheet
-          v-if="sheetItem.type_el === 'groups-sheet'"
-          v-bind:sheet_id="sheetItem.sheet_id"
-        ></groups-sheet>
-        <users-sheet
-          v-if="sheetItem.type_el === 'users-sheet'"
-          v-bind:sheet_id="sheetItem.sheet_id"
-        ></users-sheet>
-      </li>
-    </ul>
+    <div class="itm-general">
+      <keep-alive>
+        <component
+          :is="generalSheet.type_el"
+          :sheet_id="generalSheet.sheet_id"
+          :layout="generalSheet.layout"
+        ></component>
+      </keep-alive>
+    </div>
 
-    <ul class="itm-additional" v-if="isShowAdditional">
-      <li style="all: unset;" v-for="sheetItem in additionalSheets" :key="sheetItem.id">
-        <tasks-sheet
-          v-if="sheetItem.type_el === 'tasks-sheet'"
-          v-bind:sheet_id="sheetItem.sheet_id"
-        ></tasks-sheet>
-        <activity-sheet
-          v-if="sheetItem.type_el === 'activity-sheet'"
-          v-bind:sheet_id="sheetItem.sheet_id"
-        ></activity-sheet>
-        <groups-sheet
-          v-if="sheetItem.type_el === 'groups-sheet'"
-          v-bind:sheet_id="sheetItem.sheet_id"
-        ></groups-sheet>
-        <users-sheet
-          v-if="sheetItem.type_el === 'users-sheet'"
-          v-bind:sheet_id="sheetItem.sheet_id"
-        ></users-sheet>
-      </li>
-    </ul>
+    <div class="itm-additional" v-if="isShowAdditional">
+      <keep-alive>
+        <component
+          :is="additionalSheet.type_el"
+          :sheet_id="additionalSheet.sheet_id"
+          :layout="additionalSheet.layout"
+        ></component>
+      </keep-alive>
+    </div>
 
     <div class="itm-fill" v-bind:class="fillsClass" v-if="$vuetify.breakpoint.smAndUp"></div>
   </section>
@@ -59,7 +37,11 @@ export default {
     TasksSheet: () => import("../components/widgets/sheets/TasksSheet.vue"),
     ActivitySheet: () =>
       import("../components/widgets/sheets/ActivitySheet.vue"),
-    GroupsSheet: () => import("../components/widgets/sheets/GroupsSheet.vue")
+    GroupsSheet: () => import("../components/widgets/sheets/GroupsSheet.vue"),
+    BlankSheet: () => import("../components/widgets/sheets/BlankSheet.vue"),
+    ManageSheet: () => import("../components/widgets/sheets/ManageSheet.vue"),
+    PropertySheet: () =>
+      import("../components/widgets/sheets/PropertySheet.vue")
   },
   data: () => ({}),
   beforeRouteEnter(to, from, next) {
@@ -74,11 +56,35 @@ export default {
         //'itm-fill-small': this.$vuetify.breakpoint.smAndDown
       };
     },
-    generalSheets() {
-      return this.$store.getters.generalSheets(this.$vuetify.breakpoint);
+    generalSheet() {
+      const result = {
+        type_el: "blank-sheet",
+        sheet_id: "blank",
+        layout: 1
+      };
+
+      const activeSheet = this.$store.getters.generalSheet;
+      if (activeSheet) {
+        result.type_el = activeSheet.type_el;
+        result.sheet_id = activeSheet.sheet_id;
+      }
+
+      return result;
     },
-    additionalSheets() {
-      return this.$store.getters.additionalSheets;
+    additionalSheet() {
+      const result = {
+        type_el: "blank-sheet",
+        sheet_id: "blank",
+        layout: 2
+      };
+
+      const activeSheet = this.$store.getters.additionalSheet;
+      if (activeSheet) {
+        result.type_el = activeSheet.type_el;
+        result.sheet_id = activeSheet.sheet_id;
+      }
+
+      return result;
     },
     isShowAdditional() {
       return this.$store.getters.isShowAdditional(this.$vuetify.breakpoint);
@@ -95,7 +101,7 @@ export default {
 
 .itm-general {
   all: unset;
-  flex: 6;
+  flex: 5;
   margin-left: 5px;
   margin-right: 5px;
   /* border: 1px solid red; */
@@ -103,7 +109,7 @@ export default {
 
 .itm-additional {
   all: unset;
-  flex: 5;
+  flex: 6;
   margin-left: 5px;
   margin-right: 5px;
   /* border: 1px solid greenyellow; */

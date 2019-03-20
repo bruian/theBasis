@@ -4,7 +4,7 @@ import { decode } from 'jsonwebtoken';
 import moment from 'moment';
 import config from '../config';
 
-import { recursiveFind } from '../util/helpers';
+import { recursiveFind, sheetNameForType } from '../util/helpers';
 
 const dbg = !!config.DEBUG_API;
 const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
@@ -46,7 +46,15 @@ const mainPacket = [
 			method: 'GET',
 			params: { packet: 3 }
 		},
-		mutations: ['SHEETS_SUCCESS']
+		mutations: ['SET_SHEETS']
+	},
+	{
+		fetchQuery: {
+			url: 'layouts',
+			method: 'GET',
+			params: { packet: 4 }
+		},
+		mutations: ['SET_LAYOUTS']
 	}
 ];
 
@@ -430,6 +438,10 @@ export default {
 		// 	});
 	},
 
+	UPDATE_MAIN_USER: ({ commit }, options) => {
+		commit('UPDATE_MAIN_USER', options);
+	},
+
 	/* --------------------------------------ELEMENTS action-------------------------------------- */
 
 	FETCH_ELEMENTS: ({ commit, state }, options) => {
@@ -526,7 +538,9 @@ export default {
 	CREATE_ELEMENT: ({ commit, state }, options) => {
 		const theSheet = state.sheets.find(el => el.sheet_id === options.sheet_id);
 
-		let group_id;
+		let group_id = Object.prototype.hasOwnProperty.call(options, 'group_id')
+			? options.group_id
+			: undefined;
 		let parent_id = 0;
 
 		let apiSection = theSheet.type_el.match(/^(?!-sheet)\w+/g)[0];
@@ -539,7 +553,9 @@ export default {
 				if (activeElement) {
 					if (activeElement.el.level < 3) {
 						parent_id = activeElement.el.id;
-						if (theSheet.type_el === 'tasks-sheet') group_id = activeElement.el.group_id;
+						if (!group_id) {
+							group_id = theSheet.type_el === 'tasks-sheet' ? activeElement.el.group_id : group_id;
+						}
 					} else {
 						return Promise.reject(new Error({ message: 'Maximum is 3 levels' }));
 					}
@@ -548,11 +564,15 @@ export default {
 				}
 			} else {
 				if (theSheet.sh.length > 0) {
-					if (theSheet.type_el === 'tasks-sheet') group_id = theSheet.sh[0].el.group_id;
+					if (!group_id) {
+						group_id = theSheet.type_el === 'tasks-sheet' ? theSheet.sh[0].el.group_id : group_id;
+					}
 				} else {
 					/* Если список элементов пуст, найдем primary group в которую по-умолчанию добавим элемент */
-					if (theSheet.type_el === 'tasks-sheet')
-						group_id = recursiveFind(state.Groups, el => el.group_type === 1).element.id;
+					if (!group_id) {
+						if (theSheet.type_el === 'tasks-sheet')
+							group_id = recursiveFind(state.Groups, el => el.group_type === 1).element.id;
+					}
 				}
 			}
 		}
@@ -564,6 +584,7 @@ export default {
 				group_id,
 				parent_id,
 				start: workDateCurrTime(state.mainUser.workDate).toISOString(),
+				next_tail: moment(state.mainUser.workDate).isBefore(moment(), 'day'),
 				isStart: options.isStart
 			})
 		};
@@ -769,6 +790,8 @@ export default {
 				return Promise.resolve(true);
 			})
 			.catch(err => {
+				console.debug(err);
+				debugger;
 				if (err.response.data) {
 					commit('API_ERROR', { message: err.message, data: err.response.data.message });
 					return Promise.reject(
@@ -1250,7 +1273,11 @@ export default {
 			id: options.id
 		};
 
-		values[options.field] = options.value;
+		Array.prototype.forEach.call(options.values, el => {
+			values[el.field] = el.value;
+		});
+
+		// values[options.field] = options.value;
 
 		const fetchQuery = {
 			url: `${apiURL}sheets`,
@@ -1264,7 +1291,7 @@ export default {
 					return Promise.resolve(false);
 				}
 
-				commit('UPDATE_SHEET_VALUES', dataFromSrv.data);
+				commit('SET_SHEETS', dataFromSrv.data);
 
 				let needUpdateSheet = false;
 				Array.prototype.forEach.call(dataFromSrv.data, dataItem => {
@@ -1320,7 +1347,7 @@ export default {
 				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
 					return Promise.resolve(false);
 				} else {
-					commit('SHEETS_SUCCESS', dataFromSrv.data);
+					commit('SET_SHEETS', dataFromSrv.data);
 
 					return Promise.resolve(true);
 				}
@@ -1361,6 +1388,67 @@ export default {
 
 					return Promise.resolve(true);
 				}
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
+	},
+
+	/* --------------------------------------LAYOUT actions--------------------------------------- */
+
+	ADD_LAYOUT: ({ commit }, data) => {
+		let layout = {
+			id: +new Date(),
+			layout: data.layout,
+			sheet_id: data.sheet_id,
+			type_el: sheetNameForType(data.type_el)
+		};
+
+		if (data.sheet_id === 'all') {
+			layout.layout = 1;
+		}
+
+		const fetchQuery = {
+			url: `${apiURL}layouts`,
+			method: 'POST',
+			data: qs.stringify(layout)
+		};
+
+		return fetchSrv(fetchQuery, commit)
+			.then(dataFromSrv => {
+				commit('SET_LAYOUTS', dataFromSrv.data);
+				return Promise.resolve(true);
+			})
+			.catch(err => {
+				if (err.response.data) {
+					commit('API_ERROR', { message: err.message, data: err.response.data });
+					return Promise.reject(new Error({ message: err.message, data: err.response.data }));
+				} else {
+					commit('API_ERROR', { message: err.message, data: null });
+					return Promise.reject(new Error({ message: err.message, data: null }));
+				}
+			});
+	},
+
+	REMOVE_LAYOUT: ({ commit }, data) => {
+		const fetchQuery = {
+			url: `${apiURL}layouts`,
+			method: 'DELETE',
+			data: qs.stringify({
+				id: data.id
+			})
+		};
+
+		return fetchSrv(fetchQuery, commit)
+			.then(dataFromSrv => {
+				commit('REMOVE_LAYOUT', dataFromSrv.data);
+				return Promise.resolve(true);
 			})
 			.catch(err => {
 				if (err.response.data) {

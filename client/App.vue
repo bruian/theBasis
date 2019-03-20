@@ -3,22 +3,58 @@
     <template v-if="appReady">
       <v-app id="inspire" class="app">
         <app-drawer v-model="drawer" class="app--drawer"></app-drawer>
-        <app-toolbar v-model="drawer" v-bind:authDialog.sync="authDialog" class="app--toolbar"></app-toolbar>
-
+        <!-- <app-toolbar v-model="drawer" v-bind:authDialog.sync="authDialog" class="app--toolbar"></app-toolbar> -->
         <v-content>
           <!-- Page Header -->
-          <!--page-header v-if="$route.meta.breadcrumb"></page-header-->
           <div class="mt-0 pb-0" v-if="isAuth" style="display: flex;">
-            <v-icon
-              style="cursor: pointer;"
-              v-bind:color="selectedSheet"
-              @click="onSelectSheet"
-            >bookmark</v-icon>
+            <v-btn style="margin: auto .5em; min-width: 40px;" small @click="drawer = !drawer">
+              <v-icon>menu</v-icon>
+            </v-btn>
 
-            <v-breadcrumbs :items="crumbs">
-              <v-icon slot="divider">link</v-icon>
-            </v-breadcrumbs>
+            <v-btn
+              style="margin: auto .2em; min-width: 40px;"
+              :color="currentLayerClass"
+              small
+              @click="onClickLayer"
+            >
+              <v-icon>plus_one</v-icon>
+            </v-btn>
 
+            <div class="sheetSelector" v-for="(item, index) in sheetTypes" :key="index">
+              <v-menu
+                v-model="item.selected"
+                :close-on-content-click="true"
+                :nudge-right="40"
+                lazy
+                transition="scale-transition"
+                offset-y
+                full-width
+              >
+                <v-btn
+                  slot="activator"
+                  small
+                  :color="selectorColor(item.sheet_id, item.type_el)"
+                >{{item.name}}</v-btn>
+                <v-list>
+                  <v-list-tile
+                    v-for="(selector, ind) in selectorData(item.type_el, item.sheet_id)"
+                    :key="ind"
+                    @click="onMenuSelect(selector.sheet_id, selector.type_el)"
+                  >
+                    <v-list-tile-avatar v-if="selector.icon">
+                      <v-icon>apps</v-icon>
+                    </v-list-tile-avatar>
+                    <v-list-tile-title>{{ selector.name }}</v-list-tile-title>
+                  </v-list-tile>
+                </v-list>
+              </v-menu>
+            </div>
+
+            <v-spacer></v-spacer>
+            <a class="hidden-sm-and-down app-title" href="/">inTask.me</a>
+          </div>
+
+          <div class="mt-0 pb-0" v-if="isAuth" style="display: flex;">
             <v-spacer></v-spacer>
 
             <div class="workDate">
@@ -44,10 +80,6 @@
             </div>
           </transition>
 
-          <!-- Большая синяя кнопка -->
-          <!-- <v-btn fab bottom	right	color="blue" dark	fixed @click.stop="dialog = !dialog" style="bottom: 45px;">
-						<v-icon>add</v-icon>
-          </v-btn>-->
           <!-- App Footer -->
           <v-footer app>
             <span class="pl-2">inTask.me</span>
@@ -56,81 +88,7 @@
           </v-footer>
         </v-content>
 
-        <v-btn
-          small
-          fab
-          dark
-          falt
-          fixed
-          top="top"
-          right="right"
-          class="setting-fab"
-          color="red"
-          @click="settingsDrawer = !settingsDrawer"
-          v-if="isAuth && getComponentName"
-        >
-          <v-icon>settings</v-icon>
-        </v-btn>
-
-        <v-navigation-drawer
-          class="setting-drawer"
-          temporary
-          right
-          v-model="settingsDrawer"
-          hide-overlay
-          fixed
-        >
-          <keep-alive>
-            <component v-bind:is="getComponentName"></component>
-          </keep-alive>
-        </v-navigation-drawer>
-
-        <Login v-model="authDialog"></Login>
         <MessageDialog v-model="messageDialog"></MessageDialog>
-
-        <v-dialog v-model="dialog" width="800px">
-          <v-card>
-            <v-card-title class="grey lighten-4 py-4 title">Create contact</v-card-title>
-            <v-container grid-list-sm class="pa-4">
-              <v-layout row wrap>
-                <v-flex xs12 align-center justify-space-between>
-                  <v-layout align-center>
-                    <v-avatar size="40px" class="mr-3">
-                      <img src="//ssl.gstatic.com/s2/oz/images/sge/grey_silhouette.png" alt>
-                    </v-avatar>
-                    <v-text-field placeholder="Name"></v-text-field>
-                  </v-layout>
-                </v-flex>
-                <v-flex xs6>
-                  <v-text-field prepend-icon="business" placeholder="Company"></v-text-field>
-                </v-flex>
-                <v-flex xs6>
-                  <v-text-field placeholder="Job title"></v-text-field>
-                </v-flex>
-                <v-flex xs12>
-                  <v-text-field prepend-icon="mail" placeholder="Email"></v-text-field>
-                </v-flex>
-                <v-flex xs12>
-                  <v-text-field
-                    type="tel"
-                    prepend-icon="phone"
-                    placeholder="(000) 000 - 0000"
-                    mask="phone"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs12>
-                  <v-text-field prepend-icon="notes" placeholder="Notes"></v-text-field>
-                </v-flex>
-              </v-layout>
-            </v-container>
-            <v-card-actions>
-              <v-btn flat color="primary">More</v-btn>
-              <v-spacer></v-spacer>
-              <v-btn flat color="primary" @click="dialog = false">Cancel</v-btn>
-              <v-btn flat @click="dialog = false">Save</v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-dialog>
       </v-app>
     </template>
 
@@ -153,10 +111,7 @@
 
 <script>
 import AppDrawer from "./components/AppDrawer.vue";
-import AppToolbar from "./components/AppToolbar.vue";
-import SheetsManager from "./components/SheetsManager.vue";
 import SheetManager from "./components/SheetManager.vue";
-import Login from "./views/Login.vue";
 import MessageDialog from "./views/MessageDialog.vue";
 import moment from "moment";
 //#2195f3
@@ -181,23 +136,36 @@ export default {
   name: "App",
   components: {
     AppDrawer,
-    AppToolbar,
-    Login,
-    MessageDialog,
-    SheetsManager,
-    SheetManager
+    SheetManager,
+    MessageDialog
   },
   data: () => ({
-    dialog: false,
+    messageDialog: false,
     drawer: false,
     settingsDrawer: false,
-    authDialog: false,
-    messageDialog: false,
     workDateMenu: false,
-    crumbs: [
-      { text: "Home", disabled: false, to: "/" },
-      { text: "User", disabled: false, to: "user" },
-      { text: "Main", disabled: true, to: "css" }
+    usersMenu: false,
+    groupsMenu: false,
+    tasksMenu: false,
+    sheetTypes: [
+      {
+        type_el: "manage-sheet",
+        sheet_id: "users-sheet",
+        selected: false,
+        name: "users"
+      },
+      {
+        type_el: "manage-sheet",
+        sheet_id: "groups-sheet",
+        selected: false,
+        name: "groups"
+      },
+      {
+        type_el: "manage-sheet",
+        sheet_id: "tasks-sheet",
+        selected: false,
+        name: "tasks"
+      }
     ]
   }),
   created() {
@@ -220,7 +188,7 @@ export default {
             // Отобразим по маршруту домашнюю страницу
             // После перехода установим флаг, что приложение готово к работе
             return this.$router.push(
-              { name: "home" },
+              { name: "main-sheets" },
               () => {
                 this.$store.commit("CHANGE_APP_READY", true);
               },
@@ -263,30 +231,20 @@ export default {
           );
         } else {
           this.$store.commit("CHANGE_APP_READY", true);
+          this.$router.push({ name: "main-sheets" });
         }
       });
     }
   },
   computed: {
-    selectedSheet() {
-      return this.$store.state.selectedSheetsManager ? "primary" : "";
+    currentLayerClass() {
+      return this.$store.state.mainUser.layout === 2 ? "primary" : "";
     },
     appReady() {
       return this.$store.state.appReady;
     },
     isAuth() {
       return this.$store.getters.isAuth;
-    },
-    getComponentName() {
-      if (this.$store.state.selectedSheetsManager) {
-        return "sheets-manager";
-      } else {
-        if (this.$store.state.selectedSheet) {
-          return "sheet-manager";
-        }
-      }
-
-      return false;
     },
     workDate: {
       get() {
@@ -307,8 +265,53 @@ export default {
     }
   },
   methods: {
-    onSelectSheet: function() {
-      this.$store.commit("SELECT_ELEMENT", null);
+    selectorData(type_el, sheet_id) {
+      let result = this.$store.state.sheets
+        .filter(el => el.type_el === sheet_id)
+        .sort((a, b) => a - b);
+      if (result.length > 3) {
+        result = result.slice(0, 2);
+      }
+
+      result = result.map(el => {
+        return {
+          name: el.name,
+          type_el: el.type_el,
+          icon: false,
+          sheet_id: el.sheet_id
+        };
+      });
+
+      result.push({
+        name: "All",
+        type_el: "manage-sheet",
+        icon: true,
+        sheet_id: sheet_id
+      });
+
+      return result;
+    },
+    selectorColor(sheet_id, type_el) {
+      const activeSheet = this.$store.getters.generalSheet;
+      let result = "";
+
+      if (
+        activeSheet &&
+        activeSheet.type_el === type_el &&
+        activeSheet.sheet_id === sheet_id
+      ) {
+        result = "primary";
+      }
+
+      return result;
+    },
+    onMenuSelect: function(sheet_id, type_el) {
+      this.$store.dispatch("ADD_LAYOUT", { layout: 1, sheet_id, type_el });
+    },
+    onClickLayer: function() {
+      this.$store.dispatch("UPDATE_MAIN_USER", {
+        layout: this.$store.state.mainUser.layout === 2 ? 1 : 2
+      });
     }
   },
   props: {
@@ -374,85 +377,26 @@ export default {
 </style>
 
 <style lang="css">
+.app-title {
+  font-size: 20px;
+  font-weight: 500px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  margin: 0.7em 0.5em;
+}
+
 .workDate {
   display: flex;
   align-items: center;
   flex: 0 1 auto;
-  padding: 18px 12px;
+  margin-right: 0.5em;
+  margin-bottom: 0.6em;
 }
 
-.atom-spinner,
-.atom-spinner * {
-  box-sizing: border-box;
-}
-
-.atom-spinner {
-  height: 60px;
-  width: 60px;
-  overflow: hidden;
-}
-
-.atom-spinner .spinner-inner {
-  position: relative;
-  display: block;
-  height: 100%;
-  width: 100%;
-}
-
-.atom-spinner .spinner-circle {
-  display: block;
-  position: absolute;
-  color: #007bff;
-  font-size: calc(60px * 0.24);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.atom-spinner .spinner-line {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  animation-duration: 1s;
-  border-left-width: calc(60px / 25);
-  border-top-width: calc(60px / 25);
-  border-left-color: #007bff;
-  border-left-style: solid;
-  border-top-style: solid;
-  border-top-color: transparent;
-}
-
-.atom-spinner .spinner-line:nth-child(1) {
-  animation: atom-spinner-animation-1 1s linear infinite;
-  transform: rotateZ(120deg) rotateX(66deg) rotateZ(0deg);
-}
-
-.atom-spinner .spinner-line:nth-child(2) {
-  animation: atom-spinner-animation-2 1s linear infinite;
-  transform: rotateZ(240deg) rotateX(66deg) rotateZ(0deg);
-}
-
-.atom-spinner .spinner-line:nth-child(3) {
-  animation: atom-spinner-animation-3 1s linear infinite;
-  transform: rotateZ(360deg) rotateX(66deg) rotateZ(0deg);
-}
-
-@keyframes atom-spinner-animation-1 {
-  100% {
-    transform: rotateZ(120deg) rotateX(66deg) rotateZ(360deg);
-  }
-}
-
-@keyframes atom-spinner-animation-2 {
-  100% {
-    transform: rotateZ(240deg) rotateX(66deg) rotateZ(360deg);
-  }
-}
-
-@keyframes atom-spinner-animation-3 {
-  100% {
-    transform: rotateZ(360deg) rotateX(66deg) rotateZ(360deg);
-  }
+.sheetSelector {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  margin: auto 0.1em;
 }
 </style>

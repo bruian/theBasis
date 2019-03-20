@@ -14,6 +14,10 @@
       <div style="margin: auto;">
         <p style="margin: auto;">{{thisSheet.name}}</p>
       </div>
+
+      <v-btn small icon @click="onCloseSheet">
+        <v-icon color="primary">clear</v-icon>
+      </v-btn>
     </div>
 
     <v-divider class="ma-0"></v-divider>
@@ -24,7 +28,11 @@
           <UserItem :sheet_id="thisSheet.sheet_id" :item="item"></UserItem>
         </div>
 
-        <infinite-loading @infinite="infiniteHandler" ref="infLoadingUsersSheet"></infinite-loading>
+        <infinite-loading
+          @infinite="infiniteHandler"
+          :identifier="infiniteId"
+          ref="infLoadingUsersSheet"
+        ></infinite-loading>
       </vue-perfect-scrollbar>
     </div>
   </div>
@@ -33,7 +41,7 @@
 <script>
 import UserItem from "../items/UserItem.vue";
 import VuePerfectScrollbar from "../../Perfect-scrollbar.vue";
-import InfiniteLoading from "../../InfiniteLoading";
+import InfiniteLoading from "vue-infinite-loading";
 import { recursiveFind, getElements } from "../../../util/helpers";
 
 export default {
@@ -46,6 +54,10 @@ export default {
   props: {
     sheet_id: {
       type: String,
+      required: true
+    },
+    layout: {
+      type: Number,
       required: true
     }
   },
@@ -64,6 +76,9 @@ export default {
     );
   },
   computed: {
+    infiniteId() {
+      return this.thisSheet.infiniteId;
+    },
     items: {
       get() {
         const st = this.$store.state;
@@ -152,6 +167,17 @@ export default {
             console.warn(err);
           });
       }
+    },
+    onCloseSheet() {
+      let selectedSheet;
+
+      if (this.layout === 1) {
+        selectedSheet = this.$store.getters.generalSheet;
+      } else {
+        selectedSheet = this.$store.getters.additionalSheet;
+      }
+
+      this.$store.dispatch("REMOVE_LAYOUT", selectedSheet);
     }
   }
 };

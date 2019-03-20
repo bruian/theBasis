@@ -218,7 +218,7 @@ export default {
 			this.$emit('input', { 'id': id, 'field': 'name', 'value': e.target.value })
 		},
 		onVisibleChange(id, value) {
-			this.$emit('input', { 'id': id, 'field': 'visible', 'value': !value })
+			this.$emit('input', { 'id': id, values: [{ 'field': 'visible', 'value': !value }] })
 		},
 		onLayoutChange(id, index) {
 			this.$emit('input', { 'id': id, 'field': 'layout', 'value': index + 1 })

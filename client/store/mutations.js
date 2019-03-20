@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import moment from 'moment';
-import { recursiveFind, typeForSheet, conditionsForSheet } from '../util/helpers';
+import { recursiveFind, typeForSheet, conditionsForSheet, visionsForSheet } from '../util/helpers';
 
 const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
 
@@ -41,13 +41,23 @@ export default {
 		state.auth.token = null;
 		state.auth.refreshToken = null;
 
-		state.mainUser = Object.assign({}, state.default.mainUser);
-		state.theUser = {};
+		// state.mainUser = Object.assign({}, state.default.mainUser);
+		state.mainUser = {};
+		state.updateQueue = [];
 
+		state.Activity = [];
+		state.Contexts = [];
+		state.Groups = [];
 		state.Tasks = [];
+		state.Users = [];
+
+		state.additionalSheet = [];
+		state.generalSheet = [];
 
 		state.selectedSheet = null;
 		state.sheets = [];
+
+		state.apiStatus = [];
 	},
 
 	/* Registration mutations */
@@ -67,7 +77,8 @@ export default {
 	SET_MAIN_USER: (state, data) => {
 		if (Array.isArray(data) && data.length === 1) {
 			state.mainUser = Object.assign({}, data[0]);
-			// user conditions
+
+			// user client conditions
 			Vue.set(state.mainUser, 'workDate', moment().toDate());
 			Vue.set(state.mainUser, 'layout', 2);
 
@@ -79,8 +90,18 @@ export default {
 
 	UPDATE_MAIN_USER: (state, data) => {
 		Object.keys(data).forEach(key => {
-			if (Object.prototype.hasOwnProperty.call(state.mainUser, key)) {
-				state.mainUser[key] = data[key];
+			if (key === 'selectedSheetManager') {
+				state.selectedSheetManager = data[key];
+			} else if (key === 'selectedSheet') {
+				if (data[key] === '' || data[key] === null) {
+					state.selectedSheet = null;
+				} else {
+					state.selectedSheet = state.sheets.find(el => el.sheet_id === data[key]);
+				}
+			} else {
+				if (Object.prototype.hasOwnProperty.call(state.mainUser, key)) {
+					state.mainUser[key] = data[key];
+				}
 			}
 		});
 	},
@@ -101,7 +122,13 @@ export default {
 	SET_ELEMENTS: (state, options) => {
 		// Функция сортировки
 		function sortSheetSternBrocot(a, b) {
-			return a.p / a.q - b.p / b.q;
+			if (a.group_id > b.group_id) {
+				return 1;
+			} else if (a.group_id === b.group_id) {
+				return a.p / a.q - b.p / b.q;
+			} else {
+				return -1;
+			}
 		}
 
 		function sortSheetDateTime(a, b) {
@@ -388,6 +415,15 @@ export default {
 		Array.prototype.forEach.call(options.data, data => {
 			const { index, element } = recursiveFind(theDatas, x => x.id === data.id);
 
+			state.sheets.forEach(xSheet => {
+				if (options.type_el === xSheet.type_el) {
+					xSheet.offset--;
+					const shIndex = xSheet.sh.findIndex(x => x.el.id === data.id);
+					xSheet.sh.splice(shIndex, 1);
+					xSheet.selectedItem = null;
+				}
+			});
+
 			if (Object.prototype.hasOwnProperty.call(element, 'parent')) {
 				if (element.parent === null) {
 					theDatas.splice(index, 1);
@@ -411,14 +447,6 @@ export default {
 			} else {
 				theDatas.splice(index, 1);
 			}
-
-			state.sheets.forEach(xSheet => {
-				if (options.type_el === xSheet.type_el) {
-					xSheet.offset--;
-					const shIndex = xSheet.sh.findIndex(x => x.el.id === data.id);
-					xSheet.sh.splice(shIndex, 1);
-				}
-			});
 		});
 
 		setApiStatus(state, 'DELETE_ELEMENTS', null);
@@ -574,39 +602,67 @@ export default {
 
 	/* --------------------------------------Sheets mutations--------------------------------------- */
 
-	SHEETS_SUCCESS: (state, data) => {
+	SET_SHEETS: (state, data) => {
 		let sheet;
-		let type_obj;
-		let condition;
 
 		for (let i = 0; i < data.length; i++) {
-			type_obj = typeForSheet(data[i].type_el);
-			condition = conditionsForSheet(data[i].conditions, data[i].values);
+			sheet = state.sheets.find(x => x.sheet_id === data[i].id);
 
-			sheet = {
-				id: i + 1,
-				sheet_id: data[i].id,
-				selectedItem: null,
-				sheet: [],
-				sh: [],
-				limit: 10,
-				offset: 0,
-				like: '',
-				condition,
-				service: false, // Такие элементы не отображаются в списке настроек sheets
-				type_el: type_obj.type_el,
-				icon: type_obj.icon,
-				user_id: data[i].user_id,
-				owner_id: data[i].owner_id,
-				name: data[i].name,
-				visible: data[i].visible,
-				layout: data[i].layout
-			};
+			if (!sheet) {
+				const type_obj = typeForSheet(data[i].type_el);
+				const condition = conditionsForSheet(data[i].conditions, data[i].conditionvalues);
+				const vision = visionsForSheet(data[i].visions, data[i].visionvalues);
 
-			state.sheets.push(sheet);
+				sheet = {
+					id: state.sheets.length + 1,
+					sheet_id: data[i].id,
+					selectedItem: null,
+					sh: [],
+					limit: 10,
+					offset: 0,
+					like: '',
+					condition,
+					vision,
+					service: false, // Такие элементы не отображаются в списке настроек sheets
+					type_el: type_obj.type_el,
+					icon: type_obj.icon,
+					user_id: data[i].user_id,
+					owner_id: data[i].owner_id,
+					name: data[i].name,
+					visible: data[i].visible,
+					layout: data[i].layout,
+					infiniteId: +new Date(),
+					consistency: 0,
+					callsCount: 0 // Количество вызовов данного листа. Из них 3 листа с наибольшим количеством
+					// вызовов, помещаются в меню выбора листов
+				};
+
+				state.sheets.push(sheet);
+			} else {
+				/* eslint-disable no-loop-func */
+				Object.keys(data[i]).forEach(key => {
+					if (key === 'type_el') {
+						const type_obj = typeForSheet(data[i].type_el);
+						Vue.set(sheet, key, type_obj.type_el);
+						Vue.set(sheet, 'icon', type_obj.icon);
+					} else if (key === 'conditions') {
+						const condition = conditionsForSheet(data[i].conditions, data[i].conditionvalues);
+						Vue.set(sheet, 'condition', condition);
+						sheet.infiniteId += 1;
+					} else if (key === 'visions') {
+						const vision = visionsForSheet(data[i].visions, data[i].visionvalues);
+						Vue.set(sheet, 'vision', vision);
+						sheet.infiniteId += 1;
+					} else if (key !== 'id' && key !== 'conditionvalues' && key !== 'visionvalues') {
+						// sheet[key] = data[i][key];
+						Vue.set(sheet, key, data[i][key]);
+					}
+				});
+				/* eslint-enable no-loop-func */
+			}
 		}
 
-		setApiStatus(state, 'SHEETS_SUCCESS', null);
+		setApiStatus(state, 'SET_SHEETS', null);
 	},
 
 	UPDATE_SHEET_VALUES: (state, data) => {
@@ -686,6 +742,51 @@ export default {
 				for (let i = 0; i < state.sheets.length; i++) {
 					state.sheets[i].id = i + 1;
 				}
+			}
+		}
+	},
+
+	/* -------------------------------------LAYOUT mutations-------------------------------------- */
+
+	SET_LAYOUTS: (state, data) => {
+		Object.keys(data).forEach(layout => {
+			if (layout === 'generalSheet' || layout === 'additionalSheet') {
+				for (let i = 0; i < data[layout].length; i++) {
+					let currItem = state[layout].find(el => el.id === data[layout][i].id);
+
+					if (!currItem) {
+						const type_obj = typeForSheet(data[layout][i].type_el);
+
+						currItem = {
+							id: data[layout][i].id,
+							layout: data[layout][i].layout,
+							type_el: type_obj.type_el,
+							sheet_id: data[layout][i].sheet_id
+						};
+
+						state[layout].push(currItem);
+					} else {
+						Object.keys(data[layout]).forEach(key => {
+							Vue.set(state[layout], key, data[layout][i][key]);
+						});
+					}
+				}
+			}
+		});
+
+		setApiStatus(state, 'SET_LAYOUTS', null);
+	},
+
+	REMOVE_LAYOUT: (state, data) => {
+		if (Object.prototype.hasOwnProperty.call(data, 'id')) {
+			let index = state.generalSheet.findIndex(el => el.id === data.id);
+			if (index !== -1) {
+				state.generalSheet.splice(index, 1);
+			}
+
+			index = state.additionalSheet.findIndex(el => el.id === data.id);
+			if (index !== -1) {
+				state.additionalSheet.splice(index, 1);
 			}
 		}
 	},

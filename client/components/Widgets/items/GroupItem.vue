@@ -142,7 +142,8 @@ export default {
         "group-body": true,
         "group-level-2": false,
         "group-level-3": false,
-        active: this.item.isActive
+        active: this.item.isActive,
+        passive: !this.item.isActive
       };
 
       if (this.item.level === 2) {
@@ -264,7 +265,7 @@ export default {
   display: flex;
   flex-flow: row nowrap;
   background-color: #f8f9fa;
-  box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2);
+  /* box-shadow: 0px 1px 2px 1px rgba(0, 0, 0, 0.2); */
 }
 
 .group-body:hover,

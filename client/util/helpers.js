@@ -133,14 +133,44 @@ export function typeForSheet(value) {
 	}
 
 	if (value & 32) {
-		return { type_el: 'post-notes', icon: 'P' };
+		return { type_el: 'posts-sheet', icon: 'P' };
 	}
 
 	if (value & 64) {
-		return { type_el: 'images', icon: 'I' };
+		return { type_el: 'images-sheet', icon: 'I' };
 	}
 
+	if (value & 128) {
+		return { type_el: 'manage-sheet', icon: 'M' };
+	}
+
+	if (value & 256) {
+		return { type_el: 'property-sheet', icon: 'Pr' };
+	}
 	return undefined;
+}
+
+export function sheetNameForType(value) {
+	switch (value) {
+		case 'activity-sheet':
+			return 2;
+		case 'tasks-sheet':
+			return 4;
+		case 'groups-sheet':
+			return 8;
+		case 'users-sheet':
+			return 16;
+		case 'posts-sheet':
+			return 32;
+		case 'images-sheet':
+			return 64;
+		case 'manage-sheet':
+			return 128;
+		case 'property-sheet':
+			return 256;
+		default:
+			return undefined;
+	}
 }
 
 /**
@@ -174,6 +204,39 @@ export function conditionsForSheet(conditions, values) {
 					break;
 				case 4:
 					result.task_id = values[i];
+					break;
+				default:
+					break;
+			}
+		}
+	}
+
+	return result;
+}
+
+export function visionsForSheet(visions, values) {
+	const result = {
+		activityStatus: {
+			Assigned: true,
+			Started: true,
+			Completed: true,
+			Suspended: true,
+			Canceled: true,
+			Continued: true,
+			Removed: true
+		}
+	};
+
+	for (let i = 0; i < visions.length; i++) {
+		if (values.length > 0) {
+			switch (visions[i]) {
+				case 1:
+					result.activityStatus = JSON.parse(values[i], (key, value) => {
+						if (key === '') {
+							return value;
+						}
+						return value === 'true';
+					});
 					break;
 				default:
 					break;
