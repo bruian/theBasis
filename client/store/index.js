@@ -92,8 +92,8 @@ function createStore() {
 			Contexts: [],
 
 			/* ----------------------------------------Sheets state----------------------------------------- */
-			generalSheet: [],
-			additionalSheet: [],
+			generalLayouts: [],
+			additionalLayouts: [],
 			selectedSheetsManager: false, // ? deprecated
 			selectedSheetManager: '', // ? deprecated
 			selectedSheet: null,

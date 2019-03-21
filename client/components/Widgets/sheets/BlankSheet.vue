@@ -19,13 +19,12 @@ export default {
   name: "blank-sheet",
   components: {},
   props: {
-    sheet_id: {
-      type: String,
+    layout: {
+      type: Object,
       required: true
     }
   },
   data: () => ({
-    thisSheet: null,
     scrollSettings: {
       maxScrollLength: 10
     }

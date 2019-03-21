@@ -4,7 +4,7 @@ import { decode } from 'jsonwebtoken';
 import moment from 'moment';
 import config from '../config';
 
-import { recursiveFind, sheetNameForType } from '../util/helpers';
+import { recursiveFind, sheetNameForType, layoutNameForType } from '../util/helpers';
 
 const dbg = !!config.DEBUG_API;
 const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
@@ -1274,6 +1274,14 @@ export default {
 		};
 
 		Array.prototype.forEach.call(options.values, el => {
+			if (typeof el.value === 'object') {
+				Object.keys(el.value).forEach(x => {
+					if (Array.isArray(el.value[x]) && el.value[x].length === 0) {
+						el.value[x] = null;
+					}
+				});
+			}
+
 			values[el.field] = el.value;
 		});
 
@@ -1297,7 +1305,7 @@ export default {
 				Array.prototype.forEach.call(dataFromSrv.data, dataItem => {
 					/* Если изменились найстройки фильтров sheet, тогда необходимо запросить данные для sheet
 						по новой у сервера */
-					if (Object.prototype.hasOwnProperty.call(dataItem, 'condition')) {
+					if (Object.prototype.hasOwnProperty.call(dataItem, 'conditions')) {
 						needUpdateSheet = true;
 					}
 
@@ -1404,14 +1412,16 @@ export default {
 
 	ADD_LAYOUT: ({ commit }, data) => {
 		let layout = {
-			id: +new Date(),
-			layout: data.layout,
+			id: Object.prototype.hasOwnProperty.call(data, 'id') ? data.id : +new Date(),
+			position: data.position,
 			sheet_id: data.sheet_id,
-			type_el: sheetNameForType(data.type_el)
+			type_el: sheetNameForType(data.type_el),
+			type_layout: layoutNameForType(data.type_layout),
+			element_id: data.element_id
 		};
 
-		if (data.sheet_id === 'all') {
-			layout.layout = 1;
+		if (data.type_layout === 'manage-sheet') {
+			layout.position = 1;
 		}
 
 		const fetchQuery = {

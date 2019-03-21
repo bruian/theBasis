@@ -3,25 +3,25 @@
     <div v-bind:class="classObject" @click="onBodyClick">
       <div class="sheet-clmn1">
         <div v-bind:class="classHandle"></div>
-        <VCircle dot small :color="sheetIndicator(item.consistency)"></VCircle>
+        <VCircle dot small :color="sheetIndicator(sheet.consistency)"></VCircle>
       </div>
 
       <div class="sheet-clmn2">
-        <v-icon large>{{item.icon}}</v-icon>
+        <v-icon large>{{sheet.icon}}</v-icon>
       </div>
 
       <div class="sheet-clmn3">
         <input
           class="item-input"
           type="text"
-          v-model="item.name"
-          @change="onNameChange($event, item.sheet_id)"
+          v-model="sheet.name"
+          @change="onNameChange($event, sheet.sheet_id)"
         >
 
-        <v-btn small icon @click="activateSheet('list')">
+        <v-btn small icon @click="activateLayout('list-sheet')">
           <v-icon color="primary">visibility</v-icon>
         </v-btn>
-        <v-btn small icon @click="activateSheet('property')">
+        <v-btn small icon @click="activateLayout('property-sheet')">
           <v-icon color="primary">tune</v-icon>
         </v-btn>
       </div>
@@ -39,7 +39,7 @@ export default {
   components: {
     VCircle
   },
-  props: ["item"],
+  props: ["sheet"],
   data: () => ({}),
   computed: {
     classObject() {
@@ -50,8 +50,8 @@ export default {
 
       return {
         "sheet-body": true,
-        active: this.item.sheet_id === sheet_id,
-        passive: this.item.sheet_id !== sheet_id
+        active: this.sheet.sheet_id === sheet_id,
+        passive: this.sheet.sheet_id !== sheet_id
       };
     },
     classHandle() {
@@ -62,7 +62,7 @@ export default {
 
       return {
         "itm-handle": true,
-        "itm-handle-active": this.item.sheet_id === sheet_id
+        "itm-handle-active": this.sheet.sheet_id === sheet_id
       };
     },
     selectedSheet() {
@@ -72,7 +72,7 @@ export default {
   methods: {
     onNameChange: function(e, id) {
       this.$store.dispatch("UPDATE_SHEET_VALUES", {
-        id: this.item.sheet_id,
+        id: this.sheet.sheet_id,
         values: [{ field: "name", value: e.target.value }]
       });
     },
@@ -82,69 +82,69 @@ export default {
     },
     onBodyClick: function() {
       this.$store.commit("UPDATE_MAIN_USER", {
-        selectedSheet: this.item.sheet_id
+        selectedSheet: this.sheet.sheet_id
       });
     },
-    activateSheet(sheetViews) {
-      /* Проверка на то, в каком из layout откроется sheet */
-      let additionalSheet;
-      const layout = this.$store.getters.isShowAdditional(
+    activateLayout(type_layout) {
+      /* Проверка на то, в каком из position откроется sheet */
+      let additionalLayout;
+      const position = this.$store.getters.isShowAdditional(
         this.$vuetify.breakpoint
       )
         ? 2
         : 1;
-      if (layout === 2) {
-        additionalSheet = this.$store.getters.additionalSheet;
+
+      if (position === 2) {
+        additionalLayout = this.$store.getters.additionalLayout;
       }
 
-      /* В зависимости от типа выбранного представления будет, открыт в доступно layout либо
-				'список элементов' в sheet, либо 'свойства' этого sheet */
-      if (sheetViews === "list") {
+      if (additionalLayout && additionalLayout.type_layout === type_layout)
+        return;
+
+      /* В зависимости от типа выбранного layout, будет открыт либо
+				'список элементов' для sheet, либо 'свойства' этого sheet */
+      if (type_layout === "list-sheet") {
         /* Для списка элементов */
-        if (
-          additionalSheet &&
-          additionalSheet.sheet_id === this.item.sheet_id &&
-          additionalSheet.type_el === this.item.type_el
-        )
-          return;
 
         this.$store
           .dispatch("ADD_LAYOUT", {
-            layout,
-            sheet_id: this.item.sheet_id,
-            type_el: this.item.type_el
+            type_layout,
+            position,
+            sheet_id: this.sheet.sheet_id,
+            type_el: this.sheet.type_el,
+            element_id: ""
           })
           .then(() => {
-            if (layout === 2) {
+            if (position === 2) {
               /* Если открывается в additional layout, то необходимо закрыть предыдущее представление,
 							в случае если оно уже открыто*/
               if (
-                additionalSheet &&
-                additionalSheet.type_el === "property-sheet"
+                additionalLayout &&
+                additionalLayout.type_layout === "property-sheet" &&
+                additionalLayout.sheet_id === this.sheet.sheet_id
               ) {
-                this.$store.dispatch("REMOVE_LAYOUT", additionalSheet);
+                this.$store.dispatch("REMOVE_LAYOUT", additionalLayout);
               }
             }
 
             return Promise.resolve(true);
           });
-      } else if (sheetViews === "property") {
-        if (additionalSheet && additionalSheet.type_el === "property-sheet")
-          return;
-
+      } else if (type_layout === "property-sheet") {
         this.$store
           .dispatch("ADD_LAYOUT", {
-            layout,
-            sheet_id: this.item.sheet_id,
-            type_el: "property-sheet"
+            type_layout,
+            position,
+            sheet_id: this.sheet.sheet_id,
+            type_el: this.sheet.type_el,
+            element_id: ""
           })
           .then(() => {
-            if (layout === 2) {
+            if (position === 2) {
               if (
-                additionalSheet &&
-                additionalSheet.sheet_id === this.item.sheet_id
+                additionalLayout &&
+                additionalLayout.sheet_id === this.sheet.sheet_id
               ) {
-                this.$store.dispatch("REMOVE_LAYOUT", additionalSheet);
+                this.$store.dispatch("REMOVE_LAYOUT", additionalLayout);
               }
             }
 

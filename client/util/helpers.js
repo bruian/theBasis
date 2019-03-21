@@ -140,13 +140,6 @@ export function typeForSheet(value) {
 		return { type_el: 'images-sheet', icon: 'I' };
 	}
 
-	if (value & 128) {
-		return { type_el: 'manage-sheet', icon: 'M' };
-	}
-
-	if (value & 256) {
-		return { type_el: 'property-sheet', icon: 'Pr' };
-	}
 	return undefined;
 }
 
@@ -164,10 +157,35 @@ export function sheetNameForType(value) {
 			return 32;
 		case 'images-sheet':
 			return 64;
+		default:
+			return undefined;
+	}
+}
+
+export function typeForLayout(value) {
+	if (value & 2) {
+		return 'manage-sheet';
+	}
+
+	if (value & 4) {
+		return 'property-sheet';
+	}
+
+	if (value & 8) {
+		return 'list-sheet';
+	}
+
+	return undefined;
+}
+
+export function layoutNameForType(value) {
+	switch (value) {
 		case 'manage-sheet':
-			return 128;
+			return 2;
 		case 'property-sheet':
-			return 256;
+			return 4;
+		case 'list-sheet':
+			return 8;
 		default:
 			return undefined;
 	}
@@ -194,7 +212,7 @@ export function conditionsForSheet(conditions, values) {
 		if (values.length > 0) {
 			switch (conditions[i]) {
 				case 1:
-					result.group_id = values[i];
+					result.group_id = JSON.parse(values[i]);
 					break;
 				case 2:
 					result.userId = values[i];

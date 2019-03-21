@@ -15,7 +15,7 @@
         <p style="margin: auto;">{{thisSheet.name}}</p>
       </div>
 
-      <v-btn small icon @click="onCloseSheet">
+      <v-btn small icon @click="onCloseLayout">
         <v-icon color="primary">clear</v-icon>
       </v-btn>
     </div>
@@ -23,7 +23,7 @@
     <v-divider class="ma-0"></v-divider>
 
     <div class="itm-sheet-body">
-      <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="sheet_id">
+      <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="layout.id">
         <div v-for="(item, index) in items" :key="item.id" v-bind:data-id="item.id">
           <UserItem :sheet_id="thisSheet.sheet_id" :item="item"></UserItem>
         </div>
@@ -52,12 +52,8 @@ export default {
     InfiniteLoading
   },
   props: {
-    sheet_id: {
-      type: String,
-      required: true
-    },
     layout: {
-      type: Number,
+      type: Object,
       required: true
     }
   },
@@ -72,7 +68,7 @@ export default {
   }),
   created() {
     this.thisSheet = this.$store.state.sheets.find(
-      el => el.sheet_id === this.sheet_id
+      el => el.sheet_id === this.layout.sheet_id
     );
   },
   computed: {
@@ -115,10 +111,10 @@ export default {
   },
   methods: {
     getDraggableOptions: function() {
-      return { group: this.sheet_id, handle: ".itm-handle" };
+      return { group: this.layout.sheet_id, handle: ".itm-handle" };
     },
     onSelectSheet: function() {
-      this.$store.commit("SELECT_ELEMENT", { sheet_id: this.sheet_id });
+      this.$store.commit("SELECT_ELEMENT", { sheet_id: this.layout.sheet_id });
     },
     onChange: function(value) {
       this.like = value;
@@ -145,7 +141,7 @@ export default {
         this.countEl++;
         console.log(`1** infiniteHandler fetch users CNT: ${this.countEl}`);
         return this.$store
-          .dispatch("FETCH_ELEMENTS", { sheet_id: this.sheet_id })
+          .dispatch("FETCH_ELEMENTS", { sheet_id: this.layout.sheet_id })
           .then(count => {
             this.countEl--;
             if (count) {
@@ -168,16 +164,16 @@ export default {
           });
       }
     },
-    onCloseSheet() {
-      let selectedSheet;
+    onCloseLayout() {
+      let selectedLayout;
 
-      if (this.layout === 1) {
-        selectedSheet = this.$store.getters.generalSheet;
+      if (this.layout.position === 1) {
+        selectedLayout = this.$store.getters.generalLayout;
       } else {
-        selectedSheet = this.$store.getters.additionalSheet;
+        selectedLayout = this.$store.getters.additionalLayout;
       }
 
-      this.$store.dispatch("REMOVE_LAYOUT", selectedSheet);
+      this.$store.dispatch("REMOVE_LAYOUT", selectedLayout);
     }
   }
 };

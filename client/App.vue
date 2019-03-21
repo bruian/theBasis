@@ -30,16 +30,12 @@
                 offset-y
                 full-width
               >
-                <v-btn
-                  slot="activator"
-                  small
-                  :color="selectorColor(item.sheet_id, item.type_el)"
-                >{{item.name}}</v-btn>
+                <v-btn slot="activator" small :color="selectorColor(item.type_el)">{{item.name}}</v-btn>
                 <v-list>
                   <v-list-tile
-                    v-for="(selector, ind) in selectorData(item.type_el, item.sheet_id)"
+                    v-for="(selector, ind) in selectorData(item.type_el)"
                     :key="ind"
-                    @click="onMenuSelect(selector.sheet_id, selector.type_el)"
+                    @click="onMenuSelect(selector)"
                   >
                     <v-list-tile-avatar v-if="selector.icon">
                       <v-icon>apps</v-icon>
@@ -149,20 +145,17 @@ export default {
     tasksMenu: false,
     sheetTypes: [
       {
-        type_el: "manage-sheet",
-        sheet_id: "users-sheet",
+        type_el: "users-sheet",
         selected: false,
         name: "users"
       },
       {
-        type_el: "manage-sheet",
-        sheet_id: "groups-sheet",
+        type_el: "groups-sheet",
         selected: false,
         name: "groups"
       },
       {
-        type_el: "manage-sheet",
-        sheet_id: "tasks-sheet",
+        type_el: "tasks-sheet",
         selected: false,
         name: "tasks"
       }
@@ -265,10 +258,11 @@ export default {
     }
   },
   methods: {
-    selectorData(type_el, sheet_id) {
+    selectorData(type_el) {
       let result = this.$store.state.sheets
-        .filter(el => el.type_el === sheet_id)
-        .sort((a, b) => a - b);
+        .filter(el => el.type_el === type_el)
+        .sort((a, b) => a.callsCount - b.callsCount);
+
       if (result.length > 3) {
         result = result.slice(0, 2);
       }
@@ -276,37 +270,39 @@ export default {
       result = result.map(el => {
         return {
           name: el.name,
-          type_el: el.type_el,
           icon: false,
-          sheet_id: el.sheet_id
+          type_layout: "list-sheet",
+          position: 1,
+          type_el: el.type_el,
+          sheet_id: el.sheet_id,
+          element_id: ""
         };
       });
 
       result.push({
         name: "All",
-        type_el: "manage-sheet",
         icon: true,
-        sheet_id: sheet_id
+        type_layout: "manage-sheet",
+        position: 1,
+        type_el,
+        sheet_id: "",
+        element_id: ""
       });
 
       return result;
     },
-    selectorColor(sheet_id, type_el) {
-      const activeSheet = this.$store.getters.generalSheet;
+    selectorColor(type_el) {
+      const activeLayout = this.$store.getters.generalLayout;
       let result = "";
 
-      if (
-        activeSheet &&
-        activeSheet.type_el === type_el &&
-        activeSheet.sheet_id === sheet_id
-      ) {
+      if (activeLayout && activeLayout.type_el === type_el) {
         result = "primary";
       }
 
       return result;
     },
-    onMenuSelect: function(sheet_id, type_el) {
-      this.$store.dispatch("ADD_LAYOUT", { layout: 1, sheet_id, type_el });
+    onMenuSelect: function(selector) {
+      this.$store.dispatch("ADD_LAYOUT", Object.assign({}, selector));
     },
     onClickLayer: function() {
       this.$store.dispatch("UPDATE_MAIN_USER", {

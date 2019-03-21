@@ -10,10 +10,10 @@
       </v-btn>
 
       <div style="margin: auto;">
-        <p class="blank-title">All {{sheet_id}}</p>
+        <p class="blank-title">All {{layout.type_el}}</p>
       </div>
 
-      <v-btn small icon @click="onCloseSheet">
+      <v-btn small icon @click="onCloseLayout">
         <v-icon color="primary">clear</v-icon>
       </v-btn>
     </div>
@@ -21,9 +21,9 @@
     <v-divider class="ma-0"></v-divider>
 
     <div class="itm-sheet-body">
-      <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="sheet_id">
-        <div v-for="(item, index) in items" :key="item.sheet_id">
-          <SheetItem :item="item"></SheetItem>
+      <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="layout.id">
+        <div v-for="(sheet, index) in sheets" :key="sheet.sheet_id">
+          <SheetItem :sheet="sheet"></SheetItem>
         </div>
       </vue-perfect-scrollbar>
     </div>
@@ -43,8 +43,8 @@ export default {
   },
   props: {
     /* this equal type_el */
-    sheet_id: {
-      type: String,
+    layout: {
+      type: Object,
       required: true
     }
   },
@@ -67,17 +67,17 @@ export default {
 
       return result;
     },
-    items: {
+    sheets: {
       get() {
         const st = this.$store.state;
-        return st.sheets.filter(el => el.type_el === this.sheet_id);
+        return st.sheets.filter(el => el.type_el === this.layout.type_el);
       },
       set(value) {}
     }
   },
   methods: {
     onCreateItem() {
-      const type_el = sheetNameForType(this.sheet_id);
+      const type_el = sheetNameForType(this.layout.type_el);
       const newSheet = {
         type_el,
         layout: 1,
@@ -100,18 +100,18 @@ export default {
           });
       }
     },
-    onCloseSheet() {
+    onCloseLayout() {
       /* Т.к. ManageSheet открывается только в general layout, то однозначно известно
 				из какого layout его следует удалить, при этом если данный sheet последний в списке, то
-				sheet из additional layout переносится на его место */
-      const generalSheet = this.$store.getters.generalSheet;
-      this.$store.dispatch("REMOVE_LAYOUT", generalSheet).then(() => {
-        const additionalSheet = this.$store.getters.additionalSheet;
-        if (additionalSheet) {
-          const copy = Object.assign({}, additionalSheet);
-          copy.layout = 1;
+				layout из additional layout переносится на его место */
+      const generalLayout = this.$store.getters.generalLayout;
+      this.$store.dispatch("REMOVE_LAYOUT", generalLayout).then(() => {
+        const additionalLayout = this.$store.getters.additionalLayout;
+        if (additionalLayout) {
+          const copy = Object.assign({}, additionalLayout);
+          copy.position = 1;
           return this.$store.dispatch("REMOVE_LAYOUT", copy).then(() => {
-            if (copy.type_el === "property-sheet") {
+            if (copy.type_layout === "property-sheet") {
               return Promise.resolve(true);
             } else {
               return this.$store.dispatch("ADD_LAYOUT", copy);

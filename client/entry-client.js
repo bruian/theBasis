@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import 'es6-promise/auto';
-import BootstrapVue from 'bootstrap-vue';
+// import BootstrapVue from 'bootstrap-vue';
+import qs from 'qs';
 import axios from 'axios';
 import VueAxios from 'vue-axios';
 
@@ -9,8 +10,8 @@ import config from './config';
 import createApp from './app';
 import ProgressBar from './components/ProgressBar.vue';
 
-import 'bootstrap/dist/css/bootstrap.css';
-import 'bootstrap-vue/dist/bootstrap-vue.css';
+// import 'bootstrap/dist/css/bootstrap.css';
+// import 'bootstrap-vue/dist/bootstrap-vue.css';
 
 import 'material-design-icons-iconfont/dist/material-design-icons.css';
 import 'pretty-checkbox/dist/pretty-checkbox.css'; // eslint-disable-line
@@ -21,10 +22,13 @@ import '@riophae/vue-treeselect/dist/vue-treeselect.css';
 import './app.css';
 
 Vue.use(PrettyCheckbox);
-Vue.use(BootstrapVue);
+// Vue.use(BootstrapVue);
 Vue.use(VueAxios, axios);
 
 Vue.axios.defaults.baseURL = `http://${config.apiHost}:${config.apiPort}/api/`;
+Vue.axios.defaults.paramsSerializer = params => {
+	return qs.stringify(params, { arrayFormat: 'repeat' });
+};
 
 // global progress bar
 // eslint-disable-next-line

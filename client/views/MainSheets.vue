@@ -1,25 +1,17 @@
 <template>
-  <section class="itm-container">
+  <section class="itm-container" v-if="isAuth">
     <div class="itm-fill" v-bind:class="fillsClass" v-if="$vuetify.breakpoint.smAndUp"></div>
 
     <div class="itm-general">
-      <keep-alive>
-        <component
-          :is="generalSheet.type_el"
-          :sheet_id="generalSheet.sheet_id"
-          :layout="generalSheet.layout"
-        ></component>
-      </keep-alive>
+      <!-- <keep-alive> -->
+      <component :is="generalLayout.component" :layout="generalLayout"></component>
+      <!-- </keep-alive> -->
     </div>
 
     <div class="itm-additional" v-if="isShowAdditional">
-      <keep-alive>
-        <component
-          :is="additionalSheet.type_el"
-          :sheet_id="additionalSheet.sheet_id"
-          :layout="additionalSheet.layout"
-        ></component>
-      </keep-alive>
+      <!-- <keep-alive> -->
+      <component :is="additionalLayout.component" :layout="additionalLayout"></component>
+      <!-- </keep-alive> -->
     </div>
 
     <div class="itm-fill" v-bind:class="fillsClass" v-if="$vuetify.breakpoint.smAndUp"></div>
@@ -27,12 +19,9 @@
 </template>
 
 <script>
-import Profile from "../components/widgets/Profile.vue";
-
 export default {
   name: "main-sheets",
   components: {
-    Profile,
     UsersSheet: () => import("../components/widgets/sheets/UsersSheet.vue"),
     TasksSheet: () => import("../components/widgets/sheets/TasksSheet.vue"),
     ActivitySheet: () =>
@@ -48,6 +37,9 @@ export default {
     next();
   },
   computed: {
+    isAuth() {
+      return this.$store.getters.isAuth;
+    },
     fillsClass: function() {
       return {
         "itm-fill": this.$vuetify.breakpoint.lgOnly,
@@ -56,32 +48,48 @@ export default {
         //'itm-fill-small': this.$vuetify.breakpoint.smAndDown
       };
     },
-    generalSheet() {
-      const result = {
-        type_el: "blank-sheet",
-        sheet_id: "blank",
-        layout: 1
+    generalLayout() {
+      let result = {
+        component: "blank-sheet"
       };
 
-      const activeSheet = this.$store.getters.generalSheet;
-      if (activeSheet) {
-        result.type_el = activeSheet.type_el;
-        result.sheet_id = activeSheet.sheet_id;
+      const activeLayout = this.$store.getters.generalLayout;
+      if (activeLayout) {
+        result = Object.assign({}, activeLayout);
+        switch (activeLayout.type_layout) {
+          case "manage-sheet":
+          case "property-sheet":
+            result.component = activeLayout.type_layout;
+            break;
+          case "list-sheet":
+            result.component = activeLayout.type_el;
+            break;
+          default:
+            break;
+        }
       }
 
       return result;
     },
-    additionalSheet() {
-      const result = {
-        type_el: "blank-sheet",
-        sheet_id: "blank",
-        layout: 2
+    additionalLayout() {
+      let result = {
+        component: "blank-sheet"
       };
 
-      const activeSheet = this.$store.getters.additionalSheet;
-      if (activeSheet) {
-        result.type_el = activeSheet.type_el;
-        result.sheet_id = activeSheet.sheet_id;
+      const activeLayout = this.$store.getters.additionalLayout;
+      if (activeLayout) {
+        result = Object.assign({}, activeLayout);
+        switch (activeLayout.type_layout) {
+          case "manage-sheet":
+          case "property-sheet":
+            result.component = activeLayout.type_layout;
+            break;
+          case "list-sheet":
+            result.component = activeLayout.type_el;
+            break;
+          default:
+            break;
+        }
       }
 
       return result;

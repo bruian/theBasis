@@ -39,7 +39,7 @@
         <p style="margin: auto;">{{thisSheet.name}}</p>
       </div>
 
-      <v-btn small icon @click="onCloseSheet">
+      <v-btn small icon @click="onCloseLayout">
         <v-icon color="primary">clear</v-icon>
       </v-btn>
     </div>
@@ -47,7 +47,7 @@
     <v-divider class="ma-0"></v-divider>
 
     <div class="itm-sheet-body">
-      <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="sheet_id">
+      <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="layout.id">
         <draggable
           v-model="items"
           :options="getDraggableOptions()"
@@ -121,12 +121,8 @@ export default {
     Treeselect
   },
   props: {
-    sheet_id: {
-      type: String,
-      required: true
-    },
     layout: {
-      type: Number,
+      type: Object,
       required: true
     }
   },
@@ -145,7 +141,7 @@ export default {
   }),
   created() {
     this.thisSheet = this.$store.state.sheets.find(
-      el => el.sheet_id === this.sheet_id
+      el => el.sheet_id === this.layout.sheet_id
     );
   },
   computed: {
@@ -207,7 +203,7 @@ export default {
 		*/
     isAllowedOperation() {
       let result = 0;
-      // const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.sheet_id)
+      // const activeSheet = this.$store.state.sheets.find(el => el.sheet_id === this.layout.sheet_id)
 
       if (this.thisSheet.selectedItem) {
         result += 2;
@@ -259,16 +255,16 @@ export default {
   },
   methods: {
     getDraggableOptions: function() {
-      return { group: this.sheet_id, handle: ".itm-handle" };
+      return { group: this.layout.sheet_id, handle: ".itm-handle" };
     },
     onSelectSheet: function() {
-      this.$store.commit("SELECT_ELEMENT", { sheet_id: this.sheet_id });
+      this.$store.commit("SELECT_ELEMENT", { sheet_id: this.layout.sheet_id });
     },
     onDragStart: function(dragResult) {
       const { item } = dragResult;
 
       this.$store.commit("SELECT_ELEMENT", {
-        sheet_id: this.sheet_id,
+        sheet_id: this.layout.sheet_id,
         id: item.dataset.id
       });
     },
@@ -370,7 +366,7 @@ export default {
         group_id,
         parent_id,
         isBefore,
-        sheet_id: this.sheet_id
+        sheet_id: this.layout.sheet_id
       };
 
       // return;
@@ -399,7 +395,7 @@ export default {
           toId: null,
           parent_id,
           isBefore: true,
-          sheet_id: this.sheet_id
+          sheet_id: this.layout.sheet_id
         };
 
         if (Array.isArray(element.children) && element.children.length > 0) {
@@ -407,7 +403,7 @@ export default {
         } else {
           this.$store
             .dispatch("FETCH_ELEMENTS", {
-              sheet_id: this.sheet_id,
+              sheet_id: this.layout.sheet_id,
               parent_id
             })
             .then(count => {
@@ -447,7 +443,7 @@ export default {
             toId: element.parent.id,
             parent_id: parent_id ? parent_id.id : null,
             isBefore: false,
-            sheet_id: this.sheet_id
+            sheet_id: this.layout.sheet_id
           })
           .catch(err => {
             console.warn(err);
@@ -545,21 +541,21 @@ export default {
           fromId: element.id,
           toId,
           parent_id: element.parent ? element.parent.id : null,
-          sheet_id: this.sheet_id,
+          sheet_id: this.layout.sheet_id,
           isBefore: newIndex < index
         });
       }
     },
     onAddItem(isSubelement = false) {
       this.$store.dispatch("CREATE_ELEMENT", {
-        sheet_id: this.sheet_id,
+        sheet_id: this.layout.sheet_id,
         isSubelement,
         isStart: true
       });
     },
     onDeleteItem() {
       this.$store
-        .dispatch("DELETE_ELEMENTS", { sheet_id: this.sheet_id })
+        .dispatch("DELETE_ELEMENTS", { sheet_id: this.layout.sheet_id })
         .catch(err => {
           console.warn(err);
         });
@@ -578,7 +574,7 @@ export default {
     onGroupCreate: function() {
       this.createDialog = false;
       this.$store.dispatch("CREATE_ELEMENT", {
-        sheet_id: this.sheet_id,
+        sheet_id: this.layout.sheet_id,
         group_id: this.groupDialogSelected,
         isSubelement: false,
         isStart: true
@@ -589,7 +585,7 @@ export default {
         this.countEl++;
         console.log(`1** infiniteHandler fetch tasks CNT: ${this.countEl}`);
         return this.$store
-          .dispatch("FETCH_ELEMENTS", { sheet_id: this.sheet_id })
+          .dispatch("FETCH_ELEMENTS", { sheet_id: this.layout.sheet_id })
           .then(count => {
             this.countEl--;
             if (count) {
@@ -612,16 +608,16 @@ export default {
           });
       }
     },
-    onCloseSheet() {
-      let selectedSheet;
+    onCloseLayout() {
+      let selectedLayout;
 
-      if (this.layout === 1) {
-        selectedSheet = this.$store.getters.generalSheet;
+      if (this.layout.position === 1) {
+        selectedLayout = this.$store.getters.generalLayout;
       } else {
-        selectedSheet = this.$store.getters.additionalSheet;
+        selectedLayout = this.$store.getters.additionalLayout;
       }
 
-      this.$store.dispatch("REMOVE_LAYOUT", selectedSheet);
+      this.$store.dispatch("REMOVE_LAYOUT", selectedLayout);
     }
   }
 };

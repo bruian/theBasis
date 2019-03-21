@@ -1,6 +1,12 @@
 import Vue from 'vue';
 import moment from 'moment';
-import { recursiveFind, typeForSheet, conditionsForSheet, visionsForSheet } from '../util/helpers';
+import {
+	recursiveFind,
+	typeForSheet,
+	conditionsForSheet,
+	visionsForSheet,
+	typeForLayout
+} from '../util/helpers';
 
 const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
 
@@ -51,8 +57,8 @@ export default {
 		state.Tasks = [];
 		state.Users = [];
 
-		state.additionalSheet = [];
-		state.generalSheet = [];
+		state.additionalLayouts = [];
+		state.generalLayouts = [];
 
 		state.selectedSheet = null;
 		state.sheets = [];
@@ -648,6 +654,8 @@ export default {
 					} else if (key === 'conditions') {
 						const condition = conditionsForSheet(data[i].conditions, data[i].conditionvalues);
 						Vue.set(sheet, 'condition', condition);
+						Vue.set(sheet, 'sh', []);
+						Vue.set(sheet, 'offset', 0);
 						sheet.infiniteId += 1;
 					} else if (key === 'visions') {
 						const vision = visionsForSheet(data[i].visions, data[i].visionvalues);
@@ -750,7 +758,7 @@ export default {
 
 	SET_LAYOUTS: (state, data) => {
 		Object.keys(data).forEach(layout => {
-			if (layout === 'generalSheet' || layout === 'additionalSheet') {
+			if (layout === 'generalLayouts' || layout === 'additionalLayouts') {
 				for (let i = 0; i < data[layout].length; i++) {
 					let currItem = state[layout].find(el => el.id === data[layout][i].id);
 
@@ -759,9 +767,11 @@ export default {
 
 						currItem = {
 							id: data[layout][i].id,
-							layout: data[layout][i].layout,
+							position: data[layout][i].position,
 							type_el: type_obj.type_el,
-							sheet_id: data[layout][i].sheet_id
+							sheet_id: data[layout][i].sheet_id,
+							type_layout: typeForLayout(data[layout][i].type_layout),
+							element_id: data[layout][i].element_id
 						};
 
 						state[layout].push(currItem);
@@ -779,14 +789,14 @@ export default {
 
 	REMOVE_LAYOUT: (state, data) => {
 		if (Object.prototype.hasOwnProperty.call(data, 'id')) {
-			let index = state.generalSheet.findIndex(el => el.id === data.id);
+			let index = state.generalLayouts.findIndex(el => el.id === data.id);
 			if (index !== -1) {
-				state.generalSheet.splice(index, 1);
+				state.generalLayouts.splice(index, 1);
 			}
 
-			index = state.additionalSheet.findIndex(el => el.id === data.id);
+			index = state.additionalLayouts.findIndex(el => el.id === data.id);
 			if (index !== -1) {
-				state.additionalSheet.splice(index, 1);
+				state.additionalLayouts.splice(index, 1);
 			}
 		}
 	},

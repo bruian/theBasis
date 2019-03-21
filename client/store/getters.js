@@ -7,34 +7,34 @@ export default {
 	token: state => state.auth.token,
 
 	/**
-	 * @func generalSheet
+	 * @func generalLayout
 	 * @param {vuex state: Object} - state
 	 * @param {vuetify breakpoint: Object } - breakpoint
-	 * @returns { Object } - sheet components for render
-	 * @description Get the filtered components for a render in the general sheet.
+	 * @returns { Object } - layout components for render
+	 * @description Get the filtered components for a render in the general layouts.
 	 * 	state.mainUser.layout: 1 - "one-column", 2 - "two-column"
 	 */
-	generalSheet: state => {
-		const activeSheet = state.generalSheet.length
-			? state.generalSheet[state.generalSheet.length - 1]
+	generalLayout: state => {
+		const activeLayout = state.generalLayouts.length
+			? state.generalLayouts[state.generalLayouts.length - 1]
 			: undefined;
 
-		return activeSheet;
+		return activeLayout;
 	},
 
 	/**
-	 * @func additionalSheet
+	 * @func additionalLayout
 	 * @param {vuex state: Object} - state
-	 * @returns { Object } - sheet components for render
-	 * @description Get the filtered components for a render in the additional sheet.
+	 * @returns { Object } - layout components for render
+	 * @description Get the filtered components for a render in the additional layouts.
 	 * 	state.mainUser.layout: 1 - "one-column", 2 - "two-column"
 	 */
-	additionalSheet: state => {
-		const activeSheet = state.additionalSheet.length
-			? state.additionalSheet[state.additionalSheet.length - 1]
+	additionalLayout: state => {
+		const activeLayout = state.additionalLayouts.length
+			? state.additionalLayouts[state.additionalLayouts.length - 1]
 			: undefined;
 
-		return activeSheet;
+		return activeLayout;
 	},
 
 	/**
