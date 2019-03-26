@@ -748,6 +748,7 @@ export default {
   padding-left: 0.2em;
   padding-right: 0.3em;
 }
+
 /* .tsk-area-el {
 	flex: 1;
 } */

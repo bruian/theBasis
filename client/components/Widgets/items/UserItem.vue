@@ -91,12 +91,6 @@ export default {
       return this.tabs[this.currentTab].component;
     }
   },
-  watch: {
-    currentTab() {
-      // if (this.tabs[this.currentTab].name === "Activity") {
-      // }
-    }
-  },
   beforeDestroy() {
     // clearTimeout(this.timeoutID)
   },

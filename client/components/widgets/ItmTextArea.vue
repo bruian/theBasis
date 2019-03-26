@@ -152,6 +152,7 @@ export default {
     val(val) {
       this.changeButton = !(this.value === val);
       this.$nextTick(this.resize);
+
       // this.$emit("input", val);
     }
   }

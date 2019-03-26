@@ -16,6 +16,7 @@
       <v-btn small icon v-show="isAllowedOperation & 8" @click="onMove(false)">
         <v-icon color="primary">arrow_downward</v-icon>
       </v-btn>-->
+
       <div style="margin: auto;">
         <p style="margin: auto;">{{thisSheet.name}}</p>
       </div>

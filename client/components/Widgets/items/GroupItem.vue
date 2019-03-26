@@ -178,9 +178,9 @@ export default {
       }
     }
   },
-  beforeDestroy() {
-    // clearTimeout(this.timeoutID)
-  },
+  // beforeDestroy() {
+  // clearTimeout(this.timeoutID)
+  // },
   methods: {
     onNameChange: function(text) {
       this.$store
