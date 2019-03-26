@@ -1,12 +1,10 @@
 import Vue from 'vue';
 import axios from 'axios';
 import VueAxios from 'vue-axios';
-// import BootstrapVue from 'bootstrap-vue';
 import createApp from './app';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Vue.use(BootstrapVue);
 Vue.use(VueAxios, axios);
 Vue.axios.defaults.baseURL = `http://localhost:3000/api/`;
 

@@ -3,10 +3,12 @@
     id="appDrawer"
     :mini-variant.sync="mini"
     fixed
+    temporary
     :clipped="$vuetify.breakpoint.lgAndUp"
     v-model="localDrawer"
     width="260"
     app
+    disable-resize-watcher
   >
     <!--disable-resize-watcher -->
     <!--v-bind:value="value"-->
@@ -134,14 +136,14 @@ export default {
   props: {
     value: {
       type: Boolean,
-      default: true
+      default: false
     }
   },
   data: () => ({
     scrollSettings: {
       maxScrollLength: 160
     },
-    localDrawer: this.value,
+    localDrawer: false,
     mini: false,
     menus: [
       {

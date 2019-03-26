@@ -215,13 +215,13 @@ export function conditionsForSheet(conditions, values) {
 					result.group_id = JSON.parse(values[i]);
 					break;
 				case 2:
-					result.userId = values[i];
+					result.userId = JSON.parse(values[i]);
 					break;
 				case 3:
-					result.parent_id = values[i];
+					result.parent_id = JSON.parse(values[i]);
 					break;
 				case 4:
-					result.task_id = values[i];
+					result.task_id = JSON.parse(values[i]);
 					break;
 				default:
 					break;

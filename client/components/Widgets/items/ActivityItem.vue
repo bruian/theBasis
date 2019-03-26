@@ -54,6 +54,7 @@
               :asynCall="asyncDateTime()"
               :first-day-of-week="1"
               @confirm="onDateStartChange"
+              :popupStyle="{ top: '60px', left: '45px' }"
             >{{ getTime('start') }}</date-picker>
             <div v-else slot="activator">{{ getTime('start') }}</div>
             <span>Старт</span>

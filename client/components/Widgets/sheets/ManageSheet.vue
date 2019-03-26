@@ -70,7 +70,9 @@ export default {
     sheets: {
       get() {
         const st = this.$store.state;
-        return st.sheets.filter(el => el.type_el === this.layout.type_el);
+        return st.sheets.filter(
+          el => el.type_el === this.layout.type_el && !el.service
+        );
       },
       set(value) {}
     }
@@ -80,9 +82,7 @@ export default {
       const type_el = sheetNameForType(this.layout.type_el);
       const newSheet = {
         type_el,
-        layout: 1,
-        name: "New sheet",
-        visible: false
+        name: "New sheet"
       };
 
       this.$store.dispatch("CREATE_SHEET_ELEMENT", newSheet).catch(err => {

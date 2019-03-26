@@ -1,24 +1,21 @@
 <template>
   <div class="itm-sheet">
     <div class="itm-sheet-header">
-      <v-icon style="cursor: pointer;" v-bind:color="selectedSheet" @click="onSelectSheet">bookmark</v-icon>
-
-      <v-btn small icon @click="onAddItem(false)">
+      <!-- <v-icon style="cursor: pointer;" v-bind:color="selectedSheet" @click="onSelectSheet">bookmark</v-icon> -->
+      <!-- <v-btn small icon @click="onAddItem(false)">
         <v-icon color="primary">add_circle</v-icon>
-      </v-btn>
-
+      </v-btn>-->
       <v-btn small icon v-show="isAllowedOperation & 2" @click="onDeleteItem">
         <v-icon color="primary">delete</v-icon>
       </v-btn>
 
-      <v-btn small icon v-show="isAllowedOperation & 4" @click="onMove(true)">
+      <!-- <v-btn small icon v-show="isAllowedOperation & 4" @click="onMove(true)">
         <v-icon color="primary">arrow_upward</v-icon>
       </v-btn>
 
       <v-btn small icon v-show="isAllowedOperation & 8" @click="onMove(false)">
         <v-icon color="primary">arrow_downward</v-icon>
-      </v-btn>
-
+      </v-btn>-->
       <div style="margin: auto;">
         <p style="margin: auto;">{{thisSheet.name}}</p>
       </div>

@@ -17,6 +17,48 @@ function setApiStatus(state, status, error) {
 	}
 }
 
+// Функция сортировки
+function sortSheetSternBrocot(a, b) {
+	if (a.group_id > b.group_id) {
+		return 1;
+	} else if (a.group_id === b.group_id) {
+		return a.p / a.q - b.p / b.q;
+	} else {
+		return -1;
+	}
+}
+
+function sortSheetDateTime(a, b) {
+	if (a.start > b.start) return -1;
+	if (a.start < b.start) return 1;
+	return 0;
+
+	// return new Date(b.start) - new Date(a.start);
+}
+
+function conditionFilter(sheet, data) {
+	let result = true;
+	const keys = Object.keys(sheet.condition);
+
+	for (let i = 0; i < keys.length; i++) {
+		if (sheet.condition[keys[i]] !== null) {
+			if (keys[i] === 'group_id' && !Object.prototype.hasOwnProperty.call(data, 'group_id')) {
+				if (sheet.condition[keys[i]].findIndex(x => x === data.id) === -1) {
+					result = false;
+					break;
+				}
+			} else {
+				if (sheet.condition[keys[i]].findIndex(x => x === data[keys[i]]) === -1) {
+					result = false;
+					break;
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
 export default {
 	/* API Status mutation */
 	API_ERROR: (state, error) => {
@@ -126,25 +168,6 @@ export default {
 	 * options - { sheet_id: String, data: Array, action: String, refresh: Bool(optional) }
 	 */
 	SET_ELEMENTS: (state, options) => {
-		// Функция сортировки
-		function sortSheetSternBrocot(a, b) {
-			if (a.group_id > b.group_id) {
-				return 1;
-			} else if (a.group_id === b.group_id) {
-				return a.p / a.q - b.p / b.q;
-			} else {
-				return -1;
-			}
-		}
-
-		function sortSheetDateTime(a, b) {
-			if (a.start > b.start) return -1;
-			if (a.start < b.start) return 1;
-			return 0;
-
-			// return new Date(b.start) - new Date(a.start);
-		}
-
 		/* При загрузке данных с сервера получается два набор данных
 			theDatas - хранит загруженные элементы для всех sheet,
 			theSheet - хранит ссылки на загруженные элементы, а так же их сортировку в разрезе каждого sheet
@@ -268,7 +291,9 @@ export default {
 
 			state.sheets.forEach(xSheet => {
 				// if (xSheet.type_el === theSheet.type_el) { 12.03.19 21:18
-				if (xSheet.type_el === options.type_el) {
+				/* Фильтрация по sheet.condition */
+
+				if (xSheet.type_el === options.type_el && conditionFilter(xSheet, data)) {
 					let shData = xSheet.sh.find(x => x.el.id === data.id);
 
 					let isShowed = true;
@@ -629,14 +654,13 @@ export default {
 					like: '',
 					condition,
 					vision,
-					service: false, // Такие элементы не отображаются в списке настроек sheets
+					service: data[i].service, // Такие элементы не отображаются в списке настроек sheets
+					defaults: data[i].defaults,
 					type_el: type_obj.type_el,
 					icon: type_obj.icon,
 					user_id: data[i].user_id,
 					owner_id: data[i].owner_id,
 					name: data[i].name,
-					visible: data[i].visible,
-					layout: data[i].layout,
 					infiniteId: +new Date(),
 					consistency: 0,
 					callsCount: 0 // Количество вызовов данного листа. Из них 3 листа с наибольшим количеством
@@ -773,6 +797,12 @@ export default {
 							type_layout: typeForLayout(data[layout][i].type_layout),
 							element_id: data[layout][i].element_id
 						};
+
+						if (data[layout][i].sheet_id.trim().length) {
+							const theSheet = state.sheets.find(el => el.sheet_id === data[layout][i].sheet_id);
+							Vue.set(theSheet, 'sh', []);
+							Vue.set(theSheet, 'offset', 0);
+						}
 
 						state[layout].push(currItem);
 					} else {

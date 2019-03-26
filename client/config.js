@@ -2,11 +2,11 @@
 
 const environment = {
 	development: {
-		isProduction: false,
+		isProduction: false
 	},
 	production: {
-		isProduction: true,
-	},
+		isProduction: true
+	}
 }[process.env.NODE_ENV || 'development'];
 
 module.exports = Object.assign(
@@ -22,8 +22,8 @@ module.exports = Object.assign(
 		DEBUG_API: true,
 		app: {
 			title: 'inTask.me',
-			description: 'Incredible taskmanager',
-		},
+			description: 'Incredible taskmanager'
+		}
 	},
-	environment,
+	environment
 );

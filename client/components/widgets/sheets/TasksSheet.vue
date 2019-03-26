@@ -1,8 +1,7 @@
 <template>
   <div class="itm-sheet">
     <div class="itm-sheet-header">
-      <v-icon style="cursor: pointer;" v-bind:color="selectedSheet" @click="onSelectSheet">bookmark</v-icon>
-
+      <!-- <v-icon style="cursor: pointer;" v-bind:color="selectedSheet" @click="onSelectSheet">bookmark</v-icon> -->
       <!-- <v-btn small icon @click="onAddItem(false)"> -->
       <v-btn small icon @click="createDialog = !createDialog">
         <v-icon color="primary">add_circle</v-icon>
@@ -38,10 +37,24 @@
       <div style="margin: auto;">
         <p style="margin: auto;">{{thisSheet.name}}</p>
       </div>
-
-      <v-btn small icon @click="onCloseLayout">
+      <div style="display: inline-flex; margin-right: 8px;">
+        <v-menu offset-y>
+          <template v-slot:activator="{ on }">
+            <v-icon v-on="on" class="expand-ico" color="primary">more_horiz</v-icon>
+          </template>
+          <v-list>
+            <v-list-tile v-for="(item, index) in moreMenu" :key="index" @click="onMenu(item.id)">
+              <v-list-tile-avatar>
+                <v-icon>{{ item.icon }}</v-icon>
+              </v-list-tile-avatar>
+              <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+            </v-list-tile>
+          </v-list>
+        </v-menu>
+      </div>
+      <!-- <v-btn small icon @click="onCloseLayout">
         <v-icon color="primary">clear</v-icon>
-      </v-btn>
+      </v-btn>-->
     </div>
 
     <v-divider class="ma-0"></v-divider>
@@ -98,6 +111,7 @@
 </template>
 
 <script>
+import config from "../../../config";
 import TaskItem from "../items/TaskItem.vue";
 import Treeselect from "@riophae/vue-treeselect";
 import VuePerfectScrollbar from "../../Perfect-scrollbar.vue";
@@ -110,6 +124,8 @@ import {
 } from "../../../util/helpers";
 
 import draggable from "vuedraggable";
+
+const dbg = !!config.DEBUG_API;
 
 export default {
   name: "tasks-sheet",
@@ -132,6 +148,11 @@ export default {
     scrollSettings: {
       maxScrollLength: 10
     },
+    moreMenu: [
+      { id: 0, title: "Show list", icon: "visibility" },
+      { id: 1, title: "Property", icon: "tune" },
+      { id: 2, title: "Close", icon: "clear" }
+    ],
     countEl: 0, //pass to load data
     blocked: false,
     createDialog: false,
@@ -143,6 +164,17 @@ export default {
     this.thisSheet = this.$store.state.sheets.find(
       el => el.sheet_id === this.layout.sheet_id
     );
+  },
+  watch: {
+    layout() {
+      if (this.thisSheet.sheet_id !== this.layout.sheet_id) {
+        this.thisSheet = this.$store.state.sheets.find(
+          el => el.sheet_id === this.layout.sheet_id
+        );
+
+        this.thisSheet.infiniteId += 1;
+      }
+    }
   },
   computed: {
     infiniteId() {
@@ -254,6 +286,15 @@ export default {
     }
   },
   methods: {
+    onMenu(id) {
+      if (id === 0) {
+        this.activateLayout("list-sheet");
+      } else if (id === 1) {
+        // this.activateLayout("property-sheet");
+      } else if (id === 2) {
+        this.onCloseLayout();
+      }
+    },
     getDraggableOptions: function() {
       return { group: this.layout.sheet_id, handle: ".itm-handle" };
     },
@@ -410,7 +451,7 @@ export default {
               this.$store.dispatch("REORDER_ELEMENTS", options);
             })
             .catch(err => {
-              console.warn(err);
+              dbg && console.error(err); // eslint-disable-line
             });
         }
       }
@@ -446,7 +487,7 @@ export default {
             sheet_id: this.layout.sheet_id
           })
           .catch(err => {
-            console.warn(err);
+            dbg && console.error(err); // eslint-disable-line
           });
       }
     },
@@ -557,7 +598,7 @@ export default {
       this.$store
         .dispatch("DELETE_ELEMENTS", { sheet_id: this.layout.sheet_id })
         .catch(err => {
-          console.warn(err);
+          dbg && console.error(err); // eslint-disable-line
         });
     },
     onGroupOpen: function(instanceId) {
@@ -583,28 +624,31 @@ export default {
     infiniteHandler($state) {
       if (this.countEl == 0) {
         this.countEl++;
-        console.log(`1** infiniteHandler fetch tasks CNT: ${this.countEl}`);
+        dbg &&
+          console.log(`1** infiniteHandler fetch tasks CNT: ${this.countEl}`); // eslint-disable-line
         return this.$store
           .dispatch("FETCH_ELEMENTS", { sheet_id: this.layout.sheet_id })
           .then(count => {
             this.countEl--;
             if (count) {
               $state.loaded();
-              console.log(
-                `2** infiniteHandler fetched from srv: ${count} elements CNT: ${
-                  this.countEl
-                }`
-              );
+              dbg &&
+                console.log(
+                  `2** infiniteHandler fetched from srv: ${count} elements CNT: ${
+                    this.countEl
+                  }`
+                ); // eslint-disable-line
             } else {
               $state.complete();
-              console.log(
-                `3** infiniteHandler loaded off CNT: ${this.countEl}`
-              );
+              dbg &&
+                console.log(
+                  `3** infiniteHandler loaded off CNT: ${this.countEl}`
+                ); // eslint-disable-line
             }
           })
           .catch(err => {
             this.countEl = 0;
-            console.warn(err);
+            dbg && console.error(err); // eslint-disable-line
           });
       }
     },
@@ -618,6 +662,70 @@ export default {
       }
 
       this.$store.dispatch("REMOVE_LAYOUT", selectedLayout);
+    },
+    activateLayout(type_layout, withDescendants = false) {
+      /* Проверка на то, в каком из position откроется sheet */
+      let additionalLayout;
+      const position = this.$store.getters.isShowAdditional(
+        this.$vuetify.breakpoint
+      )
+        ? 2
+        : 1;
+
+      if (position === 2) {
+        additionalLayout = this.$store.getters.additionalLayout;
+      }
+
+      /* В зависимости от типа выбранного layout, будет открыт либо
+				'список элементов' для sheet, либо 'свойства' этого sheet */
+      if (type_layout === "list-sheet") {
+        /* Для списка элементов, из groups-sheet можно открыть tasks-sheet. Открытый sheet можно
+					временно разместить в service sheet. Для этого специально обновляется информация что
+					должен содержать этот sheet */
+
+        const taskServiceSheet = this.$store.state.sheets.find(
+          el => el.service && el.type_el === "activity-sheet"
+        );
+        /* Добавление нового layout для временного sheet */
+        const condition = this.thisSheet.condition;
+
+        this.$store
+          .dispatch("UPDATE_SHEET_VALUES", {
+            id: taskServiceSheet.sheet_id,
+            values: [
+              { field: "name", value: `Activity for ${this.thisSheet.name}` },
+              { field: "condition", value: { group_id: condition.group_id } },
+              { field: "condition", value: { task_id: condition.task_id } },
+              { field: "condition", value: { parent_id: condition.parent_id } },
+              { field: "condition", value: { userId: condition.userId } }
+            ]
+          })
+          .then(() => {
+            if (position === 2) {
+              /* Если открывается в additional layout, то необходимо закрыть предыдущее представление,
+          		 в случае если оно уже открыто*/
+              if (
+                additionalLayout &&
+                (additionalLayout.type_layout === "property-sheet" ||
+                  additionalLayout.type_layout === "list-sheet")
+              ) {
+                return this.$store.dispatch("REMOVE_LAYOUT", additionalLayout);
+              }
+            } else {
+              return Promise.resolve(true);
+            }
+          })
+          .then(() => {
+            this.$store.dispatch("ADD_LAYOUT", {
+              type_layout,
+              position,
+              sheet_id: taskServiceSheet.sheet_id,
+              type_el: taskServiceSheet.type_el,
+              element_id: ""
+            });
+          });
+      } else if (type_layout === "property-sheet") {
+      }
     }
   }
 };

@@ -11,7 +11,6 @@ Vue.use(Vuex);
 		{
 			icon: ("G", "T", "U", "A"),
 			id: Number,
-			layout: Number,
 			limit: Number,
 			offset: Number,
 			name: String,
@@ -22,7 +21,6 @@ Vue.use(Vuex);
 			sheet_id: String,
 			type_el: ("groups-sheet", "tasks-sheet", "users-sheet", "activity-sheet"),
 			user_id: Number,
-			visible: Boolean,
 			condition: {
 				group_id: String,
 				parent_id: String,

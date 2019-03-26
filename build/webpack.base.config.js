@@ -46,12 +46,7 @@ module.exports = {
 					}
 				},
 				exclude: /node_modules/,
-				include: [
-					require.resolve('bootstrap-vue'),
-					require.resolve('epic-spinners'),
-					'/node_modules/bootstrap-vue/',
-					'/node_modules/bootstrap/'
-				]
+				include: [require.resolve('epic-spinners')]
 			},
 			{
 				test: /\.(png|jpg|gif|svg|ttf|woff2|woff|eot)$/,

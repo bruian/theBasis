@@ -339,7 +339,7 @@ export default {
 					commit('AUTH_SUCCESS', commonTokens);
 				}
 
-				console.log('TOKENS CHECKED');
+				dbg && console.log('TOKENS CHECKED'); // eslint-disable-line
 				return resolve(true);
 			} catch (err) {
 				commit('AUTH_LOGOUT');
@@ -790,8 +790,7 @@ export default {
 				return Promise.resolve(true);
 			})
 			.catch(err => {
-				console.debug(err);
-				debugger;
+				dbg && console.error(err); // eslint-disable-line
 				if (err.response.data) {
 					commit('API_ERROR', { message: err.message, data: err.response.data.message });
 					return Promise.reject(
@@ -1171,7 +1170,6 @@ export default {
 			status = options.status;
 			start = workDateCurrTime(state.mainUser.workDate).toISOString();
 		}
-		// console.log(start);
 
 		// Убедимся не было ли передано иное время смены, отличное от автоматического
 		if (Object.prototype.hasOwnProperty.call(options, 'start')) {
@@ -1268,9 +1266,11 @@ export default {
 	 * @returns { function(...args): Promise }
 	 * @description Функция для обновление элементов в списке
 	 */
-	UPDATE_SHEET_VALUES: ({ commit, dispatch }, options) => {
+	UPDATE_SHEET_VALUES: ({ commit }, options) => {
 		const values = {
-			id: options.id
+			id: options.id,
+			condition: [],
+			vision: []
 		};
 
 		Array.prototype.forEach.call(options.values, el => {
@@ -1282,10 +1282,12 @@ export default {
 				});
 			}
 
-			values[el.field] = el.value;
+			if (el.field === 'condition' || el.field === 'vision') {
+				values[el.field].push(el.value);
+			} else {
+				values[el.field] = el.value;
+			}
 		});
-
-		// values[options.field] = options.value;
 
 		const fetchQuery = {
 			url: `${apiURL}sheets`,
@@ -1295,31 +1297,21 @@ export default {
 
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(false);
-				}
-
 				commit('SET_SHEETS', dataFromSrv.data);
 
-				let needUpdateSheet = false;
-				Array.prototype.forEach.call(dataFromSrv.data, dataItem => {
-					/* Если изменились найстройки фильтров sheet, тогда необходимо запросить данные для sheet
-						по новой у сервера */
-					if (Object.prototype.hasOwnProperty.call(dataItem, 'conditions')) {
-						needUpdateSheet = true;
-					}
+				// let needUpdateSheet = false;
+				// Array.prototype.forEach.call(dataFromSrv.data, dataItem => {
+				// 	/* Если изменились найстройки фильтров sheet, тогда необходимо запросить данные для sheet
+				// 		по новой у сервера */
+				// 	if (Object.prototype.hasOwnProperty.call(dataItem, 'conditions')) {
+				// 		needUpdateSheet = true;
+				// 	}
+				// });
 
-					/* Так же sheet обновляется полностью, когда у него включается visible. Связанное обновление
-						смежных sheet происходит только для видимых sheet */
-					if (Object.prototype.hasOwnProperty.call(dataItem, 'visible') && dataItem.visible) {
-						needUpdateSheet = true;
-					}
-				});
-
-				if (needUpdateSheet) {
-					commit('ADD_QUEUE', { sheet_id: options.id, method: 'refresh' });
-					dispatch('UPDATE_QUEUE', 3);
-				}
+				// if (needUpdateSheet) {
+				// 	commit('ADD_QUEUE', { sheet_id: options.id, method: 'refresh' });
+				// 	dispatch('UPDATE_QUEUE', 3);
+				// }
 
 				return Promise.resolve(true);
 			})
@@ -1337,7 +1329,7 @@ export default {
 	/**
 	 * @func CREATE_SHEET_ELEMENT
 	 * @param { VUEX action parametres: Object }
-	 * @param { { type_el, layout, name, visible }: Object } - options
+	 * @param { { type_el, name }: Object } - options
 	 * @returns { function(...args): Promise }
 	 * @description Функция для создания списка элементов
 	 */
@@ -1352,13 +1344,8 @@ export default {
 
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(false);
-				} else {
-					commit('SET_SHEETS', dataFromSrv.data);
-
-					return Promise.resolve(true);
-				}
+				commit('SET_SHEETS', dataFromSrv.data);
+				return Promise.resolve(true);
 			})
 			.catch(err => {
 				if (err.response.data) {
@@ -1389,13 +1376,8 @@ export default {
 
 		return fetchSrv(fetchQuery, commit)
 			.then(dataFromSrv => {
-				if (dataFromSrv.code && dataFromSrv.code === 'no_datas') {
-					return Promise.resolve(false);
-				} else {
-					commit('DELETE_SHEET_ELEMENT', dataFromSrv.data);
-
-					return Promise.resolve(true);
-				}
+				commit('DELETE_SHEET_ELEMENT', dataFromSrv.data);
+				return Promise.resolve(true);
 			})
 			.catch(err => {
 				if (err.response.data) {

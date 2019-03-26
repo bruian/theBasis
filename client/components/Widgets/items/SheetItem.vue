@@ -21,7 +21,7 @@
         <v-btn small icon @click="activateLayout('list-sheet')">
           <v-icon color="primary">visibility</v-icon>
         </v-btn>
-        <v-btn small icon @click="activateLayout('property-sheet')">
+        <v-btn small icon :disabled="sheet.defaults" @click="activateLayout('property-sheet')">
           <v-icon color="primary">tune</v-icon>
         </v-btn>
       </div>

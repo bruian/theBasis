@@ -138,7 +138,6 @@ export default {
   data: () => ({
     messageDialog: false,
     drawer: false,
-    settingsDrawer: false,
     workDateMenu: false,
     usersMenu: false,
     groupsMenu: false,
@@ -158,6 +157,11 @@ export default {
         type_el: "tasks-sheet",
         selected: false,
         name: "tasks"
+      },
+      {
+        type_el: "activity-sheet",
+        selected: false,
+        name: "activity"
       }
     ]
   }),
@@ -241,7 +245,6 @@ export default {
     },
     workDate: {
       get() {
-        // return this.$store.getters.workDateIsoStr;
         if (this.$store.state.mainUser.workDate) {
           return moment(this.$store.state.mainUser.workDate).format(
             "YYYY-MM-DD"
@@ -260,7 +263,7 @@ export default {
   methods: {
     selectorData(type_el) {
       let result = this.$store.state.sheets
-        .filter(el => el.type_el === type_el)
+        .filter(el => el.type_el === type_el && !el.service)
         .sort((a, b) => a.callsCount - b.callsCount);
 
       if (result.length > 3) {
@@ -280,7 +283,7 @@ export default {
       });
 
       result.push({
-        name: "All",
+        name: "All sheets",
         icon: true,
         type_layout: "manage-sheet",
         position: 1,

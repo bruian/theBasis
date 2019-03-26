@@ -45,7 +45,20 @@
           color="primary"
           dark
         >{{ (item.isExpanded) ? "unfold_less" : "unfold_more" }}</v-icon>
-        <v-icon class="expand-ico" color="primary">more_horiz</v-icon>
+
+        <v-menu offset-y>
+          <template v-slot:activator="{ on }">
+            <v-icon v-on="on" class="expand-ico" color="primary">more_horiz</v-icon>
+          </template>
+          <v-list>
+            <v-list-tile v-for="(item, index) in moreMenu" :key="index" @click="onMenu(item.id)">
+              <v-list-tile-avatar>
+                <v-icon>{{ item.icon }}</v-icon>
+              </v-list-tile-avatar>
+              <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+            </v-list-tile>
+          </v-list>
+        </v-menu>
       </div>
     </div>
 
@@ -117,7 +130,11 @@ export default {
     direction: "right",
     hover: false,
     transition: "slide-x-transition",
-    moreMenu: [{ title: "Add subgroup" }, { title: "Collapse subgroup" }],
+    moreMenu: [
+      { id: 0, title: "Show list", icon: "visibility" },
+      { id: 1, title: "Show with inner", icon: "" }
+      // { id: 2, title: "Property", icon: "tune" }
+    ],
     groupChangeStart: false,
     isTagsInitialized: false,
     tabs: tabs,
@@ -210,6 +227,15 @@ export default {
         id: this.item.id
       });
     },
+    onMenu(id) {
+      if (id === 0) {
+        this.activateLayout("list-sheet");
+      } else if (id === 1) {
+        this.activateLayout("list-sheet", true);
+      } else if (id === 2) {
+        this.activateLayout("property-sheet");
+      }
+    },
     onExpandMore() {
       if (!this.item.isExpanded) {
         this.currentTab = 0;
@@ -244,6 +270,73 @@ export default {
           .catch(err => {
             console.warn(err);
           });
+      }
+    },
+    activateLayout(type_layout, withDescendants = false) {
+      /* Проверка на то, в каком из position откроется sheet */
+      let additionalLayout;
+      const position = this.$store.getters.isShowAdditional(
+        this.$vuetify.breakpoint
+      )
+        ? 2
+        : 1;
+
+      if (position === 2) {
+        additionalLayout = this.$store.getters.additionalLayout;
+      }
+
+      /* В зависимости от типа выбранного layout, будет открыт либо
+				'список элементов' для sheet, либо 'свойства' этого sheet */
+      if (type_layout === "list-sheet") {
+        /* Для списка элементов, из groups-sheet можно открыть tasks-sheet. Открытый sheet можно
+					временно разместить в service sheet. Для этого специально обновляется информация что
+					должен содержать этот sheet */
+
+        const taskServiceSheet = this.$store.state.sheets.find(
+          el => el.service && el.type_el === "tasks-sheet"
+        );
+        /* Добавление нового layout для временного sheet */
+
+        this.$store
+          .dispatch("UPDATE_SHEET_VALUES", {
+            id: taskServiceSheet.sheet_id,
+            values: [
+              { field: "name", value: `Tasks for ${this.item.name}` },
+              {
+                field: "condition",
+                value: {
+                  group_id: withDescendants
+                    ? this.$store.getters.listGroupsHierarchy(this.item.id)
+                    : [this.item.id]
+                }
+              }
+            ]
+          })
+          .then(() => {
+            if (position === 2) {
+              /* Если открывается в additional layout, то необходимо закрыть предыдущее представление,
+          		 в случае если оно уже открыто*/
+              if (
+                additionalLayout &&
+                (additionalLayout.type_layout === "property-sheet" ||
+                  additionalLayout.type_layout === "list-sheet")
+              ) {
+                return this.$store.dispatch("REMOVE_LAYOUT", additionalLayout);
+              }
+            } else {
+              return Promise.resolve(true);
+            }
+          })
+          .then(() => {
+            this.$store.dispatch("ADD_LAYOUT", {
+              type_layout,
+              position,
+              sheet_id: taskServiceSheet.sheet_id,
+              type_el: taskServiceSheet.type_el,
+              element_id: ""
+            });
+          });
+      } else if (type_layout === "property-sheet") {
       }
     }
   }

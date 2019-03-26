@@ -1,5 +1,21 @@
 const moment = require('moment');
 
+function findEl(el, id) {
+	let result;
+
+	for (let i = 0; i < el.length; i++) {
+		if (el[i].id === id) {
+			result = el[i];
+		} else if (el[i].children && el[i].children.length > 0) {
+			result = findEl(el[i].children, id);
+		}
+
+		if (result) break;
+	}
+
+	return result;
+}
+
 export default {
 	/* Authentication getters */
 	isAuth: state => !!state.auth.token,
@@ -53,6 +69,57 @@ export default {
 		}
 	},
 
+	listGroupsHierarchy: state => group_id => {
+		const topGroup = findEl(state.Groups, group_id);
+		let listGroups = [group_id];
+
+		function getChildren(chld, id) {
+			let result = [];
+
+			for (let i = 0; i < chld.length; i++) {
+				if (chld[i].parent.id === id) {
+					result.push(chld[i].id);
+					if (chld[i].children && chld[i].children.length > 0) {
+						result = result.concat(getChildren(chld[i].children, chld[i].id));
+					}
+				}
+			}
+
+			return result;
+		}
+
+		listGroups = listGroups.concat(getChildren(topGroup.children, group_id));
+		return listGroups;
+	},
+
+	listTasksHierarchy: state => task_id => {
+		const topTask = findEl(state.Tasks, task_id);
+		let listTasks = [task_id];
+
+		function getChildren(chld, id) {
+			let result = [];
+
+			for (let i = 0; i < chld.length; i++) {
+				if (chld[i].parent.id === id) {
+					result.push(chld[i].id);
+
+					if (Object.prototype.hasOwnProperty.call(chld, 'children')) {
+						if (chld[i].children && chld[i].children.length > 0) {
+							result = result.concat(getChildren(chld[i].children, chld[i].id));
+						}
+					}
+				}
+			}
+
+			return result;
+		}
+
+		if (Object.prototype.hasOwnProperty.call(topTask, 'children')) {
+			listTasks = listTasks.concat(getChildren(topTask.children, task_id));
+		}
+
+		return listTasks;
+	},
 	// usersSheet(state) {
 	// 	return state[state.activeUsersSheet.sheet].sheet;
 	// },
@@ -79,23 +146,7 @@ export default {
 	},
 
 	groupById: state => id => {
-		function findGroup(grp) {
-			let result;
-
-			for (let i = 0; i < grp.length; i++) {
-				if (grp[i].id === id) {
-					result = grp[i];
-				} else if (grp[i].children && grp[i].children.length > 0) {
-					result = findGroup(grp[i].children);
-				}
-
-				if (result) break;
-			}
-
-			return result;
-		}
-
-		return findGroup(state.Groups);
+		return findEl(state.Groups, id);
 	},
 
 	mainGroups: state => {

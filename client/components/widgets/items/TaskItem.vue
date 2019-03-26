@@ -64,8 +64,15 @@
           :max-height="84"
           @change="onNameChange"
         ></itmTextArea>
-
-        <TagsInput
+        <div class="task-two-line">
+          <div>№: {{ item.tid }}</div>&nbsp;|&nbsp;
+          <v-tooltip bottom>
+            <div slot="activator">{{ getDuration(item.duration) }}</div>
+            <span>Время затрачено</span>
+          </v-tooltip>&nbsp;|&nbsp;
+          <div>{{contexts}}</div>
+        </div>
+        <!-- <TagsInput
           :element-id="'#'+item.tid"
           v-model="contexts"
           :existing-tags="mainExistingContexts"
@@ -74,17 +81,10 @@
           @tag-removed="onTagRemoved"
           :typeahead="true"
           :placeholder="'Add a context'"
-        ></TagsInput>
+        ></TagsInput>-->
       </div>
 
       <div class="task-clmn4">
-        <v-tooltip bottom>
-          <div slot="activator" class="task-duration">{{ getDuration(item.duration) }}</div>
-          <span>Время затрачено</span>
-        </v-tooltip>
-
-        <div class="task-id">id: {{ item.tid }}</div>
-
         <v-icon
           @click="onExpandMore(item)"
           class="expand-ico"
@@ -92,7 +92,21 @@
           color="primary"
           dark
         >{{ (item.isExpanded) ? "unfold_less" : "unfold_more" }}</v-icon>
-        <treeselect
+
+        <v-menu offset-y>
+          <template v-slot:activator="{ on }">
+            <v-icon v-on="on" class="expand-ico" color="primary">more_horiz</v-icon>
+          </template>
+          <v-list>
+            <v-list-tile v-for="(item, index) in moreMenu" :key="index" @click="onMenu(item.id)">
+              <v-list-tile-avatar>
+                <v-icon>{{ item.icon }}</v-icon>
+              </v-list-tile-avatar>
+              <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+            </v-list-tile>
+          </v-list>
+        </v-menu>
+        <!-- <treeselect
           v-model="item.group_id"
           placeholder="Group"
           :clearable="false"
@@ -100,9 +114,10 @@
           :options="mainGroupsMini"
           @open="onGroupOpen"
           @input="onGroupInput"
-        />
+        />-->
       </div>
     </div>
+
     <!-- task-body -->
     <div class="task-expander" v-show="item.isExpanded">
       <v-tabs slot="extension" slider-color="primary" v-model="currentTab">
@@ -201,7 +216,10 @@ export default {
     direction: "right",
     hover: false,
     transition: "slide-x-transition",
-    moreMenu: [{ title: "Add subtask" }, { title: "Collapse subtask" }],
+    moreMenu: [
+      { id: 0, title: "Show list", icon: "visibility" },
+      { id: 1, title: "Show with inner", icon: "" }
+    ],
     groupChangeStart: false,
     isTagsInitialized: false,
     tabs: tabs,
@@ -218,12 +236,18 @@ export default {
       },
       set(value) {}
     },
-    contexts: {
-      get() {
-        return this.item.context;
-      },
-      set(value) {}
+    // contexts: {
+    //   get() {
+    //     return this.item.context;
+    //   },
+    //   set(value) {}
+    // },
+    contexts() {
+      return this.item.context.join(", ");
     },
+    // groupName() {
+    //   return this.$store.getters.groupById(this.item.group_id).name;
+    // },
     mainExistingContexts() {
       return this.$store.state.mainExistingContexts;
     },
@@ -257,7 +281,7 @@ export default {
             sheet_id: this.sheet_id
           })
           .catch(err => {
-            console.warn(err);
+            console.error(err);
           });
       }
     }
@@ -283,7 +307,7 @@ export default {
           status: newStatus
         })
         .catch(err => {
-          console.warn(err);
+          console.error(err);
         });
     },
     onAddItemInGroup(groupId) {
@@ -337,6 +361,15 @@ export default {
         .catch(err => {
           console.warn(err);
         });
+    },
+    onMenu(id) {
+      if (id === 0) {
+        this.activateLayout("list-sheet");
+      } else if (id === 1) {
+        this.activateLayout("list-sheet", true);
+      } else if (id === 2) {
+        this.activateLayout("property-sheet");
+      }
     },
     onInitialized() {
       this.isTagsInitialized = true;
@@ -466,6 +499,74 @@ export default {
             console.warn(err);
           });
       }
+    },
+    activateLayout(type_layout, withDescendants = false) {
+      /* Проверка на то, в каком из position откроется sheet */
+      let additionalLayout;
+      const position = this.$store.getters.isShowAdditional(
+        this.$vuetify.breakpoint
+      )
+        ? 2
+        : 1;
+
+      if (position === 2) {
+        additionalLayout = this.$store.getters.additionalLayout;
+      }
+
+      /* В зависимости от типа выбранного layout, будет открыт либо
+				'список элементов' для sheet, либо 'свойства' этого sheet */
+      if (type_layout === "list-sheet") {
+        /* Для списка элементов, из groups-sheet можно открыть tasks-sheet. Открытый sheet можно
+					временно разместить в service sheet. Для этого специально обновляется информация что
+					должен содержать этот sheet */
+
+        const taskServiceSheet = this.$store.state.sheets.find(
+          el => el.service && el.type_el === "activity-sheet"
+        );
+        /* Добавление нового layout для временного sheet */
+
+        this.$store
+          .dispatch("UPDATE_SHEET_VALUES", {
+            id: taskServiceSheet.sheet_id,
+            values: [
+              { field: "name", value: `Activity for ${this.item.name}` },
+              { field: "condition", value: { group_id: null } },
+              {
+                field: "condition",
+                value: {
+                  task_id: withDescendants
+                    ? this.$store.getters.listTasksHierarchy(this.item.id)
+                    : [this.item.id]
+                }
+              }
+            ]
+          })
+          .then(() => {
+            if (position === 2) {
+              /* Если открывается в additional layout, то необходимо закрыть предыдущее представление,
+          		 в случае если оно уже открыто*/
+              if (
+                additionalLayout &&
+                (additionalLayout.type_layout === "property-sheet" ||
+                  additionalLayout.type_layout === "list-sheet")
+              ) {
+                return this.$store.dispatch("REMOVE_LAYOUT", additionalLayout);
+              }
+            } else {
+              return Promise.resolve(true);
+            }
+          })
+          .then(() => {
+            this.$store.dispatch("ADD_LAYOUT", {
+              type_layout,
+              position,
+              sheet_id: taskServiceSheet.sheet_id,
+              type_el: taskServiceSheet.type_el,
+              element_id: ""
+            });
+          });
+      } else if (type_layout === "property-sheet") {
+      }
     }
   }
 };
@@ -534,11 +635,11 @@ export default {
 }
 
 .task-clmn4 {
-  width: 120px;
-  margin: 1px 2px 2px 1px;
+  margin: 3px 2px 2px 1px;
   display: flex;
-  flex-flow: row wrap;
+  flex-flow: column;
   align-content: space-between;
+  align-items: flex-end;
 }
 
 /* .task-clmn2-row1 {
@@ -560,7 +661,8 @@ export default {
   margin-left: 12px;
 }
 
-.task-duration {
+.task-two-line {
+  display: inline-flex;
   font-size: 12px;
   padding-top: 2px;
   padding-left: 1px;
