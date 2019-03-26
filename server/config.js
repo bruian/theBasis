@@ -3,26 +3,26 @@ require('babel-polyfill');
 
 const environment = {
 	development: {
-		isProduction: false,
+		isProduction: false
 	},
 	production: {
-		isProduction: true,
-	},
+		isProduction: true
+	}
 }[process.env.NODE_ENV || 'development'];
 
 module.exports = Object.assign(
 	{
-		host: process.env.HOST || 'localhost',
-		port: process.env.PORT || 8080,
-		DEBUG_API: true,
-		debugTrace: true,
+		// host: process.env.HOST || 'localhost',
+		port: process.env.APP_PORT || 8080,
+		DEBUG_API: process.env.DEBUG_API,
+		debugTrace: process.env.DEBUG_API,
 		expressLogging: false,
 		expressLoggingError: true,
-		apiHost: process.env.APIHOST || 'localhost',
-		apiPort: process.env.APIPORT,
+		apiHost: process.env.API_HOST || 'localhost',
+		apiPort: process.env.API_PORT || 3001,
 		app: {
 			title: 'inTask.me',
-			description: 'Incredible taskmanager',
+			description: 'Incredible taskmanager'
 		},
 		security: {
 			on: true, // true - authentication сhecking, false - no checking access grants
@@ -40,8 +40,8 @@ module.exports = Object.assign(
 			securityStrategy: ['client-basic', 'oauth2-client-password', 'jwt'],
 			// if jwtOn=false, then in securityStrategy must be add 'bearer'
 			// if jwtOn=true, then in securityStrategy must be add 'jwt' instead 'bearer'
-			jwtOn: true,
-		},
+			jwtOn: true
+		}
 	},
-	environment,
+	environment
 );

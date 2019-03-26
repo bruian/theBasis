@@ -13,5 +13,6 @@ server/keys/
 mochawesome-report/
 old&remove/
 out/
+dev.env
 .idea
 *.iml

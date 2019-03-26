@@ -2,11 +2,12 @@ import Vue from 'vue';
 import axios from 'axios';
 import VueAxios from 'vue-axios';
 import createApp from './app';
+import config from './config';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
 Vue.use(VueAxios, axios);
-Vue.axios.defaults.baseURL = `http://localhost:3000/api/`;
+Vue.axios.defaults.baseURL = `http://${config.apiHost}:${config.apiPort}/api/`;
 
 /* This exported function will be called by `bundleRenderer`.
 This is where we perform data-prefetching to determine the

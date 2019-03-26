@@ -38,13 +38,13 @@ function createRenderer(bundle, options) {
 			// for component caching
 			cache: LRU({
 				max: 1000,
-				maxAge: 1000 * 60 * 15,
+				maxAge: 1000 * 60 * 15
 			}),
 			// this is only needed when vue-server-renderer is npm-linked
 			basedir: resolve('../dist'),
 			// recommended for performance
-			runInNewContext: false,
-		}),
+			runInNewContext: false
+		})
 	);
 }
 
@@ -62,7 +62,7 @@ if (isProd) {
 	const clientManifest = require('../dist/vue-ssr-client-manifest.json');
 	renderer = createRenderer(bundle, {
 		template,
-		clientManifest,
+		clientManifest
 	});
 } else {
 	// In development: setup the dev server with watch and hot-reload,
@@ -74,7 +74,7 @@ if (isProd) {
 
 const serve = (path, cache) =>
 	express.static(resolve(path), {
-		maxAge: cache && isProd ? 1000 * 60 * 60 * 24 * 30 : 0,
+		maxAge: cache && isProd ? 1000 * 60 * 60 * 24 * 30 : 0
 	});
 
 app.use(helmet());
@@ -148,7 +148,7 @@ function render(req, res) {
 
 	const context = {
 		title: config.app.title, // default title
-		url: req.url,
+		url: req.url
 	};
 
 	renderer.renderToString(context, (err, html) => {
@@ -170,7 +170,7 @@ app.get(
 		? render
 		: (req, res) => {
 				readyPromise.then(() => render(req, res));
-		  },
+		  }
 );
 
 if (config.port) {
@@ -181,8 +181,6 @@ if (config.port) {
 
 		log.info(`Service started ${new Date()} *********************\n`);
 		log.info('✅  %s is running, talking to API server on %s.', config.app.title, config.apiPort);
-
-		log.info('💻  Open http://%s:%s in a browser to view the app.', config.host, config.port);
 	});
 } else {
 	log.error('❌  ERROR: No PORT environment variable has been specified');

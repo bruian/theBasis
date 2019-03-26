@@ -9,12 +9,13 @@
             href
             @click.prevent="formState=0"
           >Login</a>
-          <span>|</span>
+          <span v-if="activeRegistration">|</span>
           <a
             class="login-header"
             v-bind:class="[formState == 1 ? 'active-login-header' : '']"
             href
             @click.prevent="formState=1"
+            v-if="activeRegistration"
           >Registration</a>
         </v-toolbar-title>
         <v-spacer></v-spacer>
@@ -184,6 +185,7 @@ import {
   minLength,
   sameAs
 } from "vuelidate/lib/validators";
+import config from "../config";
 
 export default {
   mixins: [validationMixin],
@@ -205,6 +207,7 @@ export default {
       email: "",
       password: "",
       passwordShow: false,
+      activeRegistration: config.activeRegistration,
       verifyingPassword: "",
       rules: {
         required: v => !!v || "Необходимо заполнить",
