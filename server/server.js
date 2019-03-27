@@ -180,7 +180,7 @@ if (config.port) {
 		}
 
 		log.info(`Service started ${new Date()} *********************\n`);
-		log.info('✅  %s is running, talking to API server on %s.', config.app.title, config.apiPort);
+		log.info('✅  %s is running, talking to API server on %s.', config.app.title, config.port);
 	});
 } else {
 	log.error('❌  ERROR: No PORT environment variable has been specified');
