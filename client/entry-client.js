@@ -18,7 +18,9 @@ import './app.css';
 Vue.use(PrettyCheckbox);
 Vue.use(VueAxios, axios);
 
-Vue.axios.defaults.baseURL = `https://${config.apiHost}:${config.apiPort}/api/`;
+const apiPort = config.apiWOPort ? '' : `:${config.apiPort}`;
+
+Vue.axios.defaults.baseURL = `https://${config.apiHost}${apiPort}/api/`;
 Vue.axios.defaults.paramsSerializer = params => {
 	return qs.stringify(params, { arrayFormat: 'repeat' });
 };
