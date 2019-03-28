@@ -196,7 +196,7 @@ export default {
           })
           .catch(err => {
             //this.message = err.error_description
-            console.log(err.error_description);
+            console.error(err.error_description);
           });
       }
     } else {

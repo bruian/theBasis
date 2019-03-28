@@ -76,6 +76,9 @@ import GroupItem from "../items/GroupItem.vue";
 import VuePerfectScrollbar from "../../Perfect-scrollbar.vue";
 import InfiniteLoading from "vue-infinite-loading";
 import { recursiveFind, findGroup, getElements } from "../../../util/helpers";
+import config from "../../../config";
+
+const dbg = !!config.DEBUG_API;
 
 import draggable from "vuedraggable";
 
@@ -503,23 +506,26 @@ export default {
     infiniteHandler($state) {
       if (this.countEl == 0) {
         this.countEl++;
-        console.log(`1** infiniteHandler fetch tasks CNT: ${this.countEl}`);
+        dbg &&
+          console.log(`1** infiniteHandler fetch tasks CNT: ${this.countEl}`); // eslint-disable-line
         return this.$store
           .dispatch("FETCH_ELEMENTS", { sheet_id: this.layout.sheet_id })
           .then(count => {
             this.countEl--;
             if (count) {
               $state.loaded();
-              console.log(
-                `2** infiniteHandler fetched from srv: ${count} elements CNT: ${
-                  this.countEl
-                }`
-              );
+              dbg &&
+                console.log(
+                  `2** infiniteHandler fetched from srv: ${count} elements CNT: ${
+                    this.countEl
+                  }`
+                ); // eslint-disable-line
             } else {
               $state.complete();
-              console.log(
-                `3** infiniteHandler loaded off CNT: ${this.countEl}`
-              );
+              dbg &&
+                console.log(
+                  `3** infiniteHandler loaded off CNT: ${this.countEl}`
+                ); // eslint-disable-line
             }
           })
           .catch(err => {

@@ -18,7 +18,7 @@ module.exports = Object.assign(
 		authPort: process.env.AUTHPORT || 3000,
 		authWOPort: process.env.WOPORT || true,
 		activeRegistration: false,
-		DEBUG_API: process.env.DEBUG_API || true,
+		DEBUG_API: process.env.DEBUG_API || false,
 		app: {
 			title: 'inTask.me',
 			description: 'Incredible taskmanager'
