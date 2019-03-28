@@ -10,10 +10,10 @@ const dbg = !!config.DEBUG_API;
 const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
 
 const authPort = config.authWOPort ? '' : `:${config.authPort}`;
-const authURL = `http://${config.authHost}${authPort}/auth/`;
+const authURL = `https://${config.authHost}${authPort}/auth/`;
 
 const apiPort = config.apiWOPort ? '' : `:${config.apiPort}`;
-const apiURL = `http://${config.apiHost}${apiPort}/api/`;
+const apiURL = `https://${config.apiHost}${apiPort}/api/`;
 
 const mainPacket = [
 	{
@@ -199,7 +199,6 @@ export default {
 					return resolve(res);
 				})
 				.catch(err => {
-					debugger;
 					let errorData = {
 						message: 'Упс! Неожиданная ошибка сервера!',
 						caller: 'REG_REQUEST'
@@ -233,7 +232,7 @@ export default {
 			const bodyData = Object.assign(
 				{
 					client: 'browser:inTask',
-					redirectUri: 'http://192.168.1.37:8080/'
+					redirectUri: 'https://intask.me/'
 				},
 				userData
 			);

@@ -7,7 +7,7 @@ import config from './config';
 const isDev = process.env.NODE_ENV !== 'production';
 
 Vue.use(VueAxios, axios);
-Vue.axios.defaults.baseURL = `http://${config.apiHost}:${config.apiPort}/api/`;
+Vue.axios.defaults.baseURL = `https://${config.apiHost}:${config.apiPort}/api/`;
 
 /* This exported function will be called by `bundleRenderer`.
 This is where we perform data-prefetching to determine the
