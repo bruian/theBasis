@@ -21,7 +21,7 @@
     <v-divider class="ma-0"></v-divider>
 
     <div class="itm-sheet-body">
-      <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="layout.id">
+      <vue-perfect-scrollbar class="sheet--scroll" :settings="scrollSettings" ref="layout.id">
         <div v-for="(sheet, index) in sheets" :key="sheet.sheet_id">
           <SheetItem :sheet="sheet"></SheetItem>
         </div>

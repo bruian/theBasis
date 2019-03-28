@@ -18,21 +18,14 @@
       </div>
 
       <div class="task-clmn1">
-        <v-speed-dial :direction="direction" :open-on-hover="hover" :transition="transition">
-          <v-btn slot="activator" color="blue darken-2" dark fab small>
+        <v-speed-dial :direction="'right'" :open-on-hover="hover" :transition="transition">
+          <v-btn slot="activator" color="primary" fab small>
             <v-icon>playlist_add_check</v-icon>
           </v-btn>
           <template v-for="action in statusAllowedActions(item.status)">
             <v-tooltip bottom>
-              <v-btn
-                fab
-                dark
-                small
-                color="blue darken-2"
-                slot="activator"
-                @click="onStatusChange(action)"
-              >
-                <v-icon>{{ statusIcon(action) }}</v-icon>
+              <v-btn fab small color="primary" slot="activator" @click="onStatusChange(action)">
+                <v-icon @click="onMacClick(action)">{{ statusIcon(action) }}</v-icon>
               </v-btn>
               <span>{{ statusName(action) }}</span>
             </v-tooltip>
@@ -52,7 +45,6 @@
           class="expand-ico"
           slot="activator"
           color="primary"
-          dark
         >{{ (item.isSubElementsExpanded > 1) ? "expand_less" : "expand_more" }}</v-icon>
       </div>
 
@@ -90,7 +82,6 @@
           class="expand-ico"
           slot="activator"
           color="primary"
-          dark
         >{{ (item.isExpanded) ? "unfold_less" : "unfold_more" }}</v-icon>
 
         <v-menu offset-y>
@@ -134,7 +125,7 @@
     <draggable
       v-model="items"
       v-show="(item.isSubElementsExpanded > 1)"
-      :options="getDraggableOptions()"
+      v-bind="getDraggableOptions()"
       @start="onDragStart"
       @end="onDrop"
       v-bind:data-parent_id="item.id"
@@ -213,7 +204,6 @@ export default {
   },
   props: ["item", "sheet_id"],
   data: () => ({
-    direction: "right",
     hover: false,
     transition: "slide-x-transition",
     moreMenu: [
@@ -309,6 +299,19 @@ export default {
         .catch(err => {
           console.error(err);
         });
+    },
+    onMacClick: function(status) {
+      var isSafari =
+        /constructor/i.test(window.HTMLElement) ||
+        (function(p) {
+          return p.toString() === "[object SafariRemoteNotification]";
+        })(
+          !window["safari"] ||
+            (typeof safari !== "undefined" && safari.pushNotification)
+        );
+      if (isSafari) {
+        this.onStatusChange(status);
+      }
     },
     onAddItemInGroup(groupId) {
       this.$store.dispatch("CREATE_ELEMENT", {

@@ -9,7 +9,7 @@
     <v-divider class="ma-0"></v-divider>
 
     <div class="itm-sheet-body">
-      <div class="drawer-menu--scroll"></div>
+      <div class="sheet--scroll"></div>
     </div>
   </div>
 </template>

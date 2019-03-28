@@ -13,7 +13,7 @@
     <v-divider class="ma-0"></v-divider>
 
     <div class="itm-sheet-body">
-      <div class="drawer-menu--scroll">
+      <div class="sheet--scroll">
         <component :is="propertyComponent.component" :item="propertyComponent.item"></component>
       </div>
     </div>

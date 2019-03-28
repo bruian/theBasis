@@ -60,10 +60,10 @@
     <v-divider class="ma-0"></v-divider>
 
     <div class="itm-sheet-body">
-      <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="layout.id">
+      <vue-perfect-scrollbar class="sheet--scroll" :settings="scrollSettings" ref="layout.id">
         <draggable
           v-model="items"
-          :options="getDraggableOptions()"
+          v-bind="getDraggableOptions()"
           @start="onDragStart"
           @end="onDrop"
           v-bind:data-parent_id="0"
@@ -149,7 +149,7 @@ export default {
       maxScrollLength: 10
     },
     moreMenu: [
-      { id: 0, title: "Show list", icon: "visibility" },
+      { id: 0, title: "Show activity", icon: "visibility" },
       { id: 1, title: "Property", icon: "tune" },
       { id: 2, title: "Close", icon: "clear" }
     ],

@@ -20,7 +20,7 @@ Vue.use(VueAxios, axios);
 
 const apiPort = config.apiWOPort ? '' : `:${config.apiPort}`;
 
-Vue.axios.defaults.baseURL = `https://${config.apiHost}${apiPort}/api/`;
+Vue.axios.defaults.baseURL = `http${config.ssl ? 's' : ''}://${config.apiHost}${apiPort}/api/`;
 Vue.axios.defaults.paramsSerializer = params => {
 	return qs.stringify(params, { arrayFormat: 'repeat' });
 };

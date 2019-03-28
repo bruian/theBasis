@@ -9,7 +9,7 @@ const isDev = process.env.NODE_ENV !== 'production';
 const apiPort = config.apiWOPort ? '' : `:${config.apiPort}`;
 
 Vue.use(VueAxios, axios);
-Vue.axios.defaults.baseURL = `https://${config.apiHost}${apiPort}/api/`;
+Vue.axios.defaults.baseURL = `http${config.ssl ? 's' : ''}://${config.apiHost}${apiPort}/api/`;
 
 /* This exported function will be called by `bundleRenderer`.
 This is where we perform data-prefetching to determine the

@@ -1,17 +1,5 @@
 <template>
-  <div id="Home">
-    <!-- <section>
-			<v-layout	column wrap	class="my-2" align-center>
-				<v-flex xs12 sm4 class="my-3">
-					<div class="text-xs-center">
-						<h2 class="headline">Управляй временем эффективно</h2>
-						<span class="subheading">
-							планируй, исполняй, делегируй
-						</span>
-					</div>
-				</v-flex>
-			</v-layout>
-    </section>-->
+  <div>
     <section>
       <v-parallax src="./public/screen1_1920_1080.jpg" height="600">
         <v-layout column align-center justify-center class="white--text">
@@ -27,34 +15,54 @@
       <v-layout column wrap class="my-5" align-center>
         <v-flex xs12 sm4 class="my-3">
           <div class="text-xs-center">
-            <h2 class="headline">Эффективная управленческая деятельность</h2>
-            <span class="subheading">стоит на трех китах</span>
+            <h2 class="headline">Вам известен секрет личного успеха?</h2>
+            <span class="subheading">и каков краеугольный камень успешных и великих людей</span>
+            <!-- <p>{{offsetTop}}</p> -->
           </div>
         </v-flex>
 
         <v-flex xs12>
           <v-container grid-list-xl>
             <v-layout row wrap align-center>
-              <v-flex xs12 md4>
-                <v-card class="elevation-0 transparent">
+              <v-flex xs12 md4 :class="citatesClass" v-scroll="handleScroll">
+                <v-card class="elevation-2" transparent>
                   <v-card-text class="text-xs-center">
                     <v-icon x-large class="blue--text text--lighten-2">build</v-icon>
                   </v-card-text>
 
                   <v-card-title primary-title class="layout justify-center">
-                    <div class="headline text-xs-center">Квалификация</div>
+                    <div class="headline text-xs-center">Интеллект</div>
                   </v-card-title>
 
                   <v-card-text>
-                    Cras facilisis mi vitae nunc lobortis pharetra. Nulla volutpat tincidunt ornare.
-                    Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.
-                    Nullam in aliquet odio. Aliquam eu est vitae tellus bibendum tincidunt. Suspendisse potenti.
+                    Все выдающиеся достижения человечества являются плодом его интеллектуальной работы. И не важно что это - искусство,
+                    наука, религия или любая иная общественная деятельность. Без развитого интеллекта ни о каких значимых результатах, не
+                    может быть и речи.
                   </v-card-text>
                 </v-card>
               </v-flex>
 
-              <v-flex xs12 md4>
-                <v-card class="elevation-0 transparent">
+              <v-flex xs12 md4 :class="citatesClass" v-scroll="handleScroll">
+                <v-card class="elevation-2 transparent">
+                  <v-card-text class="text-xs-center">
+                    <v-icon x-large class="blue--text text--lighten-2">flash_on</v-icon>
+                  </v-card-text>
+
+                  <v-card-title primary-title class="layout justify-center">
+                    <div class="headline text-xs-center">Эффективность</div>
+                  </v-card-title>
+
+                  <v-card-text>
+                    Понятие эффективности в основном сводится к умению наиболее выгодно использовать доступные ресурсы. Каждый человек
+                    с рождения обладает важнейшим и ограниченным ресурсом - своим временем, а некоторым из людей доводится возможность
+                    распоряжаться и чужим временем. То насколько правильно человек распоряжается временем является прямым следствием его
+                    эффективности.
+                  </v-card-text>
+                </v-card>
+              </v-flex>
+
+              <v-flex xs12 md4 :class="citatesClass" v-scroll="handleScroll">
+                <v-card class="elevation-2 transparent">
                   <v-card-text class="text-xs-center">
                     <v-icon x-large class="blue--text text--lighten-2">flag</v-icon>
                   </v-card-text>
@@ -64,27 +72,13 @@
                   </v-card-title>
 
                   <v-card-text>
-                    Cras facilisis mi vitae nunc lobortis pharetra. Nulla volutpat tincidunt ornare.
-                    Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.
-                    Nullam in aliquet odio. Aliquam eu est vitae tellus bibendum tincidunt. Suspendisse potenti.
+                    Пожалуй самый важный навык успешного человека. Победителями становятся в первую очередь посредством дисциплны.
+                    Без неё возможны лишь посредственные результаты. И это главный секрет успеха большинства выдающихся людей.
+                    За ширмой успеха в подавляющем большинстве случаев стоит упорный труд, и дисциплина в нем играет важную роль.
                   </v-card-text>
-                </v-card>
-              </v-flex>
-
-              <v-flex xs12 md4>
-                <v-card class="elevation-0 transparent">
-                  <v-card-text class="text-xs-center">
-                    <v-icon x-large class="blue--text text--lighten-2">flash_on</v-icon>
-                  </v-card-text>
-
-                  <v-card-title primary-title class="layout justify-center">
-                    <div class="headline text-xs-center">Ответственность</div>
-                  </v-card-title>
-
                   <v-card-text>
-                    Cras facilisis mi vitae nunc lobortis pharetra. Nulla volutpat tincidunt ornare.
-                    Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.
-                    Nullam in aliquet odio. Aliquam eu est vitae tellus bibendum tincidunt. Suspendisse potenti.
+                    <cite>Дисциплина - это не ограничение свободы. Это отсечение всего лишнего.</cite>
+                    <pre>Брюс Ли</pre>
                   </v-card-text>
                 </v-card>
               </v-flex>
@@ -99,9 +93,9 @@
         <v-layout column align-center justify-center>
           <div
             class="headline white--text mb-3 text-xs-center"
-          >Web development has never been easier</div>
-          <em>Kick-start your application today</em>
-          <v-btn class="blue lighten-2 mt-5" dark large href="/pre-made-themes">Get Started</v-btn>
+          >Дисциплина и эффективное управление временем</div>
+          <em>Этим навыкам и посвящается данный менеджер задач</em>
+          <p></p>
         </v-layout>
       </v-parallax>
     </section>
@@ -112,13 +106,23 @@
           <v-flex xs12 sm4>
             <v-card class="elevation-0 transparent">
               <v-card-title primary-title class="layout justify-center">
-                <div class="headline">Company info</div>
+                <div class="headline">Общая информация</div>
               </v-card-title>
 
               <v-card-text>
-                Cras facilisis mi vitae nunc lobortis pharetra. Nulla volutpat tincidunt ornare.
-                Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.
-                Nullam in aliquet odio. Aliquam eu est vitae tellus bibendum tincidunt. Suspendisse potenti.
+                Данный проект находится в стадии активной разработки. На текущий момент реализован базовый концепт системы,
+                относительно которого будет реализован весь остальной функционал. К сожалению регистрация и использование
+                продукта пока не представляется возможным, т.к. проходит отладка кода, тестирование компонентов, проработка
+                механизмом и обкатка методологии.
+              </v-card-text>
+              <v-card-text>
+                Для самых любопытных дана возможность ознакомиться с продуктом в стадии разработки. Для этого можно воспользоваться
+                тестировочным аккаунтом.
+                <p>
+                  <i>login:</i>test@intask.me
+                  <br>
+                  <i>password:</i>testcom
+                </p>
               </v-card-text>
             </v-card>
           </v-flex>
@@ -126,10 +130,10 @@
           <v-flex xs12 sm4 offset-sm1>
             <v-card class="elevation-0 transparent">
               <v-card-title primary-title class="layout justify-center">
-                <div class="headline">Contact us</div>
+                <div class="headline">Контакты</div>
               </v-card-title>
 
-              <v-card-text>Cras facilisis mi vitae nunc lobortis pharetra. Nulla volutpat tincidunt ornare.</v-card-text>
+              <v-card-text>Предложения и пожелания, а так же вопросы для обсуждения можно направить по следующим контактам</v-card-text>
 
               <v-list class="transparent">
                 <v-list-tile>
@@ -138,17 +142,7 @@
                   </v-list-tile-action>
 
                   <v-list-tile-content>
-                    <v-list-tile-title>777-867-5309</v-list-tile-title>
-                  </v-list-tile-content>
-                </v-list-tile>
-
-                <v-list-tile>
-                  <v-list-tile-action>
-                    <v-icon class="blue--text text--lighten-2">place</v-icon>
-                  </v-list-tile-action>
-
-                  <v-list-tile-content>
-                    <v-list-tile-title>Chicago, US</v-list-tile-title>
+                    <v-list-tile-title>8-905-976-54-53</v-list-tile-title>
                   </v-list-tile-content>
                 </v-list-tile>
 
@@ -158,7 +152,7 @@
                   </v-list-tile-action>
 
                   <v-list-tile-content>
-                    <v-list-tile-title>john@vuetifyjs.com</v-list-tile-title>
+                    <v-list-tile-title>bruianio@gmail.com</v-list-tile-title>
                   </v-list-tile-content>
                 </v-list-tile>
               </v-list>
@@ -168,7 +162,7 @@
       </v-container>
     </section>
 
-    <v-container justify-center grid-list-md>
+    <!-- <v-container justify-center grid-list-md>
       <v-card>
         <v-layout>
           <h1></h1>
@@ -186,7 +180,8 @@
 
         <v-divider light></v-divider>
 
-        <v-card-actions class="pa-3">Estimate your chaos
+        <v-card-actions class="pa-3">
+          Estimate your chaos
           <v-spacer></v-spacer>
           <v-icon>star_border</v-icon>
           <v-icon>star_border</v-icon>
@@ -195,7 +190,7 @@
           <v-icon>star_border</v-icon>
         </v-card-actions>
       </v-card>
-    </v-container>
+    </v-container>-->
 
     <Login v-model="authDialog"></Login>
   </div>
@@ -209,18 +204,62 @@ export default {
     Login
   },
   data: () => ({
-    authDialog: false
+    authDialog: false,
+    offsetTop: 0,
+    showCitates: false,
+    slideCitates: false
   }),
   asyncData({ store, route }) {
     return;
   },
+  computed: {
+    citatesClass() {
+      return {
+        boxiOne: !this.showCitates,
+        boxiTwo: this.showCitates
+      };
+    }
+  },
   methods: {
     onLoginDialog() {
       this.authDialog = true;
+    },
+    // handleScroll: function(evt, el) {
+    handleScroll: function(evt) {
+      // this.offsetTop = window.scrollY;
+      if (window.scrollY > 300) {
+        this.showCitates = true;
+        // el.setAttribute(
+        //   "style",
+        //   "opacity: 1; transform: translate3d(0, -20px, 0)"
+        // );
+      }
+
+      let isCitates = window.scrollY > 500;
+      this.slideCitates = isCitates;
+
+      return isCitates;
     }
   }
 };
 </script>
 
-<style lang="stylus">
+<style lang="css">
+.boxiOne {
+  opacity: 0;
+  transform: translateZ(0);
+  margin-top: 20px;
+  /* perspective: 1000px; */
+  backface-visibility: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  transition: 1.5s all cubic-bezier(0.39, 0.575, 0.565, 1);
+}
+
+.boxiTwo {
+  opacity: 1;
+  transform: translate3d(0, -20px, 0);
+  backface-visibility: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  transition: 1.5s all cubic-bezier(0.39, 0.575, 0.565, 1);
+}
 </style>

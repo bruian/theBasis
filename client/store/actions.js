@@ -10,10 +10,10 @@ const dbg = !!config.DEBUG_API;
 const storage = process.env.VUE_ENV === 'server' ? null : window.localStorage;
 
 const authPort = config.authWOPort ? '' : `:${config.authPort}`;
-const authURL = `https://${config.authHost}${authPort}/auth/`;
+const authURL = `http${config.ssl ? 's' : ''}://${config.authHost}${authPort}/auth/`;
 
 const apiPort = config.apiWOPort ? '' : `:${config.apiPort}`;
-const apiURL = `https://${config.apiHost}${apiPort}/api/`;
+const apiURL = `http${config.ssl ? 's' : ''}://${config.apiHost}${apiPort}/api/`;
 
 const mainPacket = [
 	{

@@ -78,7 +78,7 @@
     <draggable
       v-model="items"
       v-show="(item.isSubElementsExpanded > 1)"
-      :options="getDraggableOptions()"
+      v-bind="getDraggableOptions()"
       @start="onDragStart"
       @end="onDrop"
       v-bind:data-parent_id="item.id"

@@ -42,11 +42,12 @@
 
     <v-divider class="ma-0"></v-divider>
 
+    <!-- :options="getDraggableOptions()" -->
     <div class="itm-sheet-body">
-      <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="layout.id">
+      <vue-perfect-scrollbar class="sheet--scroll" :settings="scrollSettings" ref="layout.id">
         <draggable
           v-model="items"
-          :options="getDraggableOptions()"
+          v-bind="getDraggableOptions()"
           @start="onDragStart"
           @end="onDrop"
           v-bind:data-parent_id="0"

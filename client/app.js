@@ -11,9 +11,20 @@ import createRouter from './router';
 import titleMixin from './util/title';
 import * as filters from './util/filters';
 
+Vue.directive('scroll', {
+	inserted(el, binding) {
+		let f = function(evt) {
+			if (binding.value(evt, el)) {
+				window.removeEventListener('scroll', f);
+			}
+		};
+		window.addEventListener('scroll', f);
+	}
+});
+
 Vue.use(VueInstant);
 Vue.use(Vuetify, {
-	iconfont: 'md', // 'md' || 'mdi' || 'fa' || 'fa4'
+	iconfont: 'md' // 'md' || 'mdi' || 'fa' || 'fa4'
 });
 
 // mixin for handling title
@@ -41,7 +52,7 @@ function createApp() {
 	const app = new Vue({
 		router,
 		store,
-		render: h => h(App),
+		render: h => h(App)
 	});
 
 	// expose the app, the router and the store.

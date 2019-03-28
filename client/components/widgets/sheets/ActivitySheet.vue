@@ -29,8 +29,8 @@
     <v-divider class="ma-0"></v-divider>
 
     <div class="itm-sheet-body">
-      <vue-perfect-scrollbar class="drawer-menu--scroll" :settings="scrollSettings" ref="layout.id">
-        <draggable v-model="items" :options="getDraggableOptions()">
+      <vue-perfect-scrollbar class="sheet--scroll" :settings="scrollSettings" ref="layout.id">
+        <draggable v-model="items" v-bind="getDraggableOptions()">
           <div v-for="(item, index) in items" :key="item.id" v-bind:data-id="item.id">
             <ActivityItem :sheet="thisSheet" :item="item"></ActivityItem>
           </div>
