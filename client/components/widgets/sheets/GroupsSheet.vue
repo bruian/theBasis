@@ -66,6 +66,7 @@
           @infinite="infiniteHandler"
           :identifier="infiniteId"
           ref="infLoadingGroupsSheet"
+          force-use-infinite-wrapper
         ></infinite-loading>
       </vue-perfect-scrollbar>
     </div>
